@@ -1,0 +1,163 @@
+/* ─── Estilos del rol Instructor ──────────────────────────────────────────────── */
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a0a0b;
+  margin-bottom: 16px;
+}
+
+/* KPI "Hoy" (azul) — comparte tokens con el dashboard del super admin */
+.kpi2-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.kpi2-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #52525b;
+  font-weight: 600;
+}
+
+.today-wrap {
+  position: relative;
+  display: grid;
+}
+
+.activity-pop {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 50;
+  width: 600px;
+  max-width: 90vw;
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18), 0 4px 14px rgba(15, 23, 42, 0.08);
+  transform-origin: top right;
+  animation: activity-pop-in 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.activity-pop::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 26px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-left: 1px solid #e4e4e7;
+  border-top: 1px solid #e4e4e7;
+  border-radius: 3px 0 0 0;
+  transform: rotate(45deg);
+}
+
+@keyframes activity-pop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.today-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #fff;
+  border: 1px solid #4338ca;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: Inter, sans-serif;
+  transition: background 120ms;
+}
+
+.today-btn:hover { background: #4338ca; }
+
+/* Heatmap de actividad (estilo GitHub) */
+.heat-scroll { overflow-x: auto; padding-bottom: 4px; }
+.heat-months { display: flex; margin-left: 30px; margin-bottom: 4px; }
+.heat-month { width: 15px; font-size: 9px; color: #71717a; white-space: nowrap; flex-shrink: 0; }
+.heat-body { display: flex; }
+.heat-dow { display: flex; flex-direction: column; gap: 3px; width: 26px; margin-right: 4px; flex-shrink: 0; }
+.heat-dow-cell { height: 12px; line-height: 12px; font-size: 9px; color: #a1a1aa; }
+.heat-cols { display: flex; gap: 3px; }
+.heat-col { display: flex; flex-direction: column; gap: 3px; }
+.heat-cell { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.heat-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 8px; }
+.heat-total { font-size: 11.5px; color: #71717a; }
+.heat-total strong { color: #18181b; font-family: "JetBrains Mono", monospace; }
+.heat-legend { display: flex; align-items: center; gap: 3px; font-size: 10.5px; color: #71717a; }
+
+/* Toolbar de filtros (chips + búsqueda) */
+.inst-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.inst-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+
+.inst-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #e4e4e7;
+  background: #fff;
+  color: #52525b;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 120ms;
+}
+
+.inst-chip:hover { background: #fafafa; }
+
+.inst-chip--active {
+  background: #0a0a0b;
+  border-color: #0a0a0b;
+  color: #fff;
+}
+
+.inst-chip__count {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.inst-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.inst-search__icon { position: absolute; left: 10px; pointer-events: none; }
+
+.inst-search__input {
+  height: 32px;
+  padding: 0 10px 0 30px;
+  border-radius: 8px;
+  border: 1px solid #e4e4e7;
+  background: #fff;
+  font-size: 13px;
+  color: #18181b;
+  outline: none;
+  font-family: inherit;
+  min-width: 220px;
+}
+
+.inst-search__input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px #eef2ff; }
+
+.inst-row:hover { background: #fafafa; }

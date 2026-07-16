@@ -1,0 +1,88 @@
+/* ─── Login ────────────────────────────────────────────────────────────── */
+.login__title {
+  font-size: 21px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.login__subtitle {
+  font-size: 13px;
+  color: #52525b;
+  margin-top: 6px;
+  margin-bottom: 24px;
+}
+
+.login__submit-btn {
+  margin-top: 18px;
+  width: 100%;
+  height: 40px;
+  background: #0a0a0b;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login__submit-btn:disabled {
+  cursor: not-allowed;
+}
+
+.login__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+}
+
+.login__api-error {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #b91c1c;
+}
+
+.login__info-box {
+  margin-top: 20px;
+  display: flex;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #52525b;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f7f7f8;
+}
+
+/* ─── Field wrapper ─────────────────────────────────────────────────────── */
+.field__header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.field__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #27272a;
+}
+
+.field__required {
+  color: #b91c1c;
+}
+
+.field__error {
+  font-size: 11px;
+  color: #b91c1c;
+  margin-top: 4px;
+  display: block;
+}

@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+
+*,
+*::before,
+*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #f7f7f8;
+  color: #18181b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root { height: 100%; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes scin {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes popin {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.screen-in  { animation: scin  180ms ease-out; }
+.pop-in     { animation: popin 140ms ease-out; }
+.pulse      { animation: pulse 2s ease-in-out infinite; }
+
+.nx-row:hover { background: #fafafa; }
+
+.nx-input {
+  width: 100%; padding: 9px 12px; border: 1px solid #e4e4e7;
+  border-radius: 8px; font-size: 13.5px; background: #fff;
+  transition: all 120ms; color: #18181b; font-family: 'Inter', sans-serif;
+  outline: none;
+}
+.nx-input:focus       { border-color: #4f46e5; box-shadow: 0 0 0 3px #eef2ff; }
+.nx-input::placeholder{ color: #a1a1aa; }
+
+.nx-check {
+  appearance: none; width: 18px; height: 18px; border: 1.5px solid #d4d4d8;
+  border-radius: 5px; display: inline-flex; align-items: center;
+  justify-content: center; background: #fff; cursor: pointer; flex-shrink: 0;
+  vertical-align: middle;
+}
+.nx-check:checked          { background: #4f46e5; border-color: #4f46e5; }
+.nx-check:checked::after   { content: "✓"; color: #fff; font-size: 12px; font-weight: 700; line-height: 1; }
+.nx-check-lg               { width: 22px; height: 22px; border-radius: 6px; }
+
+.seg input[type="radio"]             { display: none; }
+.seg label {
+  cursor: pointer; color: #52525b; font-size: 12.5px; font-weight: 500;
+  height: 28px; padding: 0 12px; border-radius: 6px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.seg input[type="radio"]:checked + label {
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.06); color: #18181b;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes dashboard-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.997); }
+  to   { opacity: 1; transform: none; }
+}
+.dash-in { animation: dashboard-in 380ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+@keyframes shimmer {
+  from { background-position: -600px 0; }
+  to   { background-position:  600px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f1f1f3 25%, #e8e8eb 50%, #f1f1f3 75%);
+  background-size: 1200px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 5px;
+}
+
+/* Hyperspace: el panel derecho se expande a pantalla completa */
+@keyframes hyperspaceExpand {
+  from {
+    clip-path: inset(0 0 0 58%);   /* solo el panel 3D derecho (42% del ancho) */
+    opacity: 0.85;
+  }
+  to {
+    clip-path: inset(0 0 0 0%);    /* pantalla completa */
+    opacity: 1;
+  }
+}
+.hyperspace-in {
+  animation: hyperspaceExpand 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+.kbd {
+  font-size: 11px; padding: 1px 5px; border: 1px solid #e4e4e7;
+  border-bottom-width: 2px; border-radius: 4px; color: #52525b;
+  background: #fff; font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── Tema oscuro ──────────────────────────────────────────────────────────────
+   La app usa muchos colores en estilos inline, así que el modo oscuro se logra
+   invirtiendo el lienzo completo y re-invirtiendo medios (imágenes, video, canvas)
+   y cualquier elemento marcado con [data-keep-color] para que conserven su color. */
+html[data-theme='dark'] { background: #0b0b0d; color-scheme: dark; }
+html[data-theme='dark'] body { background: #0b0b0d; }
+html[data-theme='dark'] body > #root {
+  filter: invert(0.92) hue-rotate(180deg);
+}
+/* Re-invertir lo que NO debe quedar en negativo */
+html[data-theme='dark'] img,
+html[data-theme='dark'] video,
+html[data-theme='dark'] canvas,
+html[data-theme='dark'] [data-keep-color] {
+  filter: invert(1) hue-rotate(180deg);
+}

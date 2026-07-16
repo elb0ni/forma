@@ -1,0 +1,97 @@
+/* ─── CambiarContrasena ─────────────────────────────────────────────────── */
+.cambiar__title {
+  font-size: 21px;
+  font-weight: 600;
+  color: #0a0a0b;
+  margin-top: 10px;
+}
+
+.cambiar__subtitle {
+  font-size: 13px;
+  color: #52525b;
+  margin-top: 6px;
+  margin-bottom: 20px;
+}
+
+.cambiar__pwd-wrapper {
+  position: relative;
+}
+
+.cambiar__pwd-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #71717a;
+  display: flex;
+  align-items: center;
+}
+
+.cambiar__strength-bars {
+  margin-top: 8px;
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.cambiar__strength-bar {
+  height: 4px;
+  flex: 1;
+  border-radius: 4px;
+  transition: background 200ms;
+}
+
+.cambiar__strength-label {
+  font-size: 11.5px;
+  color: #52525b;
+  display: flex;
+  justify-content: space-between;
+}
+
+.cambiar__submit-btn {
+  margin-top: 18px;
+  width: 100%;
+  height: 40px;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 150ms;
+}
+
+.cambiar__submit-btn:disabled {
+  cursor: not-allowed;
+}
+
+.cambiar__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+}
+
+.cambiar__api-error {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #b91c1c;
+}
+
+/* ─── Field wrapper (compartido con Login) ──────────────────────────────── */
+.field__hint {
+  font-size: 11px;
+  color: #71717a;
+}

@@ -1,0 +1,1160 @@
+/* ─── KPI Section ─────────────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.kpi-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.kpi-card__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #52525b;
+}
+
+.kpi-card__value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0a0a0b;
+  line-height: 1;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kpi-card__sub {
+  font-size: 12px;
+}
+
+/* ─── Tab Bar ─────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid #e4e4e7;
+  margin-bottom: 24px;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: none;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-family: Inter, sans-serif;
+  background: transparent;
+  margin-bottom: -1px;
+  transition: color 120ms;
+}
+
+.tab-btn--active {
+  font-weight: 600;
+  color: #0a0a0b;
+  border-bottom: 2px solid #0a0a0b;
+}
+
+.tab-btn--inactive {
+  font-weight: 500;
+  color: #71717a;
+  border-bottom: 2px solid transparent;
+}
+
+/* ─── Pending message ─────────────────────────────────────────────────── */
+.pending-msg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px;
+  border-radius: 10px;
+  border: 1px dashed #e4e4e7;
+  background: #fafafa;
+  font-size: 12.5px;
+  color: #71717a;
+}
+
+/* ─── Empty state ─────────────────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 52px 24px;
+  gap: 12px;
+  text-align: center;
+}
+
+.empty-state__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f1f1f3;
+  display: grid;
+  place-items: center;
+}
+
+.empty-state__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.empty-state__sub {
+  font-size: 12.5px;
+  color: #71717a;
+  margin-top: 4px;
+  max-width: 340px;
+}
+
+/* ─── Centros list ────────────────────────────────────────────────────── */
+.centros-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.centro-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.centro-card__name-wrap {
+  flex: 1;
+  min-width: 0;
+  margin-right: 12px;
+}
+
+.centro-card__name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.centro-card__meta {
+  font-size: 11.5px;
+  color: #71717a;
+  margin-top: 3px;
+}
+
+.centro-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.centro-card__bars {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.centro-card__bar-wrap {
+  flex: 1;
+}
+
+.centro-card__bar-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.centro-card__bar-label {
+  font-size: 10.5px;
+  color: #52525b;
+  font-weight: 500;
+}
+
+.centro-card__bar-pct {
+  font-size: 10.5px;
+  font-family: "JetBrains Mono", monospace;
+  color: #3f3f46;
+}
+
+.centro-card__bar-track {
+  height: 6px;
+  background: #f1f1f3;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.centro-card__bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 600ms;
+}
+
+/* ─── Error card ──────────────────────────────────────────────────────── */
+.error-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.error-card__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #fee2e2;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.error-card__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.error-card__sub {
+  font-size: 12px;
+  color: #52525b;
+  margin-top: 2px;
+}
+
+/* ─── Back button ─────────────────────────────────────────────────────── */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #52525b;
+  font-size: 13px;
+  margin-bottom: 20px;
+  font-family: Inter, sans-serif;
+  padding: 0;
+}
+
+/* ─── Centro detalle KPIs ─────────────────────────────────────────────── */
+.det-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.det-kpi__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.det-kpi__label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #52525b;
+}
+
+.det-kpi__value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0a0a0b;
+  line-height: 1;
+}
+
+.det-kpi__sub {
+  font-size: 10.5px;
+  color: #52525b;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Tabla pendientes ────────────────────────────────────────────────── */
+.pend-section {
+  margin-bottom: 28px;
+}
+
+.section-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0a0a0b;
+  margin-bottom: 12px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table__head-row {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #52525b;
+  border-bottom: 1px solid #e4e4e7;
+}
+
+.data-table__th {
+  padding: 10px 16px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.data-table__td {
+  padding: 12px 16px;
+}
+
+.data-table__td--mono {
+  padding: 12px 16px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+.data-table__td--code {
+  padding: 12px 16px;
+}
+
+.data-table__td--name {
+  padding: 12px 16px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0a0a0b;
+}
+
+.data-table__td--fichas {
+  padding: 12px 16px;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+  color: #18181b;
+}
+
+.nivel-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.code-span {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  color: #52525b;
+}
+
+.digitalizar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #e4e4e7;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #27272a;
+  font-family: Inter, sans-serif;
+}
+
+/* ─── Toolbar de programas del centro (chips + búsqueda + orden) ──────── */
+.prog-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.prog-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prog-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: 1.5px solid #e4e4e7;
+  background: #fff;
+  color: #52525b;
+  font-size: 12.5px;
+  font-weight: 400;
+  font-family: Inter, sans-serif;
+  transition: all 120ms;
+}
+
+.prog-chip--active {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.prog-chip__count {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  background: #f1f1f3;
+  color: #71717a;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.prog-chip--active .prog-chip__count {
+  background: #c7d2fe;
+  color: #4338ca;
+}
+
+.prog-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prog-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.prog-search__icon {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+}
+
+.prog-search__input {
+  width: 240px;
+  max-width: 100%;
+  height: 34px;
+  padding: 0 30px 0 32px;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #18181b;
+  font-family: Inter, sans-serif;
+  outline: none;
+  background: #fff;
+}
+
+.prog-search__input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.prog-search__clear {
+  position: absolute;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f1f3;
+  color: #71717a;
+  cursor: pointer;
+}
+
+/* ─── Tabla de programas del centro (estilo FORMA) ────────────────────── */
+.prog-centro-scroll {
+  overflow-x: auto;
+}
+
+.prog-centro-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Padding compacto para que entren las 9 columnas + la acción sin recortarse */
+.prog-centro-table .data-table__th,
+.prog-centro-table .data-table__td,
+.prog-centro-table .data-table__th--num,
+.prog-centro-table .data-table__td--num {
+  padding: 11px 8px;
+}
+
+.prog-centro-table .data-table__th:first-child,
+.prog-centro-table .data-table__td:first-child {
+  padding-left: 16px;
+}
+
+.prog-centro-table .data-table__th:last-child,
+.prog-centro-table .data-table__td:last-child {
+  padding-right: 16px;
+}
+
+.data-table__th--num {
+  text-align: right;
+}
+
+.data-table__td--num {
+  padding: 12px 12px;
+  text-align: right;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #18181b;
+  white-space: nowrap;
+}
+
+.prog-centro__name-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.prog-centro__badge {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: #f7f7f8;
+  border: 1px solid #e4e4e7;
+  display: grid;
+  place-items: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #3f3f46;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.prog-centro__name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0a0a0b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 190px;
+}
+
+.prog-centro__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #71717a;
+}
+
+/* ─── Coordinaciones ──────────────────────────────────────────────────── */
+.coord-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coord-card__inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.coord-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.coord-card__name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.coord-card__sub {
+  font-size: 11.5px;
+  color: #71717a;
+  margin-top: 1px;
+}
+
+.coord-card__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 220px;
+}
+
+.coord-card__stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coord-card__stats-text {
+  font-size: 11.5px;
+  color: #52525b;
+}
+
+.coord-card__bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.coord-card__bar-track {
+  flex: 1;
+  height: 5px;
+  background: #f1f1f3;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.coord-card__bar-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.coord-card__pct {
+  font-size: 10.5px;
+  font-family: "JetBrains Mono", monospace;
+  color: #52525b;
+  flex-shrink: 0;
+}
+
+/* ─── Tab Operativo ───────────────────────────────────────────────────── */
+.operativo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.operativo-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.operativo-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.operativo-select {
+  padding: 6px 10px;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: #fff;
+  color: #18181b;
+  font-family: Inter, sans-serif;
+  cursor: pointer;
+  outline: none;
+}
+
+/* ─── Ficha avance ────────────────────────────────────────────────────── */
+.ficha-avance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ficha-avance__track {
+  width: 56px;
+  height: 5px;
+  background: #f1f1f3;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ficha-avance__fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.ficha-avance__pct {
+  font-size: 10.5px;
+  font-family: "JetBrains Mono", monospace;
+  color: #52525b;
+}
+
+/* ─── Programa info ───────────────────────────────────────────────────── */
+.programa-nombre {
+  font-size: 13px;
+  font-weight: 500;
+  color: #0a0a0b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.programa-codigo {
+  font-size: 10.5px;
+  color: #71717a;
+  font-family: "JetBrains Mono", monospace;
+  margin-top: 1px;
+}
+
+/* ─── Alertas ─────────────────────────────────────────────────────────── */
+.alertas-section {
+  margin-top: 28px;
+}
+
+.alerta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.alerta-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.alerta-texto {
+  font-size: 13px;
+  color: #18181b;
+}
+
+.alerta-sub {
+  font-size: 11.5px;
+  color: #71717a;
+  margin-top: 2px;
+}
+
+/* ─── Analítica ───────────────────────────────────────────────────────── */
+.analitica-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a0a0b;
+  margin-bottom: 16px;
+}
+
+.stacked-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stacked-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stacked-label {
+  width: 58px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #3f3f46;
+  text-align: right;
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.stacked-track {
+  flex: 1;
+  height: 22px;
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f1f1f3;
+}
+
+.stacked-pct {
+  width: 32px;
+  font-size: 10.5px;
+  font-family: "JetBrains Mono", monospace;
+  color: #52525b;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: #52525b;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ─── Competencias rezagadas ──────────────────────────────────────────── */
+.comp-rez-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e4e4e7;
+}
+
+.comp-rez-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.comp-rez-avance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comp-rez-track {
+  width: 50px;
+  height: 5px;
+  background: #f1f1f3;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.comp-rez-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.comp-rez-pct {
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+  color: #52525b;
+}
+
+/* ─── Header de contenido (estilo forma.html) ─────────────────────────────── */
+.dash-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dash-header__eyebrow {
+  font-size: 12.5px;
+  color: #52525b;
+}
+
+.dash-header__title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #0a0a0b;
+  margin-top: 4px;
+}
+
+/* ─── KPI cards (estilo forma.html) ───────────────────────────────────────── */
+.kpi2-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.kpi2-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #52525b;
+  font-weight: 600;
+}
+
+.kpi2-value {
+  margin-top: 12px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 28px;
+  font-weight: 600;
+  color: #0a0a0b;
+  line-height: 1;
+}
+
+.kpi2-value-sub {
+  font-size: 13px;
+  color: #a1a1aa;
+  font-weight: 400;
+}
+
+.kpi2-sub {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #52525b;
+}
+
+.kpi2-sub strong {
+  color: #18181b;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+}
+
+/* ─── KPI: tarjeta "Hoy" (azul) + popover de actividad ────────────────────── */
+.today-wrap {
+  position: relative;
+  display: grid;
+}
+
+.activity-pop {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 50;
+  width: 600px;
+  max-width: 90vw;
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18), 0 4px 14px rgba(15, 23, 42, 0.08);
+  transform-origin: top right;
+  animation: activity-pop-in 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.activity-pop::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 26px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-left: 1px solid #e4e4e7;
+  border-top: 1px solid #e4e4e7;
+  border-radius: 3px 0 0 0;
+  transform: rotate(45deg);
+}
+
+@keyframes activity-pop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.today-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #fff;
+  border: 1px solid #4338ca;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: Inter, sans-serif;
+  transition: background 120ms;
+}
+
+.today-btn:hover {
+  background: #4338ca;
+}
+
+/* ─── Sección inferior: tabs + acciones rápidas ───────────────────────────── */
+.dash-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 48px;
+  align-items: start;
+}
+
+.dash-lower__main {
+  min-width: 0;
+}
+
+.dash-lower__side {
+  position: sticky;
+  top: 16px;
+}
+
+/* ─── Heatmap de actividad (estilo GitHub) ────────────────────────────────── */
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9a3412;
+  background: #ffedd5;
+  border: 1px solid #fed7aa;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.heat-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heat-months {
+  display: flex;
+  margin-left: 30px;
+  margin-bottom: 4px;
+}
+
+.heat-month {
+  width: 15px;
+  font-size: 9px;
+  color: #71717a;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.heat-body {
+  display: flex;
+}
+
+.heat-dow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 26px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.heat-dow-cell {
+  height: 12px;
+  line-height: 12px;
+  font-size: 9px;
+  color: #a1a1aa;
+}
+
+.heat-cols {
+  display: flex;
+  gap: 3px;
+}
+
+.heat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heat-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.heat-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.heat-total {
+  font-size: 11.5px;
+  color: #71717a;
+}
+
+.heat-total strong {
+  color: #18181b;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.heat-legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  color: #71717a;
+}
+
+/* ─── Acciones rápidas ────────────────────────────────────────────────────── */
+.qa-card-header {
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a0a0b;
+  border-bottom: 1px solid #f1f1f3;
+}
+
+.qa-row {
+  width: 100%;
+  padding: 13px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: Inter, sans-serif;
+  transition: background 120ms;
+}
+
+.qa-row:hover {
+  background: #fafafa;
+}
+
+.qa-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #4338ca;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.qa-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #0a0a0b;
+}
+
+.qa-hint {
+  font-size: 11px;
+  color: #71717a;
+  margin-top: 2px;
+}
+
+/* ─── Responsivo ──────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dash-lower {
+    grid-template-columns: 1fr;
+  }
+  .dash-lower__side {
+    position: static;
+  }
+}

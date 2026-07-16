@@ -1,0 +1,381 @@
+/* ─── Shell layout ──────────────────────────────────────────────────── */
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: #f7f7f8;
+}
+.modalSettings{
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.167);
+  z-index: 200000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal_body{
+  position: relative;
+  height: 60%;
+  width: 42%;
+  background-color: #fff;
+  border-radius: 30px;
+}
+.modal_close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e4e4e7;
+  background: #f7f7f8;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #71717a;
+  transition: background 120ms;
+}
+.modal_close:hover {
+  background: #f1f1f3;
+  color: #0a0a0b;
+}
+.shell__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell__content {
+  flex: 1;
+  padding: 24px 28px;
+  overflow-y: auto;
+}
+
+/* ─── Sidebar ───────────────────────────────────────────────────────── */
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  border-right: 1px solid #e4e4e7;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar__logo {
+  height: 52px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e4e4e7;
+  flex-shrink: 0;
+}
+
+.sidebar__brand-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a0a0b;
+  line-height: 1;
+}
+
+.sidebar__brand-sub {
+  font-size: 9.5px;
+  color: #71717a;
+  margin-top: 3px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.sidebar__centro {
+  padding: 10px 8px 4px;
+}
+
+.sidebar__centro-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  height: 34px;
+  border-radius: 8px;
+  background: #f7f7f8;
+  border: 1px solid #e4e4e7;
+}
+
+.sidebar__centro-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #0a0a0b;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.sidebar__centro-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar__centro-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #18181b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__centro-org {
+  font-size: 10px;
+  color: #71717a;
+}
+
+.sidebar__nav {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.sidebar__nav-section {
+  padding: 8px 8px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
+}
+
+.sidebar__nav-btn {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  margin: 1px 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #3f3f46;
+  font-family: Inter, sans-serif;
+  transition: background 120ms;
+}
+
+.sidebar__nav-btn--active {
+  background: #f1f1f3;
+  color: #0a0a0b;
+}
+
+.sidebar__nav-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.sidebar__nav-badge--number {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sidebar__nav-badge--text {
+  background: #eef2ff;
+  color: #312e81;
+}
+
+.sidebar__user {
+  border-top: 1px solid #e4e4e7;
+  padding: 10px;
+  flex-shrink: 0;
+}
+
+.sidebar__user-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.sidebar__user-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #18181b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__user-role {
+  font-size: 10.5px;
+  color: #71717a;
+  margin-top: 2px;
+}
+
+/* ─── Header ────────────────────────────────────────────────────────── */
+.shell-header {
+  height: 52px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #e4e4e7;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.shell-header__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.shell-header__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #52525b;
+  margin-bottom: 2px;
+}
+
+.shell-header__breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shell-header__breadcrumb-item--last {
+  color: #18181b;
+  font-weight: 500;
+}
+
+.shell-header__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.shell-header__title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #0a0a0b;
+  line-height: 1.2;
+}
+
+.shell-header__subtitle {
+  font-size: 12.5px;
+  color: #52525b;
+}
+
+.shell-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shell-header__divider {
+  width: 1px;
+  height: 22px;
+  background: #e4e4e7;
+  margin: 0 2px;
+}
+
+.shell-header__profile {
+  position: relative;
+}
+
+.shell-header__profile-btn {
+  height: 34px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.shell-header__profile-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #18181b;
+  line-height: 1;
+}
+
+.shell-header__profile-role {
+  font-size: 10.5px;
+  color: #52525b;
+  margin-top: 2px;
+}
+
+.shell-header__dropdown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.shell-header__dropdown {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  z-index: 50;
+  width: 220px;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,.18);
+  padding: 6px;
+}
+
+.shell-header__dropdown-info {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f1f3;
+}
+
+.shell-header__dropdown-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.shell-header__dropdown-email {
+  font-size: 11px;
+  color: #52525b;
+  margin-top: 2px;
+}
+
+.shell-header__dropdown-actions {
+  padding-top: 4px;
+}
+
+.shell-header__logout-btn {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: #27272a;
+  font-family: Inter, sans-serif;
+}
