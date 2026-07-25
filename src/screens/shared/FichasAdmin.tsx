@@ -71,7 +71,7 @@ const ESTADO_PILL: Record<string, { label: string; dot: string; bg: string; fg: 
 }
 
 const ETAPA_PILL: Record<string, { icon: 'briefcase' | 'layers'; color: string; bd: string }> = {
-  PRODUCTIVA: { icon: 'briefcase', color: '#4f46e5', bd: '#c7d2fe' },
+  PRACTICA:   { icon: 'briefcase', color: '#4f46e5', bd: '#c7d2fe' },
   LECTIVA:    { icon: 'layers',    color: '#52525b', bd: '#e4e4e7' },
 }
 
@@ -107,7 +107,7 @@ function EstadoPill({ estado }: { estado: string }) {
 }
 
 type EstadoFilt = '' | 'EN_EJECUCION' | 'FINALIZADA' | 'SUSPENDIDA'
-type EtapaFilt  = '' | 'LECTIVA' | 'PRODUCTIVA'
+type EtapaFilt  = '' | 'LECTIVA' | 'PRACTICA'
 type FechaCampo = 'fecha_inicio' | 'fecha_inicio_productiva' | 'fecha_fin_productiva'
 type FichaSort  = 'inicio_reciente' | 'cierre_proximo' | 'numero' | 'programa'
 
@@ -121,7 +121,7 @@ const ESTADO_CHIPS: { key: EstadoFilt; label: string }[] = [
 const ETAPA_CHIPS: { key: EtapaFilt; label: string }[] = [
   { key: '',           label: 'Todas'       },
   { key: 'LECTIVA',    label: 'Lectiva'     },
-  { key: 'PRODUCTIVA', label: 'Productiva'  },
+  { key: 'PRACTICA',   label: 'Práctica'    },
 ]
 
 const FECHA_CAMPO_LABEL: Record<FechaCampo, string> = {
@@ -193,10 +193,17 @@ interface SesionRow {
   competencia_nombre: string; instructor_nombre: string; ras: number; conocimientos: number; criterios: number
 }
 
+interface AvanceJuicio {
+  numero_documento: string; tipo_documento: string; nombre_aprendiz: string
+  estado_aprendiz: string; total_ra: number; ra_aprobados: number
+  ra_no_aprobados: number; ra_sin_evaluar: number; fecha_reporte: string | null
+}
+
 interface FichaDetalleData {
   ficha: {
     id: number; numero_ficha: string; estado: 'EN_EJECUCION' | 'FINALIZADA' | 'SUSPENDIDA'
     fecha_inicio: string; fecha_fin_lectiva: string; fecha_fin_productiva: string | null
+    etapa_actual: 'LECTIVA' | 'PRACTICA'
     sede: string | null; jornada: string | null
     centro_formacion_id: number; coordinacion_academica_id: number | null
     programa_id: number; programa_nombre: string; programa_codigo: string; programa_version: number
@@ -205,6 +212,7 @@ interface FichaDetalleData {
   }
   kpi: { avance: number; horas_ejecutadas: number; ras_cerrados: number; ras_total: number; instructores: number; sesiones_total: number }
   competencias: CompDetalle[]
+  avance_juicios: AvanceJuicio[]
   sesiones: SesionRow[]
 }
 
@@ -302,6 +310,85 @@ function CompCard({ comp, defaultOpen }: { comp: CompDetalle; defaultOpen?: bool
   )
 }
 
+// Tono del Bdg de estado del aprendiz, inferido del texto libre que trae el
+// reporte de juicios (no es un enum cerrado del lado del backend).
+function estadoAprendizTone(estado: string): 'ok' | 'err' | 'warn' | 'neutral' {
+  const e = estado.toUpperCase()
+  if (e.includes('CERTIF')) return 'ok'
+  if (e.includes('RETIR') || e.includes('CANCEL') || e.includes('NO APROB') || e.includes('NO_APROB')) return 'err'
+  if (e.includes('APLAZ')) return 'warn'
+  return 'neutral'
+}
+
+// Balance de juicios por aprendiz: reemplaza la lista de competencias cuando
+// la ficha ya está en etapa práctica (el avance por competencia deja de
+// aplicar; lo relevante ahí es el juicio de evaluación por aprendiz).
+function AprendicesJuicios({ juicios }: { juicios: AvanceJuicio[] }) {
+  const completos = juicios.filter(j => j.total_ra > 0 && j.ra_aprobados === j.total_ra).length
+  const enRiesgo = juicios.filter(j => j.ra_no_aprobados > 0).length
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>
+          Aprendices en práctica · {juicios.length}
+          {juicios.length > 0 && (
+            <span style={{ color: '#a1a1aa', fontWeight: 400 }}>
+              {' '}· {completos} completo{completos === 1 ? '' : 's'}
+              {enRiesgo > 0 && `, ${enRiesgo} en riesgo`}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {juicios.length === 0 ? (
+        <Card>
+          <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <Ic n="fileText" s={26} style={{ color: '#a1a1aa' }}/>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>Sin reporte de juicios</div>
+            <div style={{ fontSize: 12.5, color: '#71717a', textAlign: 'center' }}>Todavía no se ha cargado un reporte de avance de juicios para esta ficha.</div>
+          </div>
+        </Card>
+      ) : (
+        <Card style={{ overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
+                <th style={TH_S}>Aprendiz</th>
+                <th style={TH_S}>Estado</th>
+                <th style={TH_S}>Aprobados</th>
+                <th style={TH_S}>No aprobados</th>
+                <th style={TH_S}>Sin evaluar</th>
+                <th style={TH_S}>Reporte</th>
+              </tr>
+            </thead>
+            <tbody>
+              {juicios.map((j, i) => (
+                <tr key={j.numero_documento} style={{ borderBottom: i < juicios.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
+                  <td style={TD_S}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <Ava name={j.nombre_aprendiz} size={22}/>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{j.nombre_aprendiz}</div>
+                        <div style={{ fontSize: 10.5, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>{j.tipo_documento} {j.numero_documento}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={TD_S}><Bdg tone={estadoAprendizTone(j.estado_aprendiz)}>{j.estado_aprendiz}</Bdg></td>
+                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: '#15803d' }}>{j.ra_aprobados}/{j.total_ra}</td>
+                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: j.ra_no_aprobados > 0 ? '#b91c1c' : '#a1a1aa' }}>{j.ra_no_aprobados}</td>
+                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: j.ra_sin_evaluar > 0 ? '#a16207' : '#a1a1aa' }}>{j.ra_sin_evaluar}</td>
+                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: '#52525b', whiteSpace: 'nowrap' }}>{fdISO(j.fecha_reporte)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+    </div>
+  )
+}
+
 export function FichaDetalle({ id, onBack, onEditar }: {
   id: number; onBack: () => void; onEditar: (f: FichaEdit) => void
 }) {
@@ -333,7 +420,8 @@ export function FichaDetalle({ id, onBack, onEditar }: {
     </div>
   )
 
-  const { ficha, kpi, competencias, sesiones } = state.data
+  const { ficha, kpi, competencias, avance_juicios, sesiones } = state.data
+  const enPractica = ficha.etapa_actual === 'PRACTICA'
   const meta: [string, string][] = [
     ['Coordinador', ficha.coordinador_nombre],
     ['Coordinación', ficha.coordinacion_nombre],
@@ -362,6 +450,7 @@ export function FichaDetalle({ id, onBack, onEditar }: {
             <span style={{ color: '#a1a1aa' }}>·</span>
             <span>{jornadaLabel(ficha.jornada)}{ficha.sede ? ` · ${ficha.sede}` : ''}</span>
             <EstadoPill estado={ficha.estado}/>
+            <EtapaPill etapa={ficha.etapa_actual}/>
           </div>
         </div>
         <Btn variant="accent" icon="users" onClick={() => onEditar(detalleToEdit(ficha))}>Editar ficha y asignaciones</Btn>
@@ -385,8 +474,11 @@ export function FichaDetalle({ id, onBack, onEditar }: {
         <KpiBox label="RAs cerrados" value={String(kpi.ras_cerrados)} sub={`de ${kpi.ras_total}`} icon="target"/>
       </div>
 
-      {/* Contenido: competencias + lateral */}
+      {/* Contenido: competencias (lectiva) o aprendices (práctica) + lateral */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
+        {enPractica ? (
+          <AprendicesJuicios juicios={avance_juicios}/>
+        ) : (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>
@@ -410,6 +502,7 @@ export function FichaDetalle({ id, onBack, onEditar }: {
             </div>
           )}
         </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
@@ -525,7 +618,7 @@ export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
   const q   = search.trim().toLowerCase()
   const pendientesCount = all.filter(f => !f.tiene_disenio_curricular).length
   const fechaActiva = !!(fechaDesde || fechaHasta)
-  const filtrosExtraCount = (etapaFilt ? 1 : 0) + (fechaActiva ? 1 : 0)
+  const filtrosExtraCount = (estadoFilt ? 1 : 0) + (etapaFilt ? 1 : 0) + (fechaActiva ? 1 : 0) + (soloPendientes ? 1 : 0)
   const filtered = all
     .filter(f => {
       if (estadoFilt && f.estado !== estadoFilt) return false
@@ -581,188 +674,182 @@ export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
         <Btn variant="accent" icon="plus" onClick={() => setView({ mode: 'form', ficha: null })}>Crear ficha</Btn>
       </div>
 
-      {/* Toolbar: chips de estado + búsqueda + orden */}
+      {/* Toolbar: búsqueda + orden + filtros */}
       {state.status === 'ok' && all.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {ESTADO_CHIPS.map(c => {
-              const active = estadoFilt === c.key
-              const count = c.key === '' ? all.length : all.filter(f => f.estado === c.key).length
-              return (
-                <button
-                  key={c.key}
-                  onClick={() => setEstadoFilt(c.key)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 7,
-                    padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
-                    border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
-                    background: active ? '#eef2ff' : '#fff',
-                    color: active ? '#4f46e5' : '#52525b',
-                    fontSize: 12.5, fontWeight: active ? 600 : 400, fontFamily: 'Inter, sans-serif',
-                  }}
-                >
-                  {c.label}
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
-                    background: active ? '#c7d2fe' : '#f1f1f3', color: active ? '#4338ca' : '#71717a',
-                    padding: '1px 6px', borderRadius: 10,
-                  }}>{count}</span>
-                </button>
-              )
-            })}
-
-            {/* Filtro independiente: fichas con programa sin digitalizar */}
-            {pendientesCount > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Ic n="search" s={14} style={{ position: 'absolute', left: 10, color: '#a1a1aa', pointerEvents: 'none' }}/>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar ficha, programa o coordinador…"
+              style={{
+                width: 260, maxWidth: '100%', height: 34, padding: '0 30px 0 32px',
+                border: '1px solid #e4e4e7', borderRadius: 8, fontSize: 12.5, color: '#18181b',
+                fontFamily: 'Inter, sans-serif', outline: 'none', background: '#fff',
+              }}
+            />
+            {search && (
               <button
-                onClick={() => setSoloPendientes(v => !v)}
-                title="Fichas cuyo programa aún no está digitalizado"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7,
-                  padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
-                  marginLeft: 4,
-                  border: soloPendientes ? '1.5px solid #d97706' : '1.5px solid #fde68a',
-                  background: soloPendientes ? '#fef3c7' : '#fffbeb',
-                  color: '#a16207', fontSize: 12.5, fontWeight: soloPendientes ? 600 : 400,
-                  fontFamily: 'Inter, sans-serif',
-                }}
+                onClick={() => setSearch('')}
+                aria-label="Limpiar búsqueda"
+                style={{ position: 'absolute', right: 8, display: 'grid', placeItems: 'center', width: 18, height: 18, border: 'none', borderRadius: '50%', background: '#f1f1f3', color: '#71717a', cursor: 'pointer' }}
               >
-                <Ic n="alert" s={12}/>
-                Sin digitalizar
-                <span style={{
-                  fontSize: 11, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
-                  background: soloPendientes ? '#fde68a' : '#fef9c3', color: '#a16207',
-                  padding: '1px 6px', borderRadius: 10,
-                }}>{pendientesCount}</span>
+                <Ic n="x" s={12}/>
               </button>
             )}
           </div>
+          <select value={sort} onChange={e => setSort(e.target.value as FichaSort)} style={SEL}>
+            {(Object.keys(FICHA_SORT_LABEL) as FichaSort[]).map(k => (
+              <option key={k} value={k}>Ordenar: {FICHA_SORT_LABEL[k]}</option>
+            ))}
+          </select>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Ic n="search" s={14} style={{ position: 'absolute', left: 10, color: '#a1a1aa', pointerEvents: 'none' }}/>
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar ficha, programa o coordinador…"
-                style={{
-                  width: 260, maxWidth: '100%', height: 34, padding: '0 30px 0 32px',
-                  border: '1px solid #e4e4e7', borderRadius: 8, fontSize: 12.5, color: '#18181b',
-                  fontFamily: 'Inter, sans-serif', outline: 'none', background: '#fff',
-                }}
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  aria-label="Limpiar búsqueda"
-                  style={{ position: 'absolute', right: 8, display: 'grid', placeItems: 'center', width: 18, height: 18, border: 'none', borderRadius: '50%', background: '#f1f1f3', color: '#71717a', cursor: 'pointer' }}
-                >
-                  <Ic n="x" s={12}/>
-                </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setFiltrosOpen(o => !o)}
+              style={{
+                ...SEL, display: 'inline-flex', alignItems: 'center', gap: 7,
+                border: filtrosExtraCount ? '1.5px solid #4f46e5' : SEL.border as string,
+                color: filtrosExtraCount ? '#4f46e5' : '#3f3f46',
+                fontWeight: filtrosExtraCount ? 600 : 400,
+              }}
+            >
+              <Ic n="filter" s={13}/>
+              Filtros
+              {filtrosExtraCount > 0 && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
+                  background: '#c7d2fe', color: '#4338ca', padding: '1px 6px', borderRadius: 10,
+                }}>{filtrosExtraCount}</span>
               )}
-            </div>
-            <select value={sort} onChange={e => setSort(e.target.value as FichaSort)} style={SEL}>
-              {(Object.keys(FICHA_SORT_LABEL) as FichaSort[]).map(k => (
-                <option key={k} value={k}>Ordenar: {FICHA_SORT_LABEL[k]}</option>
-              ))}
-            </select>
+              <Ic n="chevronDown" s={12} style={{ color: '#a1a1aa' }}/>
+            </button>
 
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setFiltrosOpen(o => !o)}
-                style={{
-                  ...SEL, display: 'inline-flex', alignItems: 'center', gap: 7,
-                  border: filtrosExtraCount ? '1.5px solid #4f46e5' : SEL.border as string,
-                  color: filtrosExtraCount ? '#4f46e5' : '#3f3f46',
-                  fontWeight: filtrosExtraCount ? 600 : 400,
-                }}
-              >
-                <Ic n="filter" s={13}/>
-                Filtros
-                {filtrosExtraCount > 0 && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
-                    background: '#c7d2fe', color: '#4338ca', padding: '1px 6px', borderRadius: 10,
-                  }}>{filtrosExtraCount}</span>
-                )}
-                <Ic n="chevronDown" s={12} style={{ color: '#a1a1aa' }}/>
-              </button>
-
-              {filtrosOpen && (
-                <>
-                  <div onClick={() => setFiltrosOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }}/>
-                  <div className="pop-in" style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
-                    width: 280, background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12,
-                    boxShadow: '0 8px 24px -8px rgba(0,0,0,.18)', padding: 16,
-                    display: 'flex', flexDirection: 'column', gap: 16,
-                  }}>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
-                        Etapa teórica
-                      </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        {ETAPA_CHIPS.map(c => {
-                          const active = etapaFilt === c.key
-                          return (
-                            <button
-                              key={c.key}
-                              onClick={() => setEtapaFilt(c.key)}
-                              style={{
-                                flex: 1, padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
-                                border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
-                                background: active ? '#eef2ff' : '#fff',
-                                color: active ? '#4f46e5' : '#52525b',
-                                fontSize: 12, fontWeight: active ? 600 : 400, fontFamily: 'Inter, sans-serif',
-                              }}
-                            >
-                              {c.label}
-                            </button>
-                          )
-                        })}
-                      </div>
+            {filtrosOpen && (
+              <>
+                <div onClick={() => setFiltrosOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }}/>
+                <div className="pop-in" style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+                  width: 320, maxWidth: 'calc(100vw - 32px)', background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12,
+                  boxShadow: '0 8px 24px -8px rgba(0,0,0,.18)', padding: 16,
+                  display: 'flex', flexDirection: 'column', gap: 16, boxSizing: 'border-box',
+                }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
+                      Estado
                     </div>
-
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
-                        Fecha
-                      </div>
-                      <select
-                        value={fechaCampo}
-                        onChange={e => setFechaCampo(e.target.value as FechaCampo)}
-                        style={{ ...SEL, width: '100%', marginBottom: 8 }}
-                      >
-                        {(Object.keys(FECHA_CAMPO_LABEL) as FechaCampo[]).map(k => (
-                          <option key={k} value={k}>{FECHA_CAMPO_LABEL[k]}</option>
-                        ))}
-                      </select>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: 10.5, color: '#a1a1aa', marginBottom: 3 }}>Desde</label>
-                          <input type="date" className="nx-input" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={{ width: '100%' }}/>
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: 10.5, color: '#a1a1aa', marginBottom: 3 }}>Hasta</label>
-                          <input type="date" className="nx-input" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={{ width: '100%' }}/>
-                        </div>
-                      </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {ESTADO_CHIPS.map(c => {
+                        const active = estadoFilt === c.key
+                        const count = c.key === '' ? all.length : all.filter(f => f.estado === c.key).length
+                        return (
+                          <button
+                            key={c.key}
+                            onClick={() => setEstadoFilt(c.key)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '5px 10px', borderRadius: 7, cursor: 'pointer',
+                              border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
+                              background: active ? '#eef2ff' : '#fff',
+                              color: active ? '#4f46e5' : '#52525b',
+                              fontSize: 12, fontWeight: active ? 600 : 400, fontFamily: 'Inter, sans-serif',
+                            }}
+                          >
+                            {c.label}
+                            <span style={{
+                              fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
+                              background: active ? '#c7d2fe' : '#f1f1f3', color: active ? '#4338ca' : '#71717a',
+                              padding: '1px 5px', borderRadius: 10,
+                            }}>{count}</span>
+                          </button>
+                        )
+                      })}
                     </div>
-
-                    {filtrosExtraCount > 0 && (
-                      <button
-                        onClick={() => { setEtapaFilt(''); setFechaDesde(''); setFechaHasta('') }}
-                        style={{
-                          alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 5,
-                          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                          fontSize: 12, color: '#4f46e5', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                        }}
-                      >
-                        <Ic n="x" s={11}/> Limpiar filtros
-                      </button>
-                    )}
                   </div>
-                </>
-              )}
-            </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
+                      Etapa teórica
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {ETAPA_CHIPS.map(c => {
+                        const active = etapaFilt === c.key
+                        return (
+                          <button
+                            key={c.key}
+                            onClick={() => setEtapaFilt(c.key)}
+                            style={{
+                              flex: 1, padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
+                              border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
+                              background: active ? '#eef2ff' : '#fff',
+                              color: active ? '#4f46e5' : '#52525b',
+                              fontSize: 12, fontWeight: active ? 600 : 400, fontFamily: 'Inter, sans-serif',
+                            }}
+                          >
+                            {c.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
+                      Fecha
+                    </div>
+                    <select
+                      value={fechaCampo}
+                      onChange={e => setFechaCampo(e.target.value as FechaCampo)}
+                      style={{ ...SEL, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
+                    >
+                      {(Object.keys(FECHA_CAMPO_LABEL) as FechaCampo[]).map(k => (
+                        <option key={k} value={k}>{FECHA_CAMPO_LABEL[k]}</option>
+                      ))}
+                    </select>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <label style={{ display: 'block', fontSize: 10.5, color: '#a1a1aa', marginBottom: 3 }}>Desde</label>
+                        <input type="date" className="nx-input" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 8px' }}/>
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <label style={{ display: 'block', fontSize: 10.5, color: '#a1a1aa', marginBottom: 3 }}>Hasta</label>
+                        <input type="date" className="nx-input" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 8px' }}/>
+                      </div>
+                    </div>
+                  </div>
+
+                  {pendientesCount > 0 && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        className="nx-check"
+                        checked={soloPendientes}
+                        onChange={e => setSoloPendientes(e.target.checked)}
+                      />
+                      <span style={{ fontSize: 12.5, color: '#3f3f46', flex: 1 }}>Solo fichas sin digitalizar</span>
+                      <span style={{
+                        fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
+                        background: '#fef9c3', color: '#a16207', padding: '1px 6px', borderRadius: 10,
+                      }}>{pendientesCount}</span>
+                    </label>
+                  )}
+
+                  {filtrosExtraCount > 0 && (
+                    <button
+                      onClick={() => { setEstadoFilt(''); setEtapaFilt(''); setFechaDesde(''); setFechaHasta(''); setSoloPendientes(false) }}
+                      style={{
+                        alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 5,
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                        fontSize: 12, color: '#4f46e5', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                      }}
+                    >
+                      <Ic n="x" s={11}/> Limpiar filtros
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

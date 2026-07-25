@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Ic, Card, Btn, Tag, Bdg } from '../../components/ui'
 import api from '../../lib/api'
-import { InlineAlert, fd, LoadingBlock, CenterState } from './parts'
-import { exportarGuia } from './guia'
+import { InlineAlert, fd, LoadingBlock, CenterState } from '../shared/parts'
+import { exportarGuia } from '../shared/guia'
 import type { SesionListItem, SesionDetalle, Evidencia } from './types'
 import './instructor.css'
 

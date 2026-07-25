@@ -11,7 +11,15 @@ export function Forma3D() {
     if (!mount) return
 
     // ── Renderer ──────────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    // Decorativo: si el navegador no puede crear un contexto WebGL (GPU
+    // deshabilitada, sandbox, etc.) simplemente no mostramos la animación
+    // en vez de tumbar toda la app.
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    } catch {
+      return
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setClearColor(0x000000, 0)
     renderer.setSize(mount.clientWidth, mount.clientHeight)

@@ -1,4 +1,4 @@
-import type { StatusTone } from './parts'
+import type { StatusTone } from '../shared/parts'
 
 export interface ResumenInstructor {
   sesiones_semana:          number

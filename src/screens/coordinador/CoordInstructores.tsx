@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { Ic, Card, Ava, Prog, Bdg } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
-import { InstructorDetalle } from '../superadmin/UsuariosAdmin'
-import type { CoordDetalle, InstructorRow } from '../superadmin/CoordinacionDetalle'
+import { InstructorDetalle } from '../shared/InstructorDetalle'
+import type { CoordDetalle, InstructorRow } from '../shared/types'
 
 function avStatus(p: number): 'ok' | 'warn' | 'crit' | 'off' {
   return p >= 70 ? 'ok' : p >= 40 ? 'warn' : p > 0 ? 'crit' : 'off'

@@ -3,7 +3,7 @@ import { Ic, Card, Btn, Tag, Bdg, Prog } from '../../components/ui'
 import api from '../../lib/api'
 import {
   Pill, Stepper, Seg, WizSteps, fd, Spinner, LoadingBlock, CenterState, statusFromAvance,
-} from './parts'
+} from '../shared/parts'
 import type { AsignacionItem, CurriculoAsignacion, MaterialSesion, TipoMaterial } from './types'
 import './instructor.css'
 

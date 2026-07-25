@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrandMark, Btn, Card } from '../../components/ui'
 import { FirmaModal } from '../../components/FirmaModal'
 import api from '../../lib/api'
-import { SM, fd, jornadaLabel, LoadingBlock, CenterState } from './parts'
+import { SM, fd, jornadaLabel, LoadingBlock, CenterState } from '../shared/parts'
 import type { ReporteInstructor, FichaInstructor } from './types'
 import './instructor.css'
 

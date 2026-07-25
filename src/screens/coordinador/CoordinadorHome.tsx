@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Ic, Card, Prog, Tag, Metric, Ava } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
-import type { CoordDetalle, FichaRow } from '../superadmin/CoordinacionDetalle'
+import type { CoordDetalle, FichaRow } from '../shared/types'
 import './CoordinadorHome.css'
 
 // Semáforo de una ficha de la coordinación (mismo criterio que los reportes).

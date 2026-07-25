@@ -99,7 +99,17 @@ export function SpaceTransition({ onComplete }: { onComplete: () => void }) {
     const W = mount.clientWidth, H = mount.clientHeight
 
     // ── Renderer ──────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    // Si no hay WebGL disponible, saltamos la animación y completamos el
+    // flujo igual: esto ocurre tras un login exitoso y no debe bloquear
+    // la navegación al dashboard.
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true })
+    } catch {
+      doneRef.current = true
+      onCompleteRef.current()
+      return
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setSize(W, H)
     renderer.setClearColor(0x060610, 1)

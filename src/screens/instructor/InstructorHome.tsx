@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Ic, Card, Metric, Prog, Tag, Bdg } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
-import { fd, jornadaLabel, Pill, LoadingBlock, CenterState } from './parts'
+import { fd, jornadaLabel, Pill, LoadingBlock, CenterState } from '../shared/parts'
 import type {
   ResumenInstructor, ActividadDia, AsignacionItem, SesionListItem,
 } from './types'

@@ -89,6 +89,18 @@ function toInputDate(s: string | null): string {
   return s ? s.slice(0, 10) : ''
 }
 
+// El backend a veces devuelve la jornada en minúsculas o sin tilde normalizada;
+// comparamos sin distinguir mayúsculas/acentos para que el toggle siempre marque una opción.
+function stripAccents(s: string): string {
+  return s.normalize('NFD').replace(/\p{Diacritic}/gu, '')
+}
+
+function normalizeJornada(j: string | null | undefined): Jornada {
+  const clean = stripAccents((j ?? '').toUpperCase())
+  const found = JORNADAS.find(o => stripAccents(o.value) === clean)
+  return found?.value ?? 'MAÑANA'
+}
+
 function fmtVersion(v: string | number): string {
   return `V${String(v).replace(/^v/i, '').padStart(3, '0')}`
 }
@@ -117,7 +129,7 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
   const [fechaInicio, setFechaInicio] = useState(toInputDate(ficha?.fecha_inicio ?? null))
   const [fechaFin,    setFechaFin]    = useState(toInputDate(ficha?.fecha_fin_lectiva ?? null))
   const [sede,        setSede]        = useState(ficha?.sede ?? '')
-  const [jornada,     setJornada]     = useState<Jornada>((ficha?.jornada as Jornada) ?? 'MAÑANA')
+  const [jornada,     setJornada]     = useState<Jornada>(normalizeJornada(ficha?.jornada))
   const [estado,      setEstado]      = useState<EstadoFicha>(ficha?.estado ?? 'EN_EJECUCION')
 
   // Asignaciones (controladas + reconciliación)

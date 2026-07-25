@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Ic, Card, Tag, Prog } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
-import type { CoordDetalle, FichaRow } from '../superadmin/CoordinacionDetalle'
+import type { CoordDetalle, FichaRow } from '../shared/types'
 
 export function CoordAlertas() {
   "use no memo"

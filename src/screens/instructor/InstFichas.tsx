@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Ic, Card, Btn, Tag, Bdg, Prog } from '../../components/ui'
 import api from '../../lib/api'
-import { Pill, Donut, fd, jornadaLabel, LoadingBlock, CenterState, SM } from './parts'
+import { Pill, Donut, fd, jornadaLabel, LoadingBlock, CenterState, SM } from '../shared/parts'
 import type { FichaInstructor, FichaDetalle, CompetenciaDetalle } from './types'
 import './instructor.css'
 

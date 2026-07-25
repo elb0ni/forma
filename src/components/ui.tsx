@@ -9,7 +9,7 @@ export type IcName =
   | 'clock' | 'flame' | 'plus' | 'minus' | 'search' | 'download' | 'upload' | 'edit'
   | 'trash' | 'refresh' | 'copy' | 'eye' | 'chevronDown' | 'chevronRight' | 'chevronLeft'
   | 'arrowRight' | 'arrowLeft' | 'calendar' | 'trend' | 'logout' | 'lock' | 'key'
-  | 'fileText' | 'more' | 'pin' | 'target' | 'external'
+  | 'fileText' | 'more' | 'pin' | 'target' | 'external' | 'filter'
 
 const PATHS: Record<IcName, ReactNode> = {
   home:        <><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/></>,
@@ -55,6 +55,7 @@ const PATHS: Record<IcName, ReactNode> = {
   pin:         <><path d="M12 21v-7"/><path d="M8 4h8l-1 6 3 2H6l3-2-1-6Z"/></>,
   target:      <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></>,
   external:    <><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M20 14v6H4V4h6"/></>,
+  filter:      <polygon points="4 4 20 4 14 12.5 14 18 10 20 10 12.5 4 4"/>,
 }
 
 export function Ic({ n, s = 16, sw = 1.6, style: st, className: cl }: {
