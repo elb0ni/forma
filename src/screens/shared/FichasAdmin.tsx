@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Ic, Card, Ava, Btn, Tag, Pager, Bdg, Prog } from '../../components/ui'
 import api from '../../lib/api'
 import { FichaForm } from './FichaForm'
@@ -6,6 +7,8 @@ import type { FichaEdit } from './FichaForm'
 import { Pill, Donut, SM, jornadaLabel } from './parts'
 import type { StatusTone } from './parts'
 import { descargarGuiaSesion } from './guia'
+import { AprendicesPracticaTable } from './AprendicesPractica'
+import type { AprendizPractica, InstructorPracticaInfo } from './AprendicesPractica'
 
 interface FichaRow {
   id:                        number
@@ -147,11 +150,6 @@ const THEAD = ['Número', 'Programa', 'Coordinador', 'Inicio', 'Inicio productiv
 const TH_S = { padding: '10px 14px', textAlign: 'left' as const, fontWeight: 600 }
 const TD_S = { padding: '12px 14px' }
 
-type View =
-  | { mode: 'list' }
-  | { mode: 'form'; ficha: FichaEdit | null }
-  | { mode: 'detalle'; id: number }
-
 function toFichaEdit(f: FichaRow): FichaEdit {
   return {
     id:                        f.id,
@@ -166,6 +164,7 @@ function toFichaEdit(f: FichaRow): FichaEdit {
     fecha_fin_productiva:      f.fecha_fin_productiva,
     sede:                      f.sede,
     jornada:                   f.jornada,
+    etapa_actual:              f.etapa_actual_teorica as 'LECTIVA' | 'PRACTICA' | null,
   }
 }
 
@@ -193,11 +192,6 @@ interface SesionRow {
   competencia_nombre: string; instructor_nombre: string; ras: number; conocimientos: number; criterios: number
 }
 
-interface AvanceJuicio {
-  numero_documento: string; tipo_documento: string; nombre_aprendiz: string
-  estado_aprendiz: string; total_ra: number; ra_aprobados: number
-  ra_no_aprobados: number; ra_sin_evaluar: number; fecha_reporte: string | null
-}
 
 interface FichaDetalleData {
   ficha: {
@@ -210,9 +204,13 @@ interface FichaDetalleData {
     nivel_formacion: string; horas_programa: number
     coordinador_nombre: string; coordinacion_nombre: string; dias_restantes: number
   }
-  kpi: { avance: number; horas_ejecutadas: number; ras_cerrados: number; ras_total: number; instructores: number; sesiones_total: number }
+  kpi: {
+    avance: number; horas_ejecutadas: number; ras_cerrados: number; ras_total: number; instructores: number; sesiones_total: number
+    aprendices_total: number; listos_para_iniciar: number; en_curso: number; concluidos: number
+  }
   competencias: CompDetalle[]
-  avance_juicios: AvanceJuicio[]
+  aprendices_practica: AprendizPractica[]
+  instructor_practica: InstructorPracticaInfo | null
   sesiones: SesionRow[]
 }
 
@@ -235,6 +233,7 @@ function detalleToEdit(f: FichaDetalleData['ficha']): FichaEdit {
     fecha_fin_productiva:      f.fecha_fin_productiva,
     sede:                      f.sede,
     jornada:                   f.jornada,
+    etapa_actual:              f.etapa_actual,
   }
 }
 
@@ -310,85 +309,6 @@ function CompCard({ comp, defaultOpen }: { comp: CompDetalle; defaultOpen?: bool
   )
 }
 
-// Tono del Bdg de estado del aprendiz, inferido del texto libre que trae el
-// reporte de juicios (no es un enum cerrado del lado del backend).
-function estadoAprendizTone(estado: string): 'ok' | 'err' | 'warn' | 'neutral' {
-  const e = estado.toUpperCase()
-  if (e.includes('CERTIF')) return 'ok'
-  if (e.includes('RETIR') || e.includes('CANCEL') || e.includes('NO APROB') || e.includes('NO_APROB')) return 'err'
-  if (e.includes('APLAZ')) return 'warn'
-  return 'neutral'
-}
-
-// Balance de juicios por aprendiz: reemplaza la lista de competencias cuando
-// la ficha ya está en etapa práctica (el avance por competencia deja de
-// aplicar; lo relevante ahí es el juicio de evaluación por aprendiz).
-function AprendicesJuicios({ juicios }: { juicios: AvanceJuicio[] }) {
-  const completos = juicios.filter(j => j.total_ra > 0 && j.ra_aprobados === j.total_ra).length
-  const enRiesgo = juicios.filter(j => j.ra_no_aprobados > 0).length
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>
-          Aprendices en práctica · {juicios.length}
-          {juicios.length > 0 && (
-            <span style={{ color: '#a1a1aa', fontWeight: 400 }}>
-              {' '}· {completos} completo{completos === 1 ? '' : 's'}
-              {enRiesgo > 0 && `, ${enRiesgo} en riesgo`}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {juicios.length === 0 ? (
-        <Card>
-          <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <Ic n="fileText" s={26} style={{ color: '#a1a1aa' }}/>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>Sin reporte de juicios</div>
-            <div style={{ fontSize: 12.5, color: '#71717a', textAlign: 'center' }}>Todavía no se ha cargado un reporte de avance de juicios para esta ficha.</div>
-          </div>
-        </Card>
-      ) : (
-        <Card style={{ overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-            <thead>
-              <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
-                <th style={TH_S}>Aprendiz</th>
-                <th style={TH_S}>Estado</th>
-                <th style={TH_S}>Aprobados</th>
-                <th style={TH_S}>No aprobados</th>
-                <th style={TH_S}>Sin evaluar</th>
-                <th style={TH_S}>Reporte</th>
-              </tr>
-            </thead>
-            <tbody>
-              {juicios.map((j, i) => (
-                <tr key={j.numero_documento} style={{ borderBottom: i < juicios.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
-                  <td style={TD_S}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <Ava name={j.nombre_aprendiz} size={22}/>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{j.nombre_aprendiz}</div>
-                        <div style={{ fontSize: 10.5, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>{j.tipo_documento} {j.numero_documento}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={TD_S}><Bdg tone={estadoAprendizTone(j.estado_aprendiz)}>{j.estado_aprendiz}</Bdg></td>
-                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: '#15803d' }}>{j.ra_aprobados}/{j.total_ra}</td>
-                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: j.ra_no_aprobados > 0 ? '#b91c1c' : '#a1a1aa' }}>{j.ra_no_aprobados}</td>
-                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: j.ra_sin_evaluar > 0 ? '#a16207' : '#a1a1aa' }}>{j.ra_sin_evaluar}</td>
-                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: '#52525b', whiteSpace: 'nowrap' }}>{fdISO(j.fecha_reporte)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
-    </div>
-  )
-}
-
 export function FichaDetalle({ id, onBack, onEditar }: {
   id: number; onBack: () => void; onEditar: (f: FichaEdit) => void
 }) {
@@ -420,7 +340,7 @@ export function FichaDetalle({ id, onBack, onEditar }: {
     </div>
   )
 
-  const { ficha, kpi, competencias, avance_juicios, sesiones } = state.data
+  const { ficha, kpi, competencias, aprendices_practica, instructor_practica, sesiones } = state.data
   const enPractica = ficha.etapa_actual === 'PRACTICA'
   const meta: [string, string][] = [
     ['Coordinador', ficha.coordinador_nombre],
@@ -452,32 +372,53 @@ export function FichaDetalle({ id, onBack, onEditar }: {
             <EstadoPill estado={ficha.estado}/>
             <EtapaPill etapa={ficha.etapa_actual}/>
           </div>
+          {enPractica && (
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <Ic n="user" s={13} style={{ color: instructor_practica ? '#15803d' : '#a16207' }}/>
+              {instructor_practica ? (
+                <span style={{ color: '#3f3f46' }}>Instructor de práctica: <strong>{instructor_practica.nombre}</strong> · desde {fd(instructor_practica.fecha_inicio)}</span>
+              ) : (
+                <span style={{ color: '#a16207' }}>Sin instructor de práctica asignado -- asígnalo desde "Editar ficha y asignaciones".</span>
+              )}
+            </div>
+          )}
         </div>
         <Btn variant="accent" icon="users" onClick={() => onEditar(detalleToEdit(ficha))}>Editar ficha y asignaciones</Btn>
       </div>
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-        <Card style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Donut value={kpi.avance} size={48} stroke={5} color="#4f46e5">
-            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600 }}>{kpi.avance}%</span>
-          </Donut>
-          <div>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>Avance</div>
-            <div style={{ fontSize: 11.5, color: '#3f3f46', marginTop: 2, fontFamily: '"JetBrains Mono", monospace' }}>
-              {competencias.filter(c => c.avance >= 100).length}/{competencias.length} comp.
-            </div>
-          </div>
-        </Card>
-        <KpiBox label="Horas ejec." value={kpi.horas_ejecutadas.toFixed(0)} sub="registradas" icon="clock"/>
-        <KpiBox label="Días restantes" value={ficha.estado === 'EN_EJECUCION' ? String(ficha.dias_restantes) : '—'} sub="cierre lectiva" icon="calendar"/>
-        <KpiBox label="RAs cerrados" value={String(kpi.ras_cerrados)} sub={`de ${kpi.ras_total}`} icon="target"/>
+        {enPractica ? (
+          <>
+            <KpiBox label="Aprendices" value={String(kpi.aprendices_total)} sub="en la ficha" icon="users"/>
+            <KpiBox label="Listos para iniciar" value={String(kpi.listos_para_iniciar)} sub="sin alternativa, al día en juicios" icon="alert"/>
+            <KpiBox label="En curso" value={String(kpi.en_curso)} sub="con etapa productiva activa" icon="briefcase"/>
+            <KpiBox label="Concluidos" value={String(kpi.concluidos)} sub="confirmados por Sofia" icon="checkCircle"/>
+          </>
+        ) : (
+          <>
+            <Card style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Donut value={kpi.avance} size={48} stroke={5} color="#4f46e5">
+                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600 }}>{kpi.avance}%</span>
+              </Donut>
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>Avance</div>
+                <div style={{ fontSize: 11.5, color: '#3f3f46', marginTop: 2, fontFamily: '"JetBrains Mono", monospace' }}>
+                  {competencias.filter(c => c.avance >= 100).length}/{competencias.length} comp.
+                </div>
+              </div>
+            </Card>
+            <KpiBox label="Horas ejec." value={kpi.horas_ejecutadas.toFixed(0)} sub="registradas" icon="clock"/>
+            <KpiBox label="Días restantes" value={ficha.estado === 'EN_EJECUCION' ? String(ficha.dias_restantes) : '—'} sub="cierre lectiva" icon="calendar"/>
+            <KpiBox label="RAs cerrados" value={String(kpi.ras_cerrados)} sub={`de ${kpi.ras_total}`} icon="target"/>
+          </>
+        )}
       </div>
 
       {/* Contenido: competencias (lectiva) o aprendices (práctica) + lateral */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
         {enPractica ? (
-          <AprendicesJuicios juicios={avance_juicios}/>
+          <AprendicesPracticaTable aprendices={aprendices_practica}/>
         ) : (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
@@ -556,12 +497,20 @@ export function FichaDetalle({ id, onBack, onEditar }: {
 }
 
 // scope: cuando lo usa un coordinador, ve y crea solo fichas de su coordinación.
+// El detalle (id de ficha) se toma de la ruta -- FichasAdmin se monta una vez
+// como índice ("fichas") y otra vez como hijo con parámetro ("fichas/:fichaId"),
+// tanto en el dashboard de coordinador como en el de super admin, y la
+// navegación relativa (navigate(String(id)) / navigate('..')) funciona igual
+// en ambos casos sin que el componente necesite conocer su ruta base.
 export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
   scope?: { coordinacionId: number; centroId: number }
   onDetailChange?: (inDetail: boolean) => void
   onDigitalizar?: () => void
 } = {}) {
   "use no memo"
+  const navigate = useNavigate()
+  const { fichaId } = useParams()
+  const detalleId = fichaId != null ? Number(fichaId) : null
   const [estadoFilt, setEstadoFilt] = useState<EstadoFilt>('')
   const [etapaFilt,  setEtapaFilt]  = useState<EtapaFilt>('')
   const [fechaCampo, setFechaCampo] = useState<FechaCampo>('fecha_inicio')
@@ -573,7 +522,9 @@ export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
   const [soloPendientes, setSoloPendientes] = useState(false)
   const [state,      setState]      = useState<ListState>({ status: 'loading' })
   const [page,       setPage]       = useState(0)
-  const [view,       setView]       = useState<View>({ mode: 'list' })
+  // Formulario de crear/editar: overlay local, independiente de si se abrió
+  // desde la lista o desde el detalle de una ficha.
+  const [formFicha,  setFormFicha]  = useState<FichaEdit | null | undefined>(undefined)
   const [reloadKey,  setReloadKey]  = useState(0)
   // Ficha cuyo programa no está digitalizado y a la que se intentó entrar: muestra el aviso.
   const [bloqueada,  setBloqueada]  = useState<FichaRow | null>(null)
@@ -591,25 +542,25 @@ export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
 
   // Avisa al contenedor (p. ej. CoordinacionDetalle) cuando se entra/sale del detalle/edición de una
   // ficha, para que pueda enfocar solo la ficha y ocultar su propio encabezado.
-  useEffect(() => { onDetailChange?.(view.mode !== 'list') }, [view.mode])
+  useEffect(() => { onDetailChange?.(detalleId != null || formFicha !== undefined) }, [detalleId, formFicha])
 
-  if (view.mode === 'form') {
+  if (formFicha !== undefined) {
     return (
       <FichaForm
-        ficha={view.ficha}
+        ficha={formFicha}
         lockScope={scope ? { centroId: scope.centroId, coordinacionId: scope.coordinacionId } : undefined}
-        onCancel={() => setView({ mode: 'list' })}
-        onSaved={() => { setView({ mode: 'list' }); setReloadKey(k => k + 1) }}
+        onCancel={() => setFormFicha(undefined)}
+        onSaved={() => { setFormFicha(undefined); setReloadKey(k => k + 1) }}
       />
     )
   }
 
-  if (view.mode === 'detalle') {
+  if (detalleId != null) {
     return (
       <FichaDetalle
-        id={view.id}
-        onBack={() => setView({ mode: 'list' })}
-        onEditar={ficha => setView({ mode: 'form', ficha })}
+        id={detalleId}
+        onBack={() => navigate('..')}
+        onEditar={ficha => setFormFicha(ficha)}
       />
     )
   }
@@ -671,7 +622,7 @@ export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
             {scope ? 'Fichas de tu coordinación académica' : 'Todas las fichas del sistema'}
           </div>
         </div>
-        <Btn variant="accent" icon="plus" onClick={() => setView({ mode: 'form', ficha: null })}>Crear ficha</Btn>
+        <Btn variant="accent" icon="plus" onClick={() => setFormFicha(null)}>Crear ficha</Btn>
       </div>
 
       {/* Toolbar: búsqueda + orden + filtros */}
@@ -944,7 +895,7 @@ export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
                 <tr
                   key={f.id}
                   className={dig ? 'nx-row' : undefined}
-                  onClick={() => dig ? setView({ mode: 'detalle', id: f.id }) : setBloqueada(f)}
+                  onClick={() => dig ? navigate(String(f.id)) : setBloqueada(f)}
                   title={dig ? undefined : 'El programa de formación de esta ficha aún no está digitalizado'}
                   aria-disabled={!dig}
                   style={{ borderBottom: '1px solid #f1f1f3', cursor: dig ? 'pointer' : 'not-allowed', background: dig ? undefined : '#fafafa' }}
@@ -1005,7 +956,7 @@ export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
                   <td style={{ ...TD_S, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                     <button
                       title="Editar ficha"
-                      onClick={() => setView({ mode: 'form', ficha: toFichaEdit(f) })}
+                      onClick={() => setFormFicha(toFichaEdit(f))}
                       style={{ width: 28, height: 28, borderRadius: 6, background: 'none', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', color: '#71717a' }}
                     >
                       <Ic n="edit" s={13}/>

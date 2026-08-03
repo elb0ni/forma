@@ -116,9 +116,7 @@ function CompCard({ comp }: { comp: MonComp }) {
   )
 }
 
-export function InstructorDetalle({ id, nombre, email, documento, activo, onBack }: {
-  id: string; nombre: string; email: string; documento: string; activo: boolean; onBack: () => void
-}) {
+export function InstructorDetalle({ id, onBack }: { id: string; onBack: () => void }) {
   "use no memo"
   const [state, setState] = useState<ProgState>({ status: 'loading' })
 
@@ -134,6 +132,22 @@ export function InstructorDetalle({ id, nombre, email, documento, activo, onBack
       <Ic n="arrowLeft" s={14}/> Usuarios
     </button>
   )
+
+  if (state.status === 'loading') return <div>{back}<Card style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Sk w={220} h={16}/></Card></div>
+  if (state.status === 'error') return (
+    <div>{back}
+      <Card style={{ padding: 24 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Ic n="alert" s={15} style={{ color: '#b91c1c' }}/>
+          <span style={{ fontSize: 13.5, color: '#b91c1c' }}>No se pudo cargar el monitoreo del instructor.</span>
+        </div>
+      </Card>
+    </div>
+  )
+
+  const { instructor, resumen, fichas, competencias, sesiones } = state.data
+  const { nombre_completo: nombre, email, numero_documento: documento, activo } = instructor
+  const ubic = [instructor.centro_nombre, instructor.coordinacion_nombre].filter(Boolean).join(' · ')
 
   const header = (extra?: React.ReactNode) => (
     <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 22, flexWrap: 'wrap' }}>
@@ -160,21 +174,6 @@ export function InstructorDetalle({ id, nombre, email, documento, activo, onBack
       </div>
     </div>
   )
-
-  if (state.status === 'loading') return <div>{back}{header()}<Card style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Sk w={220} h={16}/></Card></div>
-  if (state.status === 'error') return (
-    <div>{back}{header()}
-      <Card style={{ padding: 24 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Ic n="alert" s={15} style={{ color: '#b91c1c' }}/>
-          <span style={{ fontSize: 13.5, color: '#b91c1c' }}>No se pudo cargar el monitoreo del instructor.</span>
-        </div>
-      </Card>
-    </div>
-  )
-
-  const { instructor, resumen, fichas, competencias, sesiones } = state.data
-  const ubic = [instructor.centro_nombre, instructor.coordinacion_nombre].filter(Boolean).join(' · ')
 
   return (
     <div style={{ maxWidth: 1200 }}>

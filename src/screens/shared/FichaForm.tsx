@@ -22,6 +22,7 @@ export interface FichaEdit {
   fecha_fin_productiva:      string | null
   sede:                      string | null
   jornada:                   string | null
+  etapa_actual?:             'LECTIVA' | 'PRACTICA' | null
 }
 
 interface CompetenciaResumen {
@@ -37,6 +38,8 @@ interface CoordOpt      { id: number; nombre: string; centro_formacion_id: numbe
 
 interface AsignExistente { id: number; instructorId: string; horas: number }
 interface AsignRow       { instructorId: string; horas: string }
+
+interface AsignacionPractica { id: number; instructor_id: string; instructor_nombre?: string; fecha_inicio: string; estado: 'ACTIVA' | 'FINALIZADA' }
 
 const JORNADAS: { value: Jornada; label: string }[] = [
   { value: 'MAÑANA', label: 'Mañana' },
@@ -105,6 +108,89 @@ function fmtVersion(v: string | number): string {
   return `V${String(v).replace(/^v/i, '').padStart(3, '0')}`
 }
 
+function fdISO(s: string): string {
+  return new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+// ─── Instructor de práctica: uno solo para toda la ficha (no por competencia) ───
+// A diferencia de la etapa lectiva (tabla de arriba, instructor por
+// competencia vía `asignacion`), en etapa productiva un único instructor hace
+// seguimiento a todos los aprendices de la ficha -- se gestiona con
+// asignacion_practica, no con la tabla de competencias.
+
+function InstructorPracticaSection({ fichaId, coordId, instructores }: {
+  fichaId: number; coordId: number | null; instructores: InstructorOpt[]
+}) {
+  "use no memo"
+  const [activa, setActiva] = useState<AsignacionPractica | null | undefined>(undefined)
+  const [reasignando, setReasignando] = useState(false)
+  const [instructorId, setInstructorId] = useState('')
+  // La fecha de inicio de la asignación no se le pide al usuario -- se usa la
+  // fecha de hoy, que es siempre el momento real en que se hace la asignación.
+  const fecha = new Date().toISOString().slice(0, 10)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function cargar() {
+    api.get<AsignacionPractica | null>(`/asignaciones-practica/activa?ficha_id=${fichaId}`)
+      .then(r => setActiva(r.data))
+      .catch(() => setActiva(null))
+  }
+  useEffect(cargar, [fichaId])
+
+  async function guardar() {
+    if (!instructorId) return
+    setBusy(true); setError(null)
+    try {
+      await api.post('/asignaciones-practica', { ficha_id: fichaId, instructor_id: instructorId, fecha_inicio: fecha })
+      setReasignando(false); setInstructorId('')
+      cargar()
+    } catch (e) {
+      const m = axios.isAxiosError(e) ? (e.response?.data?.message ?? e.message) : 'No se pudo asignar el instructor.'
+      setError(Array.isArray(m) ? m.join(' · ') : String(m))
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <Card style={{ padding: 24 }}>
+      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600 }}>
+        Instructor de práctica
+      </div>
+      <div style={{ fontSize: 12, color: '#52525b', marginTop: 2, marginBottom: 16 }}>
+        Uno solo para toda la ficha: hace seguimiento a todos los aprendices en etapa productiva.
+      </div>
+
+      {activa === undefined ? (
+        <div style={{ fontSize: 12.5, color: '#a1a1aa' }}>Cargando…</div>
+      ) : activa && !reasignando ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#18181b' }}>{activa.instructor_nombre}</div>
+            <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 2 }}>Desde {fdISO(activa.fecha_inicio)}</div>
+          </div>
+          <Btn size="sm" variant="ghost" onClick={() => setReasignando(true)}>Reasignar</Btn>
+        </div>
+      ) : (
+        <div>
+          {!activa && <div style={{ fontSize: 12.5, color: '#71717a', marginBottom: 12 }}>Esta ficha todavía no tiene instructor de práctica asignado.</div>}
+          <select
+            value={instructorId} onChange={e => setInstructorId(e.target.value)} disabled={coordId == null}
+            style={{ fontSize: 12, padding: '6px 8px', border: '1px solid #e4e4e7', borderRadius: 6, fontFamily: 'Inter, sans-serif', width: '100%' }}
+          >
+            <option value="">{coordId == null ? 'Elige coordinación primero' : 'Selecciona un instructor…'}</option>
+            {instructores.map(i => <option key={i.id} value={i.id}>{i.nombre_completo}</option>)}
+          </select>
+          {error && <div style={{ fontSize: 11.5, color: '#b91c1c', marginTop: 8 }}>{error}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+            {activa && <Btn size="sm" variant="ghost" onClick={() => { setReasignando(false); setError(null) }} disabled={busy}>Cancelar</Btn>}
+            <Btn size="sm" variant="accent" icon="check" onClick={guardar} disabled={!instructorId || busy}>{busy ? 'Guardando…' : 'Asignar'}</Btn>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 // ─── Pantalla ───────────────────────────────────────────────────────────────────
 
 export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
@@ -139,13 +225,25 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
 
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState<string | null>(null)
+  const [verHistoricoLectiva, setVerHistoricoLectiva] = useState(false)
 
   // Una vez creada la ficha (o si ya editamos), bloqueamos lo que el backend no deja cambiar.
   const locked = editando || savedId != null
 
+  // El coordinador solo asigna instructores y hace seguimiento -- no toca
+  // fechas ni datos sensibles de una ficha que ya existe (esos vienen de la
+  // fuente oficial). El Super Admin conserva edición completa.
+  const soloAsignacionCoord = !!lockScope && locked
+  const enPractica = ficha?.etapa_actual === 'PRACTICA'
+  // En etapa práctica la asignación lectiva ya quedó cerrada: para el
+  // coordinador se colapsa como histórico de solo lectura hasta que decida
+  // abrirlo; el Super Admin la sigue viendo siempre abierta y editable.
+  const lectivaColapsada = !!lockScope && enPractica && !verHistoricoLectiva
+  const lectivaSoloLectura = !!lockScope && enPractica
+
   useEffect(() => {
     api.get<ProgramaListItem[]>('/programas')
-      .then(r => { setPrograms(r.data); setProgId(prev => prev ?? r.data[0]?.id ?? null) })
+      .then(r => setPrograms(r.data))
       .catch(() => {})
     // El centro solo se elige cuando NO hay scope fijo (el coordinador ya tiene el suyo).
     if (!lockScope) {
@@ -329,7 +427,7 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
         {editando ? `Editar ficha ${ficha!.numero_ficha}` : 'Crear ficha de formación'}
       </h2>
       <div style={{ fontSize: 13, color: '#52525b', marginBottom: 24 }}>
-        Define el grupo, el programa y asigna instructores por competencia.
+        Define el grupo, el programa, los instructores por competencia (etapa lectiva) y el instructor de práctica (etapa productiva).
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
@@ -349,8 +447,10 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
                 />
               </Field>
               <Field label="Programa" required>
-                <select className="nx-input" value={progId ?? ''} onChange={e => setProgId(Number(e.target.value))} disabled={locked}>
-                  {programs.length === 0 && <option value="">Cargando…</option>}
+                <select className="nx-input" value={progId ?? ''} onChange={e => setProgId(e.target.value ? Number(e.target.value) : null)} disabled={locked}>
+                  {programs.length === 0
+                    ? <option value="">Cargando…</option>
+                    : <option value="" disabled>Selecciona un programa…</option>}
                   {programs.map(p => <option key={p.id} value={p.id}>{p.codigo} · {p.nombre}</option>)}
                 </select>
               </Field>
@@ -375,46 +475,66 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
                 </>
               )}
               <Field label="Sede">
-                <input className="nx-input" placeholder="Cazucá · Bloque A" value={sede} onChange={e => setSede(e.target.value)}/>
+                <input className="nx-input" placeholder="Cazucá · Bloque A" value={sede} onChange={e => setSede(e.target.value)} disabled={soloAsignacionCoord}/>
               </Field>
               <Field label="Fecha de inicio" required>
                 <input className="nx-input" type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} disabled={locked}/>
               </Field>
               <Field label="Fecha fin lectiva" required>
-                <input className="nx-input" type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)}/>
+                <input className="nx-input" type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} disabled={soloAsignacionCoord}/>
               </Field>
               <Field label="Jornada">
-                <Seg name="jornada" value={jornada} onChange={v => setJornada(v as Jornada)} options={JORNADAS}/>
+                <Seg name="jornada" value={jornada} onChange={v => setJornada(v as Jornada)} options={JORNADAS} disabled={soloAsignacionCoord}/>
               </Field>
               {editando && (
                 <Field label="Estado">
-                  <select className="nx-input" value={estado} onChange={e => setEstado(e.target.value as EstadoFicha)}>
+                  <select className="nx-input" value={estado} onChange={e => setEstado(e.target.value as EstadoFicha)} disabled={soloAsignacionCoord}>
                     {ESTADOS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </Field>
               )}
             </div>
-            {locked && (
+            {soloAsignacionCoord ? (
+              <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 12 }}>
+                Los datos generales de la ficha son de solo lectura para coordinación. Si necesitas corregir fechas, sede, jornada o estado, contacta a un administrador.
+              </div>
+            ) : locked && (
               <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 12 }}>
                 El número de ficha, el programa y la fecha de inicio no se pueden modificar después de crear la ficha.
               </div>
             )}
           </Card>
 
-          {/* Asignación de instructores */}
+          {/* Asignación de instructores (etapa lectiva) */}
           <Card style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
                 <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600 }}>
-                  Asignación de instructores
+                  Asignación de instructores · etapa lectiva
                 </div>
                 <div style={{ fontSize: 12, color: '#52525b', marginTop: 2 }}>
-                  Solo instructores de la coordinación seleccionada.
+                  {lectivaSoloLectura ? 'Histórico de solo lectura -- la etapa lectiva de esta ficha ya finalizó.' : 'Solo instructores de la coordinación seleccionada.'}
                 </div>
               </div>
-              <Btn size="sm" variant="ghost" icon="sparkles" onClick={autoAsignar} disabled={!progDigitalizado}>Auto-asignar</Btn>
+              {lectivaSoloLectura && verHistoricoLectiva ? (
+                <Btn size="sm" variant="ghost" icon="chevronRight" onClick={() => setVerHistoricoLectiva(false)}>Ocultar histórico</Btn>
+              ) : !lectivaSoloLectura && (
+                <Btn size="sm" variant="ghost" icon="sparkles" onClick={autoAsignar} disabled={!progDigitalizado}>Auto-asignar</Btn>
+              )}
             </div>
-            {selProg && !progDigitalizado ? (
+            {lectivaColapsada ? (
+              <button
+                onClick={() => setVerHistoricoLectiva(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px',
+                  background: '#f7f7f8', border: '1px solid #e4e4e7', borderRadius: 8, cursor: 'pointer',
+                  fontSize: 12.5, color: '#3f3f46', fontFamily: 'inherit',
+                }}
+              >
+                <Ic n="chevronRight" s={13} style={{ color: '#71717a' }}/>
+                Ver histórico de asignaciones de etapa lectiva · {comps.length} competencia{comps.length === 1 ? '' : 's'}
+              </button>
+            ) : selProg && !progDigitalizado ? (
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: 16, background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8 }}>
                 <Ic n="alert" s={16} style={{ color: '#a16207', flexShrink: 0, marginTop: 1 }}/>
                 <div style={{ fontSize: 12.5, color: '#854d0e', lineHeight: 1.5 }}>
@@ -447,6 +567,7 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
                         <input
                           value={row.horas}
                           onChange={e => setRow(c.id, { horas: e.target.value })}
+                          disabled={lectivaSoloLectura}
                           style={{ width: 50, textAlign: 'right', padding: '3px 6px', border: '1px solid #e4e4e7', borderRadius: 4, fontSize: 12, fontFamily: '"JetBrains Mono", monospace' }}
                         />
                       </td>
@@ -454,7 +575,7 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
                         <select
                           value={row.instructorId}
                           onChange={e => setRow(c.id, { instructorId: e.target.value })}
-                          disabled={coordId == null}
+                          disabled={coordId == null || lectivaSoloLectura}
                           style={{ fontSize: 12, padding: '3px 6px', border: '1px solid #e4e4e7', borderRadius: 4, width: '100%', fontFamily: 'Inter, sans-serif' }}
                         >
                           <option value="">{coordId == null ? 'Elige coordinación' : 'Sin asignar'}</option>
@@ -470,6 +591,11 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
             </div>
             )}
           </Card>
+
+          {/* Instructor de práctica (etapa productiva): uno por ficha, no por competencia */}
+          {savedId != null && (
+            <InstructorPracticaSection fichaId={savedId} coordId={coordId} instructores={instructores}/>
+          )}
 
           {/* Error + acciones */}
           {error && (

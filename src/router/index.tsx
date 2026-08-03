@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { Login } from '../screens/Login'
 import { CambiarContrasena } from '../screens/CambiarContrasena'
 import { Spinner, RootLayout, RequireAuth, RequirePrimerLogin, PublicOnly, RequireRole, DashboardRedirect } from './guards'
-import { SuperAdminDashboard, CoordinadorDashboard, InstructorDashboard, EtapaProductivaPreview } from './lazyDashboards'
+import { SuperAdminDashboard, CoordinadorDashboard, InstructorDashboard } from './lazyDashboards'
 import './router.css'
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -12,9 +12,6 @@ export const router = createBrowserRouter([
   {
     element: <RootLayout/>,
     children: [
-      // Ruta pública (sin login): preview del módulo de Etapa Productiva, todavía
-      // en planeación. Se navega directo a /etapa-productiva para revisar avances.
-      { path: '/etapa-productiva', element: <Suspense fallback={<Spinner/>}><EtapaProductivaPreview/></Suspense> },
       {
         element: <PublicOnly/>,
         children: [
@@ -46,7 +43,7 @@ export const router = createBrowserRouter([
           {
             element: <RequireRole roles={['INSTRUCTOR']}/>,
             children: [
-              { path: '/dashboard/instructor', element: <Suspense fallback={<Spinner/>}><InstructorDashboard/></Suspense> },
+              { path: '/dashboard/instructor/*', element: <Suspense fallback={<Spinner/>}><InstructorDashboard/></Suspense> },
             ],
           },
         ],

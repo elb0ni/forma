@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom'
 import { Ic, Card, Btn, Tag, Bdg, Prog } from '../../components/ui'
 import api from '../../lib/api'
 import { Pill, Donut, fd, jornadaLabel, LoadingBlock, CenterState, SM } from '../shared/parts'
 import type { FichaInstructor, FichaDetalle, CompetenciaDetalle } from './types'
+import { InstFichaPractica } from './InstFichaPractica'
+import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
 import './instructor.css'
 
 // ─── Lista de fichas ─────────────────────────────────────────────────────────────
@@ -16,7 +19,49 @@ const ESTADO_CHIPS: { key: EstadoFilt; label: string }[] = [
   { key: 'SUSPENDIDA', label: 'Suspendidas' },
 ]
 
-function FichasList({ onOpen }: { onOpen: (id: number) => void }) {
+// Tarjeta compacta de una ficha (lectiva o práctica) -- se usa tanto en el
+// listado "Mis fichas" como en el resumen del Home del instructor, para que
+// ambas vistas monitoreen las dos etapas con el mismo criterio visual.
+export function FichaCard({ f, onClick }: { f: FichaInstructor; onClick: () => void }) {
+  return (
+    <Card onClick={onClick} style={{ padding: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
+      {f.es_lectiva ? (
+        <Donut value={f.avance} size={56} stroke={6} color={SM[f.status].dot}>
+          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600 }}>{f.avance}%</span>
+        </Donut>
+      ) : (
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#eef2ff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <Ic n="briefcase" s={22} style={{ color: '#4f46e5' }}/>
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+          <Tag>{f.programa_codigo}</Tag>
+          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
+          <Pill status={f.status} size="sm"/>
+          {f.es_practica && <Bdg tone="accent">Práctica</Bdg>}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {f.programa_nombre}
+        </div>
+        <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {f.es_lectiva && (
+            <span><strong style={{ fontFamily: '"JetBrains Mono", monospace', color: '#3f3f46' }}>{f.competencias_completas}/{f.competencias_asignadas}</strong> comp.</span>
+          )}
+          <span>{jornadaLabel(f.jornada)}</span>
+          {f.estado === 'EN_EJECUCION' && (
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', color: f.dias_restantes < 60 ? '#dc2626' : '#52525b' }}>
+              {f.dias_restantes}d
+            </span>
+          )}
+        </div>
+      </div>
+      <Ic n="chevronRight" s={16} style={{ color: '#d4d4d8', flexShrink: 0 }}/>
+    </Card>
+  )
+}
+
+function FichasList({ onOpen }: { onOpen: (f: FichaInstructor) => void }) {
   "use no memo"
   const [fichas, setFichas] = useState<FichaInstructor[] | null>(null)
   const [error, setError] = useState(false)
@@ -71,33 +116,7 @@ function FichasList({ onOpen }: { onOpen: (id: number) => void }) {
         <Card><CenterState icon="folder" title="Sin fichas" sub="No hay fichas que coincidan con el filtro."/></Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 14 }}>
-          {view.map(f => (
-            <Card key={f.id} onClick={() => onOpen(f.id)} style={{ padding: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
-              <Donut value={f.avance} size={56} stroke={6} color={SM[f.status].dot}>
-                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600 }}>{f.avance}%</span>
-              </Donut>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                  <Tag>{f.programa_codigo}</Tag>
-                  <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
-                  <Pill status={f.status} size="sm"/>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {f.programa_nombre}
-                </div>
-                <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <span><strong style={{ fontFamily: '"JetBrains Mono", monospace', color: '#3f3f46' }}>{f.competencias_completas}/{f.competencias_asignadas}</strong> comp.</span>
-                  <span>{jornadaLabel(f.jornada)}</span>
-                  {f.estado === 'EN_EJECUCION' && (
-                    <span style={{ fontFamily: '"JetBrains Mono", monospace', color: f.dias_restantes < 60 ? '#dc2626' : '#52525b' }}>
-                      {f.dias_restantes}d
-                    </span>
-                  )}
-                </div>
-              </div>
-              <Ic n="chevronRight" s={16} style={{ color: '#d4d4d8', flexShrink: 0 }}/>
-            </Card>
-          ))}
+          {view.map(f => <FichaCard key={f.id} f={f} onClick={() => onOpen(f)}/>)}
         </div>
       )}
     </div>
@@ -313,7 +332,7 @@ function KpiBox({ label, value, sub, icon }: { label: string; value: string; sub
   )
 }
 
-// ─── Wrapper: lista ↔ detalle ────────────────────────────────────────────────────
+// ─── Wrapper: lista ↔ detalle (rutas) ────────────────────────────────────────────
 
 export function InstFichas({ onRegistrar, onOpenSesion, onReporte }: {
   onRegistrar: (asignacionId: number) => void
@@ -321,8 +340,66 @@ export function InstFichas({ onRegistrar, onOpenSesion, onReporte }: {
   onReporte: (fichaId: number) => void
 }) {
   "use no memo"
-  const [sel, setSel] = useState<number | null>(null)
-  return sel === null
-    ? <FichasList onOpen={setSel}/>
-    : <FichaDetalleView fichaId={sel} onBack={() => setSel(null)} onRegistrar={onRegistrar} onOpenSesion={onOpenSesion} onReporte={onReporte}/>
+  const navigate = useNavigate()
+
+  function abrir(f: FichaInstructor) {
+    // Si el instructor es el de práctica de esta ficha, esa es la vista
+    // relevante (aunque también tenga asignaciones lectivas ahí); si no,
+    // se abre la vista de competencias de siempre. Se pasa el flag por
+    // location.state para no tener que resolverlo de nuevo al abrir.
+    navigate(String(f.id), { state: { esPractica: f.es_practica } })
+  }
+
+  return (
+    <Routes>
+      <Route index element={<FichasList onOpen={abrir}/>}/>
+      <Route path=":fichaId/*" element={<FichaRoute onRegistrar={onRegistrar} onOpenSesion={onOpenSesion} onReporte={onReporte}/>}/>
+    </Routes>
+  )
+}
+
+// Resuelve si la ficha es de práctica para elegir la vista: usa el flag recibido
+// por navegación desde la lista, o -- en refresh/deep link, sin location.state --
+// hace un fetch de resolución contra el mismo listado.
+function FichaRoute({ onRegistrar, onOpenSesion, onReporte }: {
+  onRegistrar: (asignacionId: number) => void
+  onOpenSesion: (sesionId: number) => void
+  onReporte: (fichaId: number) => void
+}) {
+  "use no memo"
+  const { fichaId } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const id = Number(fichaId)
+  const stateFlag = (location.state as { esPractica?: boolean } | null)?.esPractica
+  const [resolved, setResolved] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (stateFlag !== undefined) return
+    api.get<FichaInstructor[]>('/dashboard/instructor/fichas')
+      .then(r => setResolved(r.data.find(f => f.id === id)?.es_practica ?? false))
+      .catch(() => setResolved(false))
+  }, [id, stateFlag])
+
+  const esPractica = stateFlag ?? resolved
+  const back = () => navigate('/dashboard/instructor/fichas')
+
+  if (esPractica === null) return <LoadingBlock/>
+
+  if (esPractica) {
+    return (
+      <Routes>
+        <Route index element={<InstFichaPractica fichaId={id} onBack={back} onOpenEtapa={etapaId => navigate(`etapa/${etapaId}`)}/>}/>
+        <Route path="etapa/:etapaId" element={<FichaEtapaRoute/>}/>
+      </Routes>
+    )
+  }
+  return <FichaDetalleView fichaId={id} onBack={back} onRegistrar={onRegistrar} onOpenSesion={onOpenSesion} onReporte={onReporte}/>
+}
+
+function FichaEtapaRoute() {
+  "use no memo"
+  const { etapaId } = useParams()
+  const navigate = useNavigate()
+  return <EtapaProductivaDetalle etapaId={Number(etapaId)} onBack={() => navigate('..')}/>
 }

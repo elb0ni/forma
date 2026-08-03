@@ -65,7 +65,7 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
   const [viewCoordId, setViewCoordId] = useState<number | null>(null)
 
   const [modal, setModal] = useState<ModalState>(null)
-  const [form, setForm] = useState({ nombre: '', codigo: '', ciudad: 'Barranquilla', regional: 'Atlántico' })
+  const [form, setForm] = useState({ nombre: '', codigo: '', ciudad: '', regional: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -79,7 +79,7 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
       .catch(() => setState({ status: 'error' }))
   }, [reloadKey])
 
-  function openCrearCentro()             { setForm({ nombre: '', codigo: '', ciudad: 'Barranquilla', regional: 'Atlántico' }); setError(null); setModal({ kind: 'crear-centro' }) }
+  function openCrearCentro()             { setForm({ nombre: '', codigo: '', ciudad: '', regional: '' }); setError(null); setModal({ kind: 'crear-centro' }) }
   function openEditarCentro(c: CentroItem) { setForm({ nombre: c.nombre, codigo: c.codigo, ciudad: c.ciudad, regional: c.regional }); setError(null); setModal({ kind: 'editar-centro', centro: c }) }
   function openCrearCoord(c: CentroItem)   { setForm({ ...form, nombre: '' }); setError(null); setModal({ kind: 'crear-coord', centro: c }) }
   function openEditarCoord(co: CoordRow)   { setForm({ ...form, nombre: co.nombre }); setError(null); setModal({ kind: 'editar-coord', coord: co }) }
@@ -195,12 +195,12 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
                   </div>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 500, color: '#27272a', marginBottom: 6 }}>Ciudad</div>
-                    <input className="nx-input" value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))}/>
+                    <input className="nx-input" value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))} placeholder="Barranquilla"/>
                   </div>
                 </div>
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 500, color: '#27272a', marginBottom: 6 }}>Regional</div>
-                  <input className="nx-input" value={form.regional} onChange={e => setForm(f => ({ ...f, regional: e.target.value }))}/>
+                  <input className="nx-input" value={form.regional} onChange={e => setForm(f => ({ ...f, regional: e.target.value }))} placeholder="Atlántico"/>
                 </div>
               </>
             )}

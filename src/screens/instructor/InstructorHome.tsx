@@ -4,8 +4,9 @@ import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
 import { fd, jornadaLabel, Pill, LoadingBlock, CenterState } from '../shared/parts'
 import type {
-  ResumenInstructor, ActividadDia, AsignacionItem, SesionListItem,
+  ResumenInstructor, ActividadDia, AsignacionItem, SesionListItem, FichaInstructor,
 } from './types'
+import { FichaCard } from './InstFichas'
 import './instructor.css'
 
 // ─── Heatmap de actividad (sesiones por día) ─────────────────────────────────────
@@ -140,6 +141,11 @@ function TodayCard({ actividad }: { actividad: ActividadDia[] }) {
 
 // ─── Home ────────────────────────────────────────────────────────────────────────
 
+const linkBtn: React.CSSProperties = {
+  fontSize: 12, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer',
+  display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit',
+}
+
 function saludo(): string {
   const h = new Date().getHours()
   if (h < 12) return 'Buenos días'
@@ -147,9 +153,11 @@ function saludo(): string {
   return 'Buenas noches'
 }
 
-export function InstructorHome({ onRegistrar, onOpenSesion }: {
+export function InstructorHome({ onRegistrar, onOpenSesion, onOpenFicha, onVerFichas }: {
   onRegistrar: (asignacionId: number) => void
   onOpenSesion: (sesionId: number) => void
+  onOpenFicha: (f: FichaInstructor) => void
+  onVerFichas: () => void
 }) {
   "use no memo"
   const user = useAuthStore(s => s.user)
@@ -157,6 +165,7 @@ export function InstructorHome({ onRegistrar, onOpenSesion }: {
   const [actividad, setActividad] = useState<ActividadDia[]>([])
   const [asignaciones, setAsignaciones] = useState<AsignacionItem[]>([])
   const [sesiones, setSesiones] = useState<SesionListItem[]>([])
+  const [fichas, setFichas] = useState<FichaInstructor[]>([])
   const [loading, setLoading] = useState(true)
   const [asigPage, setAsigPage] = useState(0)
 
@@ -167,10 +176,12 @@ export function InstructorHome({ onRegistrar, onOpenSesion }: {
       api.get<ActividadDia[]>('/dashboard/instructor/actividad'),
       api.get<AsignacionItem[]>('/dashboard/instructor/asignaciones'),
       api.get<SesionListItem[]>('/dashboard/instructor/sesiones'),
-    ]).then(([r, a, asg, ses]) => {
+      api.get<FichaInstructor[]>('/dashboard/instructor/fichas'),
+    ]).then(([r, a, asg, ses, fic]) => {
       if (!live) return
       setResumen(r.data); setActividad(a.data)
       setAsignaciones(asg.data); setSesiones(ses.data.slice(0, 6))
+      setFichas(fic.data)
       setLoading(false)
     }).catch(() => { if (live) setLoading(false) })
     return () => { live = false }
@@ -183,6 +194,8 @@ export function InstructorHome({ onRegistrar, onOpenSesion }: {
   const hoyKey = isoKey(today)
   const hoyCount = actividad.find(a => a.fecha.slice(0, 10) === hoyKey)?.count ?? 0
   const deltaSesiones = resumen ? resumen.sesiones_semana - resumen.sesiones_semana_anterior : 0
+  const lectivaCount = fichas.filter(f => f.es_lectiva).length
+  const practicaCount = fichas.filter(f => f.es_practica).length
 
   // Carrusel de asignaciones: 3 visibles por página
   const ASIG_PAGE = 3
@@ -230,6 +243,29 @@ export function InstructorHome({ onRegistrar, onOpenSesion }: {
         />
         <TodayCard actividad={actividad}/>
       </div>
+
+      {/* Mis fichas: monitoreo unificado de etapa lectiva y práctica */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>
+          Mis fichas
+          {fichas.length > 0 && (
+            <span style={{ fontWeight: 400, color: '#71717a', marginLeft: 8, fontSize: 12 }}>
+              {lectivaCount} en lectiva{practicaCount > 0 ? ` · ${practicaCount} en práctica` : ''}
+            </span>
+          )}
+        </div>
+        <button onClick={onVerFichas} style={linkBtn}>Ver todas <Ic n="arrowRight" s={12}/></button>
+      </div>
+      {fichas.length === 0 ? (
+        <Card style={{ marginBottom: 28 }}>
+          <CenterState icon="folder" title="Sin fichas asignadas"
+            sub="No tienes fichas asignadas todavía. Pide a tu coordinador que te asigne una."/>
+        </Card>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 14, marginBottom: 28 }}>
+          {fichas.map(f => <FichaCard key={f.id} f={f} onClick={() => onOpenFicha(f)}/>)}
+        </div>
+      )}
 
       {/* Registrar sesión */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>

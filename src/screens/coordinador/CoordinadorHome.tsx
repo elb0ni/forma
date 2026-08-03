@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Ic, Card, Prog, Tag, Metric, Ava } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
+import { statusFromAvance } from '../shared/parts'
 import type { CoordDetalle, FichaRow } from '../shared/types'
 import './CoordinadorHome.css'
 
@@ -31,7 +32,7 @@ function saludo(): string {
   return 'Buenas noches'
 }
 
-export function CoordinadorHome({ onNav }: { onNav?: (id: string) => void }) {
+export function CoordinadorHome({ onNav, onOpenFicha }: { onNav?: (id: string) => void; onOpenFicha?: (id: number) => void }) {
   "use no memo"
   const user = useAuthStore(s => s.user)
   const coordId = user?.coordinacion_academica_id ?? null
@@ -114,7 +115,16 @@ export function CoordinadorHome({ onNav }: { onNav?: (id: string) => void }) {
               {atencion.map((x, i) => {
                 const sm = SM[x.sem]
                 return (
-                  <div key={x.f.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < atencion.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
+                  <div
+                    key={x.f.id}
+                    className={onOpenFicha ? 'nx-row' : undefined}
+                    onClick={() => onOpenFicha?.(x.f.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                      borderBottom: i < atencion.length - 1 ? '1px solid #f1f1f3' : 'none',
+                      cursor: onOpenFicha ? 'pointer' : 'default',
+                    }}
+                  >
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: sm.dot, flexShrink: 0 }}/>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -124,7 +134,7 @@ export function CoordinadorHome({ onNav }: { onNav?: (id: string) => void }) {
                       <div style={{ fontSize: 12, color: '#52525b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.f.programa_nombre}</div>
                     </div>
                     {x.f.tiene_disenio_curricular
-                      ? <div style={{ width: 90 }}><Prog value={x.f.avance} status={x.f.avance >= 70 ? 'ok' : x.f.avance >= 40 ? 'warn' : 'crit'}/></div>
+                      ? <div style={{ width: 90 }}><Prog value={x.f.avance} status={statusFromAvance(x.f.avance)}/></div>
                       : <span style={{ fontSize: 11, color: '#a16207' }}>sin digitalizar</span>}
                     <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: x.f.dias_restantes <= 30 ? '#dc2626' : '#52525b', width: 44, textAlign: 'right' }}>{x.f.dias_restantes}d</span>
                     <span className="coord-chip" style={{ background: sm.bg, color: sm.fg }}>{sm.label}</span>

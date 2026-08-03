@@ -207,17 +207,7 @@ export function UsuariosAdmin() {
   }
 
   if (view.mode === 'progreso') {
-    const u = view.u
-    return (
-      <InstructorDetalle
-        id={u.id}
-        nombre={u.nombre_completo}
-        email={u.email}
-        documento={u.numero_documento}
-        activo={isActivo(u)}
-        onBack={() => setView({ mode: 'list' })}
-      />
-    )
+    return <InstructorDetalle id={view.u.id} onBack={() => setView({ mode: 'list' })}/>
   }
 
   const all       = state.status === 'ok' ? state.data : []

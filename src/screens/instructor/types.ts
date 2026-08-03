@@ -33,6 +33,9 @@ export interface FichaInstructor {
   dias_restantes:         number
   avance:                 number
   status:                 StatusTone
+  etapa_actual:           'LECTIVA' | 'PRACTICA'
+  es_lectiva:             boolean
+  es_practica:            boolean
 }
 
 export interface RAItem {

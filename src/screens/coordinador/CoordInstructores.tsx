@@ -3,11 +3,8 @@ import { Ic, Card, Ava, Prog, Bdg } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
 import { InstructorDetalle } from '../shared/InstructorDetalle'
+import { statusFromAvance } from '../shared/parts'
 import type { CoordDetalle, InstructorRow } from '../shared/types'
-
-function avStatus(p: number): 'ok' | 'warn' | 'crit' | 'off' {
-  return p >= 70 ? 'ok' : p >= 40 ? 'warn' : p > 0 ? 'crit' : 'off'
-}
 
 export function CoordInstructores() {
   "use no memo"
@@ -26,16 +23,7 @@ export function CoordInstructores() {
   }, [coordId])
 
   if (sel) {
-    return (
-      <InstructorDetalle
-        id={sel.id}
-        nombre={sel.nombre_completo}
-        email={sel.email}
-        documento={sel.numero_documento}
-        activo={!!sel.activo}
-        onBack={() => setSel(null)}
-      />
-    )
+    return <InstructorDetalle id={sel.id} onBack={() => setSel(null)}/>
   }
 
   if (coordId == null) return <Center title="Sin coordinación asignada" sub="Pide a un administrador que te asigne una coordinación académica."/>
@@ -91,7 +79,7 @@ export function CoordInstructores() {
                   <td style={{ padding: '12px 14px', textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#27272a' }}>{u.sesiones}</td>
                   <td style={{ padding: '12px 14px', minWidth: 130 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ flex: 1 }}><Prog value={u.avance} status={avStatus(u.avance)}/></div>
+                      <div style={{ flex: 1 }}><Prog value={u.avance} status={statusFromAvance(u.avance)}/></div>
                       <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#52525b', width: 34, textAlign: 'right' }}>{u.avance}%</span>
                     </div>
                   </td>

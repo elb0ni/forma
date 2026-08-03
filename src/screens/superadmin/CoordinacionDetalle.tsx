@@ -5,15 +5,13 @@ import api from '../../lib/api'
 import { FichasAdmin } from '../shared/FichasAdmin'
 import { InstructorDetalle } from '../shared/InstructorDetalle'
 import { ProgramaDetalleView } from '../shared/ProgramaDetalleView'
+import { statusFromAvance, SM } from '../shared/parts'
 import type { InstructorRow, CoordDetalle } from '../shared/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────
 
 function avColor(pct: number): string {
-  return pct >= 70 ? '#16a34a' : pct >= 40 ? '#d97706' : pct > 0 ? '#dc2626' : '#a1a1aa'
-}
-function avStatus(pct: number): 'ok' | 'warn' | 'crit' | 'off' {
-  return pct >= 70 ? 'ok' : pct >= 40 ? 'warn' : pct > 0 ? 'crit' : 'off'
+  return SM[statusFromAvance(pct)].dot
 }
 function fmtAcceso(s: string | null): string {
   if (!s) return 'Nunca'
@@ -96,17 +94,7 @@ export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordI
 
   // Drill-downs dentro de la coordinación (reutilizan las vistas de detalle del Super Admin)
   if (view.mode === 'instructor') {
-    const u = view.u
-    return (
-      <InstructorDetalle
-        id={u.id}
-        nombre={u.nombre_completo}
-        email={u.email}
-        documento={u.numero_documento}
-        activo={!!u.activo}
-        onBack={() => setView({ mode: 'main' })}
-      />
-    )
+    return <InstructorDetalle id={view.u.id} onBack={() => setView({ mode: 'main' })}/>
   }
   if (view.mode === 'programa') {
     return <ProgramaDetalleView id={view.id} onBack={() => setView({ mode: 'main' })} onDigitalizar={onDigitalizar}/>
@@ -265,7 +253,7 @@ export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordI
                   <td style={{ padding: '12px 14px', textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#27272a' }}>{u.sesiones}</td>
                   <td style={{ padding: '12px 14px', minWidth: 130 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ flex: 1 }}><Prog value={u.avance} status={avStatus(u.avance)}/></div>
+                      <div style={{ flex: 1 }}><Prog value={u.avance} status={statusFromAvance(u.avance)}/></div>
                       <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#52525b', width: 34, textAlign: 'right' }}>{u.avance}%</span>
                     </div>
                   </td>

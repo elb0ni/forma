@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { Ic, Card, Tag, Prog } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
+import { statusFromAvance } from '../shared/parts'
 import type { CoordDetalle, FichaRow } from '../shared/types'
 
-export function CoordAlertas() {
+export function CoordAlertas({ onOpenFicha }: { onOpenFicha?: (id: number) => void } = {}) {
   "use no memo"
   const user = useAuthStore(s => s.user)
   const coordId = user?.coordinacion_academica_id ?? null
@@ -50,6 +51,7 @@ export function CoordAlertas() {
             color="#dc2626" bg="#fef2f2" bd="#fecaca" icon="alert"
             fichas={riesgo}
             render={f => <RiesgoRow f={f}/>}
+            onOpenFicha={onOpenFicha}
           />
           <Grupo
             titulo="Cierran pronto (≤ 30 días)"
@@ -57,6 +59,7 @@ export function CoordAlertas() {
             color="#c2410c" bg="#fff7ed" bd="#fed7aa" icon="clock"
             fichas={cierre}
             render={f => <CierreRow f={f}/>}
+            onOpenFicha={onOpenFicha}
           />
           <Grupo
             titulo="Programa sin digitalizar"
@@ -71,9 +74,10 @@ export function CoordAlertas() {
   )
 }
 
-function Grupo({ titulo, sub, color, bg, bd, icon, fichas, render }: {
+function Grupo({ titulo, sub, color, bg, bd, icon, fichas, render, onOpenFicha }: {
   titulo: string; sub: string; color: string; bg: string; bd: string; icon: any
   fichas: FichaRow[]; render: (f: FichaRow) => React.ReactNode
+  onOpenFicha?: (id: number) => void
 }) {
   if (fichas.length === 0) return null
   return (
@@ -89,7 +93,15 @@ function Grupo({ titulo, sub, color, bg, bd, icon, fichas, render }: {
       </div>
       <Card style={{ overflow: 'hidden' }}>
         {fichas.map((f, i) => (
-          <div key={f.id} style={{ padding: '11px 16px', borderBottom: i < fichas.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
+          <div
+            key={f.id}
+            className={onOpenFicha ? 'nx-row' : undefined}
+            onClick={() => onOpenFicha?.(f.id)}
+            style={{
+              padding: '11px 16px', borderBottom: i < fichas.length - 1 ? '1px solid #f1f1f3' : 'none',
+              cursor: onOpenFicha ? 'pointer' : 'default',
+            }}
+          >
             {render(f)}
           </div>
         ))}
@@ -114,7 +126,7 @@ function RiesgoRow({ f }: { f: FichaRow }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
       <FichaHead f={f}/>
-      <div style={{ width: 110 }}><Prog value={f.avance} status={f.avance >= 40 ? 'warn' : 'crit'} showLabel/></div>
+      <div style={{ width: 110 }}><Prog value={f.avance} status={statusFromAvance(f.avance)} showLabel/></div>
       <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: f.dias_restantes <= 30 ? '#dc2626' : '#52525b', width: 48, textAlign: 'right' }}>{f.dias_restantes}d</span>
     </div>
   )
@@ -124,7 +136,7 @@ function CierreRow({ f }: { f: FichaRow }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
       <FichaHead f={f}/>
       {f.tiene_disenio_curricular
-        ? <div style={{ width: 110 }}><Prog value={f.avance} status={f.avance >= 70 ? 'ok' : f.avance >= 40 ? 'warn' : 'crit'} showLabel/></div>
+        ? <div style={{ width: 110 }}><Prog value={f.avance} status={statusFromAvance(f.avance)} showLabel/></div>
         : <span style={{ fontSize: 11, color: '#a16207', width: 110, textAlign: 'right' }}>sin digitalizar</span>}
       <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#dc2626', width: 48, textAlign: 'right' }}>{f.dias_restantes}d</span>
     </div>

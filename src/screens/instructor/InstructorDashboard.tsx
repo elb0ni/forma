@@ -1,79 +1,135 @@
-import { useState } from 'react'
+import { Routes, Route, Navigate, Outlet, useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
 import { InstructorHome } from './InstructorHome'
 import { InstFichas } from './InstFichas'
+import type { FichaInstructor } from './types'
 import { InstSesionesList, InstSesionDetalle } from './InstSesiones'
 import { SesionWizard } from './SesionWizard'
 import { InstReportes } from './InstReportes'
+import { EtapaProductivaList, NuevoRegistro } from '../productiva/EtapaProductivaList'
+import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
 
-const INST_TITLES: Record<string, string> = {
-  'inst-home':     'Inicio',
-  'inst-fichas':   'Mis fichas',
-  'inst-sesiones': 'Sesiones',
-  'inst-reportes': 'Reportes',
+const BASE = '/dashboard/instructor'
+
+const SECTION_PATH: Record<string, string> = {
+  'inst-home':             BASE,
+  'inst-fichas':           `${BASE}/fichas`,
+  'inst-sesiones':         `${BASE}/sesiones`,
+  'inst-etapa-productiva': `${BASE}/etapa-productiva`,
+  'inst-reportes':         `${BASE}/reportes`,
 }
 
-// Vista superpuesta (sobre cualquier sección): wizard de registro o detalle de sesión
-type InstModal =
-  | { kind: 'wizard'; asignacionId: number }
-  | { kind: 'sesion'; id: number; justSaved?: boolean }
-  | null
+// Sección activa + título de página según la URL actual (reemplaza el switch
+// por useState de antes: cada patrón corresponde a una pantalla real).
+const TITLE_RULES: { re: RegExp; title: string; section: string }[] = [
+  { re: /^\/fichas\/[^/]+\/etapa\/[^/]+$/, title: 'Etapa productiva',  section: 'inst-fichas' },
+  { re: /^\/fichas(\/[^/]+)?$/,            title: 'Mis fichas',        section: 'inst-fichas' },
+  { re: /^\/sesiones\/nueva\/[^/]+$/,      title: 'Registrar sesión',  section: 'inst-sesiones' },
+  { re: /^\/sesiones\/[^/]+$/,             title: 'Detalle de sesión', section: 'inst-sesiones' },
+  { re: /^\/sesiones\/?$/,                 title: 'Sesiones',          section: 'inst-sesiones' },
+  { re: /^\/etapa-productiva\/nueva$/,     title: 'Nuevo registro',    section: 'inst-etapa-productiva' },
+  { re: /^\/etapa-productiva(\/[^/]+)?$/,  title: 'Etapa productiva',  section: 'inst-etapa-productiva' },
+  { re: /^\/reportes\/?$/,                 title: 'Reportes',          section: 'inst-reportes' },
+]
+
+function headerFor(pathname: string): { title: string; section: string } {
+  const rest = pathname.slice(BASE.length) || '/'
+  const rule = TITLE_RULES.find(r => r.re.test(rest))
+  return rule ?? { title: 'Inicio', section: 'inst-home' }
+}
 
 export function InstructorDashboard() {
   "use no memo"
-  const [section, setSection]   = useState('inst-home')
-  const [modal, setModal]       = useState<InstModal>(null)
-  const [reporteFicha, setReporteFicha] = useState<number | undefined>(undefined)
-  // Cambia al re-montar la lista de fichas/sesiones para resetear su drill-down interno
-  const [resetKey, setResetKey] = useState(0)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { title, section } = headerFor(location.pathname)
 
-  function nav(id: string) {
-    setModal(null)
-    setReporteFicha(undefined)
-    setSection(id)
-    setResetKey(k => k + 1)
+  function onNav(id: string) {
+    navigate(SECTION_PATH[id] ?? BASE)
   }
 
-  const openSesion = (id: number) => setModal({ kind: 'sesion', id })
-  const openWizard = (asignacionId: number) => setModal({ kind: 'wizard', asignacionId })
-  const openReporte = (fichaId: number) => { setReporteFicha(fichaId); setModal(null); setSection('inst-reportes') }
+  function openReporte(fichaId: number) {
+    navigate(`${BASE}/reportes?ficha=${fichaId}`)
+  }
 
-  const title = modal?.kind === 'wizard'
-    ? 'Registrar sesión'
-    : modal?.kind === 'sesion'
-      ? 'Detalle de sesión'
-      : INST_TITLES[section] ?? 'Instructor'
-
-  let content
-  if (modal?.kind === 'wizard') {
-    content = (
-      <SesionWizard
-        asignacionId={modal.asignacionId}
-        onCancel={() => setModal(null)}
-        onSaved={id => setModal({ kind: 'sesion', id, justSaved: true })}
-      />
-    )
-  } else if (modal?.kind === 'sesion') {
-    content = (
-      <InstSesionDetalle
-        sesionId={modal.id}
-        justSaved={modal.justSaved}
-        onBack={() => setModal(null)}
-      />
-    )
-  } else if (section === 'inst-home') {
-    content = <InstructorHome onRegistrar={openWizard} onOpenSesion={openSesion}/>
-  } else if (section === 'inst-fichas') {
-    content = <InstFichas key={resetKey} onRegistrar={openWizard} onOpenSesion={openSesion} onReporte={openReporte}/>
-  } else if (section === 'inst-sesiones') {
-    content = <InstSesionesList key={resetKey} onOpen={openSesion} onNueva={() => openWizard(0)}/>
-  } else {
-    content = <InstReportes initialFichaId={reporteFicha}/>
+  function openFicha(f: FichaInstructor) {
+    navigate(`${BASE}/fichas/${f.id}`, { state: { esPractica: f.es_practica } })
   }
 
   return (
-    <Shell current={section} onNav={nav} title={title} breadcrumb={['Instructor', title]}>
-      {content}
+    <Shell current={section} onNav={onNav} title={title} breadcrumb={['Instructor', title]}>
+      <Routes>
+        <Route index element={
+          <InstructorHome
+            onRegistrar={id => navigate(`${BASE}/sesiones/nueva/${id}`)}
+            onOpenSesion={id => navigate(`${BASE}/sesiones/${id}`)}
+            onOpenFicha={openFicha}
+            onVerFichas={() => navigate(`${BASE}/fichas`)}
+          />
+        }/>
+
+        <Route path="fichas/*" element={
+          <InstFichas
+            onRegistrar={id => navigate(`${BASE}/sesiones/nueva/${id}`)}
+            onOpenSesion={id => navigate(`${BASE}/sesiones/${id}`)}
+            onReporte={openReporte}
+          />
+        }/>
+
+        <Route path="sesiones" element={<Outlet/>}>
+          <Route index element={
+            <InstSesionesList onOpen={id => navigate(String(id))} onNueva={() => navigate('nueva/0')}/>
+          }/>
+          <Route path="nueva/:asignacionId" element={<SesionWizardRoute/>}/>
+          <Route path=":sesionId" element={<InstSesionDetalleRoute/>}/>
+        </Route>
+
+        <Route path="etapa-productiva" element={<Outlet/>}>
+          <Route index element={
+            <EtapaProductivaList onOpen={id => navigate(String(id))} onNuevo={() => navigate('nueva')}/>
+          }/>
+          <Route path="nueva" element={
+            <NuevoRegistro onCancel={() => navigate('..')} onCreated={id => navigate(`../${id}`, { replace: true })}/>
+          }/>
+          <Route path=":etapaId" element={<EtapaProductivaDetalleRoute/>}/>
+        </Route>
+
+        <Route path="reportes" element={<InstReportesRoute/>}/>
+
+        <Route path="*" element={<Navigate to={BASE} replace/>}/>
+      </Routes>
     </Shell>
   )
+}
+
+function SesionWizardRoute() {
+  const { asignacionId } = useParams()
+  const navigate = useNavigate()
+  return (
+    <SesionWizard
+      asignacionId={Number(asignacionId)}
+      onCancel={() => navigate('..')}
+      onSaved={id => navigate(`../${id}`, { replace: true, state: { justSaved: true } })}
+    />
+  )
+}
+
+function InstSesionDetalleRoute() {
+  const { sesionId } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const justSaved = !!(location.state as { justSaved?: boolean } | null)?.justSaved
+  return <InstSesionDetalle sesionId={Number(sesionId)} justSaved={justSaved} onBack={() => navigate('..')}/>
+}
+
+function EtapaProductivaDetalleRoute() {
+  const { etapaId } = useParams()
+  const navigate = useNavigate()
+  return <EtapaProductivaDetalle etapaId={Number(etapaId)} onBack={() => navigate('..')}/>
+}
+
+function InstReportesRoute() {
+  const [params] = useSearchParams()
+  const ficha = params.get('ficha')
+  return <InstReportes initialFichaId={ficha ? Number(ficha) : undefined}/>
 }

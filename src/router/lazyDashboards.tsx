@@ -5,7 +5,3 @@ import { lazy } from 'react'
 export const SuperAdminDashboard  = lazy(() => import('../screens/superadmin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })))
 export const CoordinadorDashboard = lazy(() => import('../screens/coordinador/CoordinadorDashboard').then(m => ({ default: m.CoordinadorDashboard })))
 export const InstructorDashboard  = lazy(() => import('../screens/instructor/InstructorDashboard').then(m => ({ default: m.InstructorDashboard })))
-
-// Módulo en planeación: preview público (sin autenticación) del formato de
-// Etapa Productiva. Vive fuera de los dashboards por rol a propósito.
-export const EtapaProductivaPreview = lazy(() => import('../screens/productiva/EtapaProductivaPreview').then(m => ({ default: m.EtapaProductivaPreview })))

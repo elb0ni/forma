@@ -1,254 +1,237 @@
-// ─── Tipos: Formato de Planeación, Seguimiento y Evaluación de Etapa Productiva ───
-// Basado en GFPI-F-023 V06. Prototipo de planeación: los datos viven solo en el
-// navegador (no hay backend todavía), por eso todo el módulo trabaja con estos
-// tipos y arreglos en memoria en vez de respuestas de /lib/api.
+// ─── Tipos: Etapa Productiva (GFPI-F-023 V06) ───────────────────────────────────
+// Alineados 1:1 con las respuestas reales de forma_server (aprendiz,
+// etapa-productiva, seguimiento-productivo). Los nombres de campo son
+// snake_case a propósito, igual que el resto de tipos del frontend
+// (src/types.ts, screens/shared/types.ts): no hay generación automática desde
+// el backend, así que el contrato se mantiene a mano.
 
-export type Modalidad = 'PRESENCIAL' | 'VIRTUAL'
-export type ModalidadFormacion = 'PRESENCIAL' | 'VIRTUAL' | 'A_DISTANCIA'
-export type Valoracion = 'SATISFACTORIO' | 'POR_MEJORAR' | null
+export type TipoDocumento = 'CC' | 'CE' | 'TI' | 'PP'
+export type EstadoFormacionAprendiz =
+  | 'EN_LECTIVA' | 'EN_PRODUCTIVA' | 'APLAZADO' | 'RETIRADO' | 'CERTIFICADO' | 'NO_CERTIFICADO'
+
+export interface Aprendiz {
+  id: number
+  ficha_id: number
+  tipo_documento: TipoDocumento
+  numero_documento: string
+  nombre_completo: string
+  email: string | null
+  telefono: string | null
+  estado_formacion: EstadoFormacionAprendiz
+}
+
+export type ModalidadEtapaProductiva =
+  | 'CONTRATO_APRENDIZAJE' | 'VINCULO_LABORAL' | 'MONITORIA' | 'UNIDAD_PRODUCTIVA'
+export type EstadoEtapaProductiva =
+  | 'PENDIENTE_INICIO' | 'EN_EJECUCION' | 'SUSPENDIDA' | 'APLAZADA' | 'TERMINADA' | 'CANCELADA'
+export type ResultadoFinal = 'APROBADO' | 'NO_APROBADO'
+
+export const MODALIDAD_LABEL: Record<ModalidadEtapaProductiva, string> = {
+  CONTRATO_APRENDIZAJE: 'Contrato de aprendizaje',
+  VINCULO_LABORAL: 'Vínculo laboral',
+  MONITORIA: 'Monitoría',
+  UNIDAD_PRODUCTIVA: 'Unidad productiva',
+}
+
+// Modalidades que sí tienen un ente co-formador (empresa/jefe inmediato) —
+// en MONITORIA/UNIDAD_PRODUCTIVA esos campos suelen quedar vacíos.
+export const MODALIDAD_TIENE_EMPRESA: Record<ModalidadEtapaProductiva, boolean> = {
+  CONTRATO_APRENDIZAJE: true,
+  VINCULO_LABORAL: true,
+  MONITORIA: false,
+  UNIDAD_PRODUCTIVA: false,
+}
+
+export interface EtapaProductiva {
+  id: number
+  aprendiz_id: number
+  instructor_id: string
+  modalidad: ModalidadEtapaProductiva
+  empresa_nombre: string | null
+  empresa_nit: string | null
+  empresa_direccion: string | null
+  empresa_lat: number | null
+  empresa_lng: number | null
+  jefe_inmediato_nombre: string | null
+  jefe_inmediato_telefono: string | null
+  jefe_inmediato_email: string | null
+  jefe_inmediato_cargo: string | null
+  fecha_inicio: string
+  fecha_fin_estimada: string
+  fecha_fin_real: string | null
+  estado: EstadoEtapaProductiva
+  resultado_final: ResultadoFinal | null
+  // Vienen ya resueltos por el join del backend (findAll/findOne)
+  aprendiz_nombre?: string
+  aprendiz_documento?: string
+  instructor_nombre?: string
+  // Último snapshot semanal de SofiaPlus para este aprendiz (solo en el
+  // listado, vía LEFT JOIN) -- permite que la lista distinga una etapa
+  // TERMINADA con juicio ya confirmado de una que aún no lo refleja.
+  ra_sin_evaluar?: number | null
+}
+
+export type TipoMomento = 'PLANEACION' | 'SEGUIMIENTO' | 'EVALUACION'
+export type TipoSeguimiento = 'PRESENCIAL' | 'VIRTUAL' | 'TELEFONICA'
+export type Concepto = 'FAVORABLE' | 'NO_FAVORABLE' | 'PENDIENTE'
+export type ValorFactor = 'SATISFACTORIO' | 'POR_MEJORAR'
 
 export interface FactorItem {
-  clave: string
+  variable: string
   label: string
-  valoracion: Valoracion
-  observaciones: string
+  valor: ValorFactor | null
+  observacion: string
 }
 
 // Las 8 variables técnicas y 5 actitudinales/comportamentales son fijas en el
 // formato (se repiten idénticas en Momento 2, Momento 3 y el Anexo).
-export const FACTORES_TECNICOS: { clave: string; label: string }[] = [
-  { clave: 'aplicacion_conocimiento', label: 'Aplicación de conocimiento' },
-  { clave: 'mejora_continua',         label: 'Mejora continua' },
-  { clave: 'fortalecimiento_ocup',    label: 'Fortalecimiento ocupacional' },
-  { clave: 'oportunidad_calidad',     label: 'Oportunidad y calidad' },
-  { clave: 'responsabilidad_amb',     label: 'Responsabilidad ambiental' },
-  { clave: 'administracion_recursos', label: 'Administración de recursos' },
-  { clave: 'seguridad_salud',         label: 'Seguridad y salud en el trabajo' },
-  { clave: 'documentacion_etapa',     label: 'Documentación etapa productiva' },
+export const FACTORES_TECNICOS: { variable: string; label: string }[] = [
+  { variable: 'aplicacion_conocimiento', label: 'Aplicación de conocimiento' },
+  { variable: 'mejora_continua',         label: 'Mejora continua' },
+  { variable: 'fortalecimiento_ocup',    label: 'Fortalecimiento ocupacional' },
+  { variable: 'oportunidad_calidad',     label: 'Oportunidad y calidad' },
+  { variable: 'responsabilidad_amb',     label: 'Responsabilidad ambiental' },
+  { variable: 'administracion_recursos', label: 'Administración de recursos' },
+  { variable: 'seguridad_salud',         label: 'Seguridad y salud en el trabajo' },
+  { variable: 'documentacion_etapa',     label: 'Documentación etapa productiva' },
 ]
 
-export const FACTORES_ACTITUDINALES: { clave: string; label: string }[] = [
-  { clave: 'relaciones_interp', label: 'Relaciones interpersonales' },
-  { clave: 'trabajo_equipo',    label: 'Trabajo en equipo' },
-  { clave: 'solucion_problemas', label: 'Solución de problemas' },
-  { clave: 'cumplimiento',      label: 'Cumplimiento' },
-  { clave: 'organizacion',      label: 'Organización' },
+export const FACTORES_ACTITUDINALES: { variable: string; label: string }[] = [
+  { variable: 'relaciones_interp',  label: 'Relaciones interpersonales' },
+  { variable: 'trabajo_equipo',     label: 'Trabajo en equipo' },
+  { variable: 'solucion_problemas', label: 'Solución de problemas' },
+  { variable: 'cumplimiento',       label: 'Cumplimiento' },
+  { variable: 'organizacion',       label: 'Organización' },
 ]
 
-export function nuevosFactores(base: { clave: string; label: string }[]): FactorItem[] {
-  return base.map(f => ({ ...f, valoracion: null, observaciones: '' }))
+export function nuevosFactores(base: { variable: string; label: string }[]): FactorItem[] {
+  return base.map(f => ({ ...f, valor: null, observacion: '' }))
 }
 
-// ─── Información general ──────────────────────────────────────────────────────
-
-export interface DatosAprendiz {
-  nombreCompleto:      string
-  tipoDocumento:        string
-  numeroIdentificacion: string
-  contactoTelefonico:   string
-  direccion:            string
-  correoPersonal:       string
-  correoInstitucional:  string
-  alternativaEtapaProductiva: string
-  fechaRegistroSofiaPlus: string
+// Reconstruye los FactorItem (con label) a partir del valoracion_json que
+// devuelve el backend ({tecnicos:[{variable,valor,observacion}], ...}) — si no
+// hay grilla guardada todavía, arranca en blanco.
+export function factoresDesde(
+  base: { variable: string; label: string }[],
+  guardados: { variable: string; valor: ValorFactor; observacion?: string | null }[] | undefined,
+): FactorItem[] {
+  return base.map(f => {
+    const g = guardados?.find(x => x.variable === f.variable)
+    return { ...f, valor: g?.valor ?? null, observacion: g?.observacion ?? '' }
+  })
 }
 
-export interface DatosInstructorSeguimiento {
-  nombre:              string
-  contactoTelefonico:  string
-  correoInstitucional: string
+// Payload que espera el backend (sin "label", que es solo de UI).
+export function factoresAJson(items: FactorItem[]) {
+  return items.map(({ variable, valor, observacion }) => ({ variable, valor, observacion: observacion || undefined }))
 }
 
-export interface DatosEnteCoformador {
-  nombreEmpresa:          string
-  direccion:              string
-  nit:                    string
-  correoElectronico:      string
-  nombreJefeInmediato:    string
-  cargo:                  string
-  contactoTelefonico:     string
-  nombreOtroContacto:     string
-  telefonoInstitucional:  string
+export interface PlanTrabajo {
+  competencias: string[]
+  resultados_aprendizaje: string[]
+  actividades: string[]
+  evidencias: string[]
 }
 
-export interface PersonaSituacionDiscapacidad {
-  aplica:              boolean
-  nombreAsiste:        string
-  tipoAsistencia:      string
-  contactoTelefonico:  string
+export function planTrabajoVacio(): PlanTrabajo {
+  return { competencias: [], resultados_aprendizaje: [], actividades: [], evidencias: [] }
 }
 
-export interface InfoGeneral {
-  regional:              string
-  centroFormacion:       string
-  nivelFormativo:        string
-  programaNombre:        string
-  programaCodigo:        string
-  numeroFicha:           string
-  modalidadFormacion:    ModalidadFormacion
-  estrategiaFormativa:   string
-  fechaFinEtapaLectiva:  string
-  aprendiz:              DatosAprendiz
-  instructorSeguimiento: DatosInstructorSeguimiento
-  enteCoformador:        DatosEnteCoformador
-  discapacidad:          PersonaSituacionDiscapacidad
+// El formato pide texto libre; en la UI se edita como textarea (una idea por
+// línea) y se convierte a/desde el arreglo que persiste el backend.
+export function lineasATexto(v: string[] | undefined): string { return (v ?? []).join('\n') }
+export function textoALineas(v: string): string[] { return v.split('\n').map(s => s.trim()).filter(Boolean) }
+
+export interface SeguimientoProductivo {
+  id: number
+  etapa_productiva_id: number
+  numero_seguimiento: number
+  tipo_momento: TipoMomento
+  tipo_seguimiento: TipoSeguimiento
+  fecha_programada: string | null
+  fecha_realizada: string | null
+  concepto: Concepto
+  valoracion_json: { tecnicos: { variable: string; valor: ValorFactor; observacion?: string | null }[]; actitudinales: { variable: string; valor: ValorFactor; observacion?: string | null }[] } | null
+  plan_trabajo: PlanTrabajo | null
+  fecha_afiliacion_arl: string | null
+  numero_poliza_arl: string | null
+  horario: string | null
+  enlace_grabacion: string | null
+  motivo_extraordinario: string | null
+  observaciones_instructor: string | null
+  observaciones_aprendiz: string | null
+  observaciones_coformador: string | null
+  plan_mejoramiento: string | null
+  retro_coformador: string | null
+  retro_instructor: string | null
+  retro_aprendiz: string | null
+  ubicacion_lat: number | null
+  ubicacion_lng: number | null
+  ubicacion_precision_m: number | null
+  distancia_empresa_m: number | null
+  ubicacion_alerta: boolean
+  firma_instructor_ruta: string | null
+  firma_jefe_ruta: string | null
+  firma_aprendiz_ruta: string | null
+  firmado_at: string | null
 }
 
-// ─── Momento 1 · Planeación (única vez) ───────────────────────────────────────
+// ─── Instructor de práctica por ficha (uno solo para toda la ficha) ────────────
+// A diferencia de la etapa lectiva (instructor por competencia vía
+// `asignacion`), en etapa productiva un único instructor hace seguimiento a
+// todos los aprendices de la ficha. Es la fuente de la que se deriva
+// etapa_productiva.instructor_id — no se elige por aprendiz individual.
 
-export interface Momento1Planeacion {
-  completado:            boolean
-  fechaInicio:           string
-  fechaFin:              string
-  fechaAfiliacionArl:    string
-  numeroPolizaArl:       string
-  horario:               string
-  enlaceGrabacion:       string
-  competenciasDesarrollar: string
-  resultadosAprendizaje:   string
-  actividadesDesarrollar:  string
-  evidenciasAprendizaje:   string
-  observacionesAdicionales: string
-  firmaAprendiz:          boolean
-  firmaInstructor:        boolean
-  firmaEnteCoformador:    boolean
-  ciudad:                string
-  fechaDiligenciamiento: string
-  modalidadDiligenciamiento: Modalidad
+export type EstadoAsignacionPractica = 'ACTIVA' | 'FINALIZADA'
+
+export interface AsignacionPractica {
+  id: number
+  ficha_id: number
+  instructor_id: string
+  fecha_inicio: string
+  fecha_fin: string | null
+  estado: EstadoAsignacionPractica
+  instructor_nombre?: string
 }
 
-// ─── Momento 2 · Seguimiento (se repite durante la ejecución) ────────────────
+// ─── Estado calculado (Caso 1-4), lo resuelve el backend en GET /aprendices/:id/estado ─
 
-export interface SeguimientoMomento2 {
-  id:                       number
-  fecha:                    string
-  modalidad:                Modalidad
-  enlaceGrabacion:          string
-  factoresTecnicos:         FactorItem[]
-  factoresActitudinales:    FactorItem[]
-  observacionesInstructor:  string
-  observacionesAprendiz:    string
-  observacionesEnteCoformador: string
-  firmaAprendiz:            boolean
-  firmaInstructor:          boolean
-  firmaEnteCoformador:      boolean
-  ciudad:                   string
-  fechaDiligenciamiento:    string
+export type EstadoCalculado = 'SIN_ALTERNATIVA' | 'EN_CURSO' | 'TERMINADA_SIN_JUICIO' | 'CONCLUIDA'
+
+export interface EstadoAprendiz {
+  aprendiz_id: number
+  caso: 1 | 2 | 3 | 4
+  estado: EstadoCalculado
+  etapa_productiva: { id: number; estado: EstadoEtapaProductiva; resultado_final: ResultadoFinal | null } | null
+  avance_juicios: { ra_sin_evaluar: number; estado_aprendiz: string; fecha_reporte: string } | null
 }
 
-// ─── Momento 3 · Evaluación (única vez, al finalizar) ────────────────────────
-
-export type Juicio = 'APROBADO' | 'NO_APROBADO' | null
-
-export interface Momento3Evaluacion {
-  completado:            boolean
-  fechaInicio:           string
-  fechaFin:              string
-  numeroVisitas:         number
-  modalidad:             Modalidad
-  enlaceGrabacion:       string
-  factoresTecnicos:      FactorItem[]
-  factoresActitudinales: FactorItem[]
-  retroEnteProceso:      string
-  retroEnteDesempeno:    string
-  retroInstructorProceso:   string
-  retroInstructorDesempeno: string
-  retroAprendizProceso:     string
-  retroAprendizDesempeno:   string
-  juicio:                Juicio
-  firmaAprendiz:         boolean
-  firmaInstructor:       boolean
-  firmaEnteCoformador:   boolean
-  ciudad:                string
-  fechaDiligenciamiento: string
+export const ESTADO_META: Record<EstadoCalculado, { label: string; tone: 'warn' | 'accent' | 'ok' | 'err' }> = {
+  SIN_ALTERNATIVA:      { label: 'Sin alternativa escogida', tone: 'warn' },
+  EN_CURSO:             { label: 'En curso',                 tone: 'accent' },
+  TERMINADA_SIN_JUICIO: { label: 'Terminada · falta juicio Sofia', tone: 'warn' },
+  CONCLUIDA:            { label: 'Concluida',                tone: 'ok' },
 }
 
-// ─── Anexo · Seguimiento extraordinario (opcional, repetible) ────────────────
+export type CasoTono = 'EN_CURSO' | 'SIN_JUICIO' | 'APROBADO' | 'NO_APROBADO' | 'CANCELADA' | 'SUSPENDIDA' | 'APLAZADA'
 
-export interface SeguimientoExtraordinario {
-  id:                         number
-  fechaSeguimientoAnterior:   string
-  fechaExtraordinario:        string
-  modalidad:                  Modalidad
-  enlaceGrabacion:            string
-  motivo:                     string
-  factoresTecnicos:           FactorItem[]
-  factoresActitudinales:      FactorItem[]
-  compromisosInstructor:      string
-  compromisosAprendiz:        string
-  compromisosEnteCoformador:  string
-  firmaAprendiz:              boolean
-  firmaInstructor:            boolean
-  firmaEnteCoformador:        boolean
-  ciudad:                     string
-  fechaDiligenciamiento:      string
-}
-
-// ─── Registro completo de un aprendiz en etapa productiva ───────────────────
-
-export type EstadoEtapaProductiva =
-  | 'PLANEACION_PENDIENTE' | 'EN_SEGUIMIENTO' | 'APROBADO' | 'NO_APROBADO'
-
-export interface EtapaProductivaRecord {
-  id:       number
-  info:     InfoGeneral
-  momento1: Momento1Planeacion
-  momento2: SeguimientoMomento2[]
-  momento3: Momento3Evaluacion
-  anexos:   SeguimientoExtraordinario[]
-}
-
-export function estadoDe(r: EtapaProductivaRecord): EstadoEtapaProductiva {
-  if (r.momento3.juicio === 'APROBADO')    return 'APROBADO'
-  if (r.momento3.juicio === 'NO_APROBADO') return 'NO_APROBADO'
-  if (!r.momento1.completado)              return 'PLANEACION_PENDIENTE'
-  return 'EN_SEGUIMIENTO'
-}
-
-// Registro en blanco para "Nuevo registro" en la lista: todo queda vacío para
-// que el instructor lo diligencie desde cero.
-export function nuevoRegistro(id: number): EtapaProductivaRecord {
-  return {
-    id,
-    info: {
-      regional: '', centroFormacion: '', nivelFormativo: '',
-      programaNombre: '', programaCodigo: '', numeroFicha: '',
-      modalidadFormacion: 'PRESENCIAL', estrategiaFormativa: '', fechaFinEtapaLectiva: '',
-      aprendiz: {
-        nombreCompleto: '', tipoDocumento: 'CC', numeroIdentificacion: '', contactoTelefonico: '',
-        direccion: '', correoPersonal: '', correoInstitucional: '',
-        alternativaEtapaProductiva: '', fechaRegistroSofiaPlus: '',
-      },
-      instructorSeguimiento: { nombre: '', contactoTelefonico: '', correoInstitucional: '' },
-      enteCoformador: {
-        nombreEmpresa: '', direccion: '', nit: '', correoElectronico: '',
-        nombreJefeInmediato: '', cargo: '', contactoTelefonico: '', nombreOtroContacto: '', telefonoInstitucional: '',
-      },
-      discapacidad: { aplica: false, nombreAsiste: '', tipoAsistencia: '', contactoTelefonico: '' },
-    },
-    momento1: {
-      completado: false,
-      fechaInicio: '', fechaFin: '', fechaAfiliacionArl: '', numeroPolizaArl: '',
-      horario: '', enlaceGrabacion: '',
-      competenciasDesarrollar: '', resultadosAprendizaje: '', actividadesDesarrollar: '',
-      evidenciasAprendizaje: '', observacionesAdicionales: '',
-      firmaAprendiz: false, firmaInstructor: false, firmaEnteCoformador: false,
-      ciudad: '', fechaDiligenciamiento: '', modalidadDiligenciamiento: 'PRESENCIAL',
-    },
-    momento2: [],
-    momento3: {
-      completado: false,
-      fechaInicio: '', fechaFin: '', numeroVisitas: 0,
-      modalidad: 'PRESENCIAL', enlaceGrabacion: '',
-      factoresTecnicos: nuevosFactores(FACTORES_TECNICOS),
-      factoresActitudinales: nuevosFactores(FACTORES_ACTITUDINALES),
-      retroEnteProceso: '', retroEnteDesempeno: '',
-      retroInstructorProceso: '', retroInstructorDesempeno: '',
-      retroAprendizProceso: '', retroAprendizDesempeno: '',
-      juicio: null,
-      firmaAprendiz: false, firmaInstructor: false, firmaEnteCoformador: false,
-      ciudad: '', fechaDiligenciamiento: '',
-    },
-    anexos: [],
+// Deriva el badge de la lista directo de la fila de etapa_productiva (ya
+// trae ra_sin_evaluar vía LEFT JOIN, ver etapa-productiva.service.ts), por
+// eso puede distinguir "terminada y confirmada por Sofia" de "terminada pero
+// Sofia todavía no lo refleja" sin pedir /estado por cada fila.
+export function tonoEtapa(e: EtapaProductiva): { label: string; tone: 'warn' | 'accent' | 'ok' | 'err'; caso: CasoTono } {
+  if (e.estado === 'TERMINADA') {
+    // Mismo criterio que aprendiz.service.ts::getEstado en el backend: sin
+    // snapshot de SofiaPlus, o con el juicio todavía pendiente ahí, cuenta
+    // como no confirmado -- aunque en FORMA ya se haya evaluado.
+    const sinConfirmarSofia = e.ra_sin_evaluar == null || e.ra_sin_evaluar > 0
+    if (sinConfirmarSofia) return { label: 'Terminada · falta juicio Sofia', tone: 'warn', caso: 'SIN_JUICIO' }
+    if (e.resultado_final === 'APROBADO') return { label: 'Aprobado', tone: 'ok', caso: 'APROBADO' }
+    if (e.resultado_final === 'NO_APROBADO') return { label: 'No aprobado', tone: 'err', caso: 'NO_APROBADO' }
   }
+  if (e.estado === 'CANCELADA') return { label: 'Cancelada', tone: 'err', caso: 'CANCELADA' }
+  if (e.estado === 'SUSPENDIDA' || e.estado === 'APLAZADA') {
+    return { label: e.estado === 'SUSPENDIDA' ? 'Suspendida' : 'Aplazada', tone: 'warn', caso: e.estado }
+  }
+  return { label: 'En curso', tone: 'accent', caso: 'EN_CURSO' }
 }

@@ -44,8 +44,18 @@ const NAV: Record<UserRole, NavItem[]> = {
     { id: 'inst-home', label: 'Inicio', icon: 'home' },
     { id: 'inst-fichas', label: 'Mis fichas', icon: 'folder' },
     { id: 'inst-sesiones', label: 'Sesiones', icon: 'list' },
+    { id: 'inst-etapa-productiva', label: 'Etapa productiva', icon: 'briefcase' },
     { id: 'inst-reportes', label: 'Reportes', icon: 'trend' },
   ],
+}
+
+// Iniciales del centro para el badge del sidebar (ej. "Centro Nacional Colombo
+// Alemán" -> "CN"); "CT" genérico solo si el usuario no tiene centro asignado.
+function centroSigla(nombre?: string): string {
+  if (!nombre) return 'CT'
+  const palabras = nombre.split(/\s+/).filter(Boolean)
+  if (palabras.length === 1) return palabras[0].slice(0, 2).toUpperCase()
+  return (palabras[0][0] + palabras[1][0]).toUpperCase()
 }
 
 const ROL_LABEL: Record<UserRole, string> = {
@@ -82,10 +92,10 @@ function Sidebar({ current, onNav }: SidebarProps) {
           </div>
         </div>
 
-        {/* Centro (placeholder) */}
+        {/* Centro */}
         <div className="sidebar__centro">
           <div className="sidebar__centro-inner">
-            <div className="sidebar__centro-badge">CT</div>
+            <div className="sidebar__centro-badge">{centroSigla(user.centro_formacion)}</div>
             <div className="sidebar__centro-info">
               <div className="sidebar__centro-name">
                 {user.centro_formacion || 'Centro de formación'}
