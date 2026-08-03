@@ -502,15 +502,18 @@ export function FichaDetalle({ id, onBack, onEditar }: {
 // tanto en el dashboard de coordinador como en el de super admin, y la
 // navegación relativa (navigate(String(id)) / navigate('..')) funciona igual
 // en ambos casos sin que el componente necesite conocer su ruta base.
-export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
+export function FichasAdmin({ scope, onDetailChange, onDigitalizar, initialFichaId }: {
   scope?: { coordinacionId: number; centroId: number }
   onDetailChange?: (inDetail: boolean) => void
   onDigitalizar?: () => void
+  initialFichaId?: number
 } = {}) {
   "use no memo"
   const navigate = useNavigate()
   const { fichaId } = useParams()
-  const detalleId = fichaId != null ? Number(fichaId) : null
+  // Foco inicial (p. ej. desde el dashboard o alertas), independiente de la ruta.
+  const [focusId, setFocusId] = useState<number | null>(initialFichaId ?? null)
+  const detalleId = fichaId != null ? Number(fichaId) : focusId
   const [estadoFilt, setEstadoFilt] = useState<EstadoFilt>('')
   const [etapaFilt,  setEtapaFilt]  = useState<EtapaFilt>('')
   const [fechaCampo, setFechaCampo] = useState<FechaCampo>('fecha_inicio')
@@ -559,7 +562,7 @@ export function FichasAdmin({ scope, onDetailChange, onDigitalizar }: {
     return (
       <FichaDetalle
         id={detalleId}
-        onBack={() => navigate('..')}
+        onBack={() => (fichaId != null ? navigate('..') : setFocusId(null))}
         onEditar={ficha => setFormFicha(ficha)}
       />
     )
