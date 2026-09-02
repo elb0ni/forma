@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Ic, Btn, Card, Pager, DigBadge } from '../../components/ui'
+import { Ic, Btn, Card, Pager } from '../../components/ui'
 import type { ProgramaListItem } from '../../types'
 import api from '../../lib/api'
-import { ProgramaDetalleView } from '../shared/ProgramaDetalleView'
 import '../shared/ProgramasFormacion.css'
 
 const PROG_PAGE_SIZE = 10
@@ -39,8 +38,7 @@ function nivelColor(nivel: string) {
 
 const TABLE_WIDTHS = [
   ['75%', '14px'], ['64px', '14px'], ['40px', '14px'],
-  ['28px', '14px'], ['28px', '14px'], ['24px', '14px'],
-  ['28px', '14px'], ['28px', '14px'], ['72px', '22px'],
+  ['48px', '14px'], ['48px', '14px'], ['64px', '14px'],
 ]
 
 function SkeletonTableRow({ i }: { i: number }) {
@@ -51,7 +49,7 @@ function SkeletonTableRow({ i }: { i: number }) {
           <div className="skeleton" style={{
             width: col === 0 ? `${55 + ((i + col) % 4) * 10}%` : w,
             height: h,
-            borderRadius: col === 8 ? 100 : 5,
+            borderRadius: 5,
             animationDelay: `${i * 60 + col * 15}ms`,
           }}/>
         </td>
@@ -60,36 +58,32 @@ function SkeletonTableRow({ i }: { i: number }) {
   )
 }
 
-// ─── Vista: lista de programas ────────────────────────────────────────────────
+// ─── Vista: catálogo de programas (solo lectura) ─────────────────────────────
+// El catálogo de programas es estructural (una ficha requiere un programa),
+// pero ya no se crea/edita desde este front -- FORMA dejó de cubrir el diseño
+// curricular, así que solo se lista para elegirlo al armar una ficha.
 
 type ListState =
   | { status: 'loading' }
   | { status: 'ok';    data: ProgramaListItem[] }
   | { status: 'error'; msg: string }
 
-type DigFilt = 'todos' | 'digitalizados' | 'sin_digitalizar'
-
-type ProgSortKey = 'nombre' | 'codigo' | 'recientes' | 'digitalizados_primero' | 'pendientes_primero' | 'horas'
+type ProgSortKey = 'nombre' | 'codigo' | 'recientes' | 'horas'
 
 const PROG_SORT_LABEL: Record<ProgSortKey, string> = {
-  nombre:                'Nombre (A–Z)',
-  codigo:                'Código',
-  recientes:             'Más recientes',
-  digitalizados_primero: 'Digitalizados primero',
-  pendientes_primero:    'Pendientes primero',
-  horas:                 'Más horas',
+  nombre:    'Nombre (A–Z)',
+  codigo:    'Código',
+  recientes: 'Más recientes',
+  horas:     'Más horas',
 }
 
-function ProgramasList({ onImportar, refreshKey }: { onImportar: () => void; refreshKey: number }) {
-  const [state,      setState]      = useState<ListState>({ status: 'loading' })
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [digFilt,    setDigFilt]    = useState<DigFilt>('todos')
-  const [search,     setSearch]     = useState('')
-  const [sort,       setSort]       = useState<ProgSortKey>('digitalizados_primero')
-  const [page,       setPage]       = useState(0)
+export function ProgramasFormacion() {
+  const [state,  setState]  = useState<ListState>({ status: 'loading' })
+  const [search, setSearch] = useState('')
+  const [sort,   setSort]   = useState<ProgSortKey>('nombre')
+  const [page,   setPage]   = useState(0)
 
   useEffect(() => {
-    setState({ status: 'loading' })
     api.get<ProgramaListItem[]>('/programas')
       .then(({ data }) => setState({ status: 'ok', data }))
       .catch(err => {
@@ -98,95 +92,42 @@ function ProgramasList({ onImportar, refreshKey }: { onImportar: () => void; ref
           : 'No se pudo conectar con el servidor'
         setState({ status: 'error', msg: String(msg) })
       })
-  }, [refreshKey])
+  }, [])
 
-  // Volver a la primera página cuando cambian filtros/búsqueda/orden
-  useEffect(() => { setPage(0) }, [digFilt, search, sort])
+  // Volver a la primera página cuando cambian búsqueda/orden
+  useEffect(() => { setPage(0) }, [search, sort])
 
-  const allData     = state.status === 'ok' ? state.data : []
-  const digitCount  = allData.filter(p => p.tiene_disenio_curricular).length
-  const sinCount    = allData.filter(p => !p.tiene_disenio_curricular).length
+  const allData = state.status === 'ok' ? state.data : []
 
   const q = search.trim().toLowerCase()
   const filtered = allData
-    .filter(p => {
-      if (digFilt === 'digitalizados'   && !p.tiene_disenio_curricular) return false
-      if (digFilt === 'sin_digitalizar' &&  p.tiene_disenio_curricular) return false
-      if (q && !p.nombre.toLowerCase().includes(q) && !p.codigo.toLowerCase().includes(q)) return false
-      return true
-    })
+    .filter(p => !q || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q))
     .sort((a, b) => {
       switch (sort) {
-        case 'codigo':                return a.codigo.localeCompare(b.codigo, 'es')
-        case 'recientes':             return b.created_at.localeCompare(a.created_at)
-        case 'digitalizados_primero': return (Number(!!b.tiene_disenio_curricular) - Number(!!a.tiene_disenio_curricular)) || a.nombre.localeCompare(b.nombre, 'es')
-        case 'pendientes_primero':    return (Number(!!a.tiene_disenio_curricular) - Number(!!b.tiene_disenio_curricular)) || a.nombre.localeCompare(b.nombre, 'es')
-        case 'horas':                 return b.horas_lectivas - a.horas_lectivas
-        default:                      return a.nombre.localeCompare(b.nombre, 'es')
+        case 'codigo':    return a.codigo.localeCompare(b.codigo, 'es')
+        case 'recientes': return b.created_at.localeCompare(a.created_at)
+        case 'horas':     return b.horas_lectivas - a.horas_lectivas
+        default:          return a.nombre.localeCompare(b.nombre, 'es')
       }
     })
-
-  const CHIPS: { key: DigFilt; label: string; count: number }[] = [
-    { key: 'todos',          label: 'Todos',           count: allData.length },
-    { key: 'digitalizados',  label: 'Digitalizados',   count: digitCount     },
-    { key: 'sin_digitalizar',label: 'Sin digitalizar', count: sinCount       },
-  ]
 
   const pageCount = Math.ceil(filtered.length / PROG_PAGE_SIZE)
   const curPage   = Math.min(page, Math.max(0, pageCount - 1))
   const pageItems = filtered.slice(curPage * PROG_PAGE_SIZE, (curPage + 1) * PROG_PAGE_SIZE)
-
-  if (selectedId !== null) {
-    return <ProgramaDetalleView id={selectedId} onBack={() => setSelectedId(null)} onDigitalizar={onImportar}/>
-  }
 
   return (
     <div>
       <div className="programas-header">
         <div>
           <h2 className="programas-header__title">Programas de formación</h2>
-          <p className="programas-header__sub">Diseños curriculares cargados en el sistema.</p>
+          <p className="programas-header__sub">Catálogo regional — se usa al crear o editar una ficha.</p>
         </div>
-        <Btn variant="accent" icon="upload" onClick={onImportar}>
-          Importar programa
-        </Btn>
       </div>
 
-      {/* Filtros: chips + búsqueda + orden */}
+      {/* Búsqueda + orden */}
       {state.status === 'ok' && (
         <div className="prog-list-toolbar">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {CHIPS.map(c => {
-              const active = digFilt === c.key
-              return (
-                <button
-                  key={c.key}
-                  onClick={() => setDigFilt(c.key)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
-                    border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
-                    background: active ? '#eef2ff' : '#fff',
-                    color: active ? '#4f46e5' : '#52525b',
-                    fontSize: 12.5, fontWeight: active ? 600 : 400,
-                    transition: 'all 120ms',
-                  }}
-                >
-                  {c.label}
-                  <span style={{
-                    fontSize: 11, fontWeight: 700,
-                    fontFamily: '"JetBrains Mono", monospace',
-                    background: active ? '#c7d2fe' : '#f1f1f3',
-                    color: active ? '#4338ca' : '#71717a',
-                    padding: '1px 6px', borderRadius: 10,
-                  }}>
-                    {c.count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-
+          <div/>
           <div className="prog-list-toolbar__right">
             <div className="prog-list-search">
               <Ic n="search" s={14} className="prog-list-search__icon" style={{ color: '#a1a1aa' }}/>
@@ -222,7 +163,7 @@ function ProgramasList({ onImportar, refreshKey }: { onImportar: () => void; ref
           <table className="prog-table">
             <thead>
               <tr className="prog-table__head-row">
-                {['Programa', 'Código', 'Versión', 'Fichas', 'Comp.', 'RA', 'Conoc.', 'Crit.', 'Estado'].map(h => (
+                {['Programa', 'Código', 'Versión', 'Nivel', 'Fichas', 'Horas'].map(h => (
                   <th key={h} className="prog-table__th">{h}</th>
                 ))}
               </tr>
@@ -255,16 +196,12 @@ function ProgramasList({ onImportar, refreshKey }: { onImportar: () => void; ref
         </Card>
       )}
 
-      {/* Sin resultados para el filtro/búsqueda activos */}
+      {/* Sin resultados para la búsqueda activa */}
       {state.status === 'ok' && allData.length > 0 && filtered.length === 0 && (
         <Card>
           <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <Ic n={q ? 'search' : 'layers'} s={24} style={{ color: '#a1a1aa' }}/>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>
-              {q
-                ? `Sin resultados para "${search.trim()}"`
-                : `Sin programas ${digFilt === 'digitalizados' ? 'digitalizados' : 'sin digitalizar'}`}
-            </div>
+            <Ic n="search" s={24} style={{ color: '#a1a1aa' }}/>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>Sin resultados para "{search.trim()}"</div>
           </div>
         </Card>
       )}
@@ -277,11 +214,8 @@ function ProgramasList({ onImportar, refreshKey }: { onImportar: () => void; ref
           </div>
           <div>
             <div className="prog-empty__title">Sin programas cargados</div>
-            <div className="prog-empty__sub">
-              Importa el primer diseño curricular en PDF para comenzar el seguimiento.
-            </div>
+            <div className="prog-empty__sub">Todavía no hay programas de formación en el catálogo regional.</div>
           </div>
-          <Btn variant="accent" icon="upload" onClick={onImportar}>Importar programa</Btn>
         </Card>
       )}
 
@@ -296,56 +230,34 @@ function ProgramasList({ onImportar, refreshKey }: { onImportar: () => void; ref
                 <th className="prog-table__th">Programa</th>
                 <th className="prog-table__th">Código</th>
                 <th className="prog-table__th">Versión</th>
+                <th className="prog-table__th">Nivel</th>
                 <th className="prog-table__th prog-table__th--num">Fichas</th>
-                <th className="prog-table__th prog-table__th--num">Comp.</th>
-                <th className="prog-table__th prog-table__th--num">RA</th>
-                <th className="prog-table__th prog-table__th--num">Conoc.</th>
-                <th className="prog-table__th prog-table__th--num">Crit.</th>
-                <th className="prog-table__th">Estado</th>
+                <th className="prog-table__th prog-table__th--num">Horas</th>
               </tr>
             </thead>
             <tbody>
               {pageItems.map(p => {
-                const nc     = nivelColor(p.nivel_formacion)
-                const active = selectedId === p.id
-                const dig    = !!p.tiene_disenio_curricular
-                const horas  = p.horas_lectivas + (p.horas_productivas ?? 0)
+                const nc    = nivelColor(p.nivel_formacion)
+                const horas = p.horas_lectivas + (p.horas_productivas ?? 0)
                 return (
-                  <tr
-                    key={p.id}
-                    className="nx-row"
-                    onClick={() => setSelectedId(p.id)}
-                    style={{
-                      borderBottom: '1px solid #f1f1f3', cursor: 'pointer',
-                      background: active ? '#f5f3ff' : undefined,
-                      borderLeft: active ? '3px solid #4f46e5' : '3px solid transparent',
-                      transition: 'background 120ms',
-                    }}
-                  >
+                  <tr key={p.id} style={{ borderBottom: '1px solid #f1f1f3' }}>
                     <td className="prog-table__td">
                       <div className="prog-table__name-cell">
                         <div className="prog-table__badge">{programaShort(p.nombre)}</div>
                         <div style={{ minWidth: 0 }}>
                           <div className="prog-table__name">{p.nombre}</div>
-                          <div className="prog-table__meta">
-                            <span className="prog-table__nivel-badge" style={{ background: nc.bg, color: nc.fg }}>
-                              {p.nivel_formacion}
-                            </span>
-                            <span>{horas.toLocaleString('es-CO')} h</span>
-                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="prog-table__td"><span className="prog-code">{p.codigo}</span></td>
                     <td className="prog-table__td"><span className="prog-code">{fmtVersion(p.version)}</span></td>
-                    <td className="prog-table__td--num">{p.fichas_activas.toLocaleString('es-CO')}</td>
-                    <td className="prog-table__td--num">{dig ? p.total_competencias.toLocaleString('es-CO') : '—'}</td>
-                    <td className="prog-table__td--num">{dig ? p.total_ra.toLocaleString('es-CO') : '—'}</td>
-                    <td className="prog-table__td--num">{dig ? p.total_conocimientos.toLocaleString('es-CO') : '—'}</td>
-                    <td className="prog-table__td--num">{dig ? p.total_criterios.toLocaleString('es-CO') : '—'}</td>
                     <td className="prog-table__td">
-                      <DigBadge dig={dig}/>
+                      <span className="prog-table__nivel-badge" style={{ background: nc.bg, color: nc.fg }}>
+                        {p.nivel_formacion}
+                      </span>
                     </td>
+                    <td className="prog-table__td--num">{p.fichas_activas.toLocaleString('es-CO')}</td>
+                    <td className="prog-table__td--num">{horas.toLocaleString('es-CO')} h</td>
                   </tr>
                 )
               })}
@@ -366,10 +278,3 @@ function ProgramasList({ onImportar, refreshKey }: { onImportar: () => void; ref
     </div>
   )
 }
-
-// ─── Orquestador del flujo ────────────────────────────────────────────────────
-
-export function ProgramasFormacion({ onDigitalizar }: { onDigitalizar?: () => void }) {
-  return <ProgramasList onImportar={onDigitalizar ?? (() => {})} refreshKey={0}/>
-}
-

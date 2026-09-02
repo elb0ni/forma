@@ -17,7 +17,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             <div>
               <div className="auth-shell__brand-name">FORMA</div>
               <div className="auth-shell__brand-sub">
-                Seguimiento curricular
+                Seguimiento etapa productiva
               </div>
             </div>
           </div>
@@ -59,10 +59,10 @@ export function AuthShell({ children }: { children: ReactNode }) {
           {/* Texto inferior */}
           <div>
             <div className="auth-shell__tagline">
-              Dale forma a cada competencia.
+              Dale forma a cada etapa productiva.
             </div>
             <div className="auth-shell__sub">
-              Un sistema vivo de seguimiento curricular.
+              Un sistema vivo de seguimiento al aprendiz en práctica.
             </div>
 
             {/* Seguridad */}

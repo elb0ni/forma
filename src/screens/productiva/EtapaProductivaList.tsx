@@ -17,20 +17,29 @@ const CHIPS: { key: Filtro; label: string }[] = [
   { key: 'NO_APROBADO', label: 'No aprobadas' },
 ]
 
-export function EtapaProductivaList({ onOpen, onNuevo }: { onOpen: (etapaId: number) => void; onNuevo: () => void }) {
+// `instructorId` es opcional: por defecto muestra las etapas del propio
+// instructor logueado (uso normal, con "Nuevo registro" habilitado). Cuando
+// un coordinador/admin hace drill-down sobre OTRO instructor (ver
+// shared/InstructorDetalle.tsx) se pasa su id explícito y se oculta el CTA de
+// creación, porque el wizard de "nuevo registro" asume el contexto del
+// usuario logueado como instructor de práctica.
+export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
+  onOpen: (etapaId: number) => void; onNuevo?: () => void; instructorId?: string
+}) {
   "use no memo"
   const user = useAuthStore(s => s.user)!
+  const targetId = instructorId ?? user.id
   const [etapas, setEtapas] = useState<EtapaProductiva[] | null>(null)
   const [error, setError] = useState(false)
   const [filt, setFilt] = useState<Filtro>('TODAS')
   const [q, setQ] = useState('')
 
   function load() {
-    api.get<EtapaProductiva[]>(`/etapas-productivas?instructor_id=${user.id}`)
+    api.get<EtapaProductiva[]>(`/etapas-productivas?instructor_id=${targetId}`)
       .then(r => setEtapas(r.data))
       .catch(() => setError(true))
   }
-  useEffect(load, [user.id])
+  useEffect(load, [targetId])
 
   if (error) return <Card style={{ padding: 24 }}><CenterState icon="alert" title="No se pudieron cargar los registros" sub="Verifica la conexión con el servidor."/></Card>
   if (!etapas) return <LoadingBlock/>
@@ -57,7 +66,7 @@ export function EtapaProductivaList({ onOpen, onNuevo }: { onOpen: (etapaId: num
         <div style={{ fontSize: 13.5, color: '#52525b' }}>
           {view.length} aprendiz{view.length === 1 ? '' : 'es'} en etapa productiva
         </div>
-        <Btn variant="accent" icon="plus" onClick={onNuevo}>Nuevo registro</Btn>
+        {onNuevo && <Btn variant="accent" icon="plus" onClick={onNuevo}>Nuevo registro</Btn>}
       </div>
 
       <div className="inst-toolbar" style={{ marginTop: 14 }}>

@@ -20,22 +20,21 @@ interface NavItem {
 
 // Nav compartido por los roles de coordinación (subdirector / misional / académico)
 const COORD_NAV: NavItem[] = [
-  { id: 'coord-home',         label: 'Dashboard',    icon: 'home'   },
-  { id: 'coord-fichas',       label: 'Mis fichas',   icon: 'folder' },
-  { id: 'coord-instructores', label: 'Instructores', icon: 'users'  },
-  { id: 'coord-reportes',     label: 'Reportes',     icon: 'trend'  },
-  { id: 'coord-alertas',      label: 'Alertas',      icon: 'bell'   },
+  { id: 'coord-home',         label: 'Dashboard',              icon: 'home'   },
+  { id: 'coord-fichas',       label: 'Fichas en práctica',     icon: 'folder' },
+  { id: 'coord-instructores', label: 'Instructores de práctica', icon: 'users'  },
+  { id: 'coord-reportes',     label: 'Reportes',               icon: 'trend'  },
+  { id: 'coord-alertas',      label: 'Alertas',                icon: 'bell'   },
 ]
 
 const NAV: Record<UserRole, NavItem[]> = {
   SUPER_ADMIN: [
-    { id: 'admin-home',      label: 'Dashboard',       icon: 'home'      },
-    { id: 'admin-dig',       label: 'Digitalización',  icon: 'upload'    },
-    { id: 'admin-programas', label: 'Programas',        icon: 'layers'    },
-    { id: 'admin-fichas',    label: 'Fichas',           icon: 'briefcase' },
-    { id: 'admin-centros',   label: 'Centros',          icon: 'shield'    },
-    { id: 'admin-usuarios',  label: 'Usuarios',         icon: 'users'     },
-    { id: 'admin-reportes',  label: 'Reportes',         icon: 'trend'     },
+    { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
+    { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
+    { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
+    { id: 'admin-centros',   label: 'Centros',     icon: 'shield'    },
+    { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
+    { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
   ],
   SUBDIRECTOR:     COORD_NAV,
   COORD_MISIONAL:  COORD_NAV,
@@ -43,7 +42,6 @@ const NAV: Record<UserRole, NavItem[]> = {
   INSTRUCTOR: [
     { id: 'inst-home', label: 'Inicio', icon: 'home' },
     { id: 'inst-fichas', label: 'Mis fichas', icon: 'folder' },
-    { id: 'inst-sesiones', label: 'Sesiones', icon: 'list' },
     { id: 'inst-etapa-productiva', label: 'Etapa productiva', icon: 'briefcase' },
     { id: 'inst-reportes', label: 'Reportes', icon: 'trend' },
   ],
@@ -87,7 +85,7 @@ function Sidebar({ current, onNav }: SidebarProps) {
           <div>
             <div className="sidebar__brand-name">FORMA</div>
             <div className="sidebar__brand-sub">
-              Seguimiento curricular
+              Seguimiento etapa productiva
             </div>
           </div>
         </div>

@@ -9,8 +9,8 @@ import { CoordAlertas } from './CoordAlertas'
 
 const COORD_TITLES: Record<string, string> = {
   'coord-home':         'Dashboard',
-  'coord-fichas':       'Mis fichas',
-  'coord-instructores': 'Instructores',
+  'coord-fichas':       'Fichas en práctica',
+  'coord-instructores': 'Instructores de práctica',
   'coord-reportes':     'Reportes',
   'coord-alertas':      'Alertas',
 }

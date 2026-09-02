@@ -1,152 +1,88 @@
 import { useState, useEffect } from 'react'
-import { Ic, Card, Tag, Prog } from '../../components/ui'
+import { Ic, Card, Tag } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
-import { statusFromAvance } from '../shared/parts'
-import type { CoordDetalle, FichaRow } from '../shared/types'
+import { diasHasta } from '../shared/parts'
+import type { FichaRow } from '../shared/FichasAdmin'
 
+// Alertas de la coordinación centradas en etapa productiva: fichas cuya
+// etapa productiva cierra pronto. Antes había también "Fichas en riesgo" y
+// "Programa sin digitalizar", ambos calculados sobre avance/currículo
+// lectivo -- se retiraron junto con esa parte del producto.
 export function CoordAlertas({ onOpenFicha }: { onOpenFicha?: (id: number) => void } = {}) {
   "use no memo"
   const user = useAuthStore(s => s.user)
   const coordId = user?.coordinacion_academica_id ?? null
-  const [data, setData] = useState<CoordDetalle | null>(null)
+  const [fichas, setFichas] = useState<FichaRow[] | null>(null)
   const [error, setError] = useState(false)
 
   useEffect(() => {
     if (coordId == null) return
-    api.get<CoordDetalle>(`/coordinaciones/${coordId}/detalle`)
-      .then(r => setData(r.data))
+    api.get<FichaRow[]>(`/fichas?coordinacion_id=${coordId}`)
+      .then(r => setFichas(r.data))
       .catch(() => setError(true))
   }, [coordId])
 
   if (coordId == null) return <Center title="Sin coordinación asignada" sub="Pide a un administrador que te asigne una coordinación académica."/>
   if (error) return <Center title="No se pudieron cargar las alertas" sub="Verifica la conexión con el servidor."/>
-  if (!data) return <div style={{ padding: 40 }}><div className="skeleton" style={{ height: 18, width: 240 }}/></div>
+  if (!fichas) return <div style={{ padding: 40 }}><div className="skeleton" style={{ height: 18, width: 240 }}/></div>
 
-  const fichas = data.fichas.filter(f => f.estado === 'EN_EJECUCION')
-  const riesgo = fichas.filter(f => f.tiene_disenio_curricular && ((f.dias_restantes <= 30 && f.avance < 70) || f.avance < 40))
-    .sort((a, b) => a.avance - b.avance)
-  const cierre = fichas.filter(f => f.dias_restantes <= 30).sort((a, b) => a.dias_restantes - b.dias_restantes)
-  const sinDig = fichas.filter(f => !f.tiene_disenio_curricular)
+  const cierre = fichas
+    .filter(f => f.estado === 'EN_EJECUCION' && f.etapa_actual_teorica === 'PRACTICA')
+    .map(f => ({ f, dias: diasHasta(f.fecha_fin_productiva) }))
+    .filter((x): x is { f: FichaRow; dias: number } => x.dias != null && x.dias <= 30)
+    .sort((a, b) => a.dias - b.dias)
 
-  const vacio = riesgo.length === 0 && cierre.length === 0 && sinDig.length === 0
+  const vacio = cierre.length === 0
 
   return (
     <div style={{ maxWidth: 1000 }}>
       <div style={{ fontSize: 13.5, color: '#52525b', marginBottom: 18 }}>
-        Situaciones de tu coordinación que requieren seguimiento.
+        Fichas de tu coordinación cuya etapa productiva requiere seguimiento.
       </div>
 
       {vacio ? (
         <Card style={{ padding: 40, textAlign: 'center' }}>
           <Ic n="checkCircle" s={28} style={{ color: '#16a34a' }}/>
           <div style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0b', marginTop: 10 }}>Sin alertas</div>
-          <div style={{ fontSize: 12.5, color: '#71717a', marginTop: 4 }}>Ninguna ficha en riesgo, próxima a cerrar ni sin digitalizar.</div>
+          <div style={{ fontSize: 12.5, color: '#71717a', marginTop: 4 }}>Ninguna ficha en etapa productiva cierra en los próximos 30 días.</div>
         </Card>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Grupo
-            titulo="Fichas en riesgo"
-            sub="Avance bajo para el tiempo que llevan"
-            color="#dc2626" bg="#fef2f2" bd="#fecaca" icon="alert"
-            fichas={riesgo}
-            render={f => <RiesgoRow f={f}/>}
-            onOpenFicha={onOpenFicha}
-          />
-          <Grupo
-            titulo="Cierran pronto (≤ 30 días)"
-            sub="Fin de etapa lectiva cercano"
-            color="#c2410c" bg="#fff7ed" bd="#fed7aa" icon="clock"
-            fichas={cierre}
-            render={f => <CierreRow f={f}/>}
-            onOpenFicha={onOpenFicha}
-          />
-          <Grupo
-            titulo="Programa sin digitalizar"
-            sub="No se pueden monitorear hasta digitalizar su diseño curricular"
-            color="#a16207" bg="#fffbeb" bd="#fde68a" icon="layers"
-            fichas={sinDig}
-            render={f => <SinDigRow f={f}/>}
-          />
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: '#fff7ed', border: '1px solid #fed7aa', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Ic n="clock" s={15} style={{ color: '#c2410c' }}/>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>Cierran pronto (≤ 30 días) · {cierre.length}</div>
+              <div style={{ fontSize: 11.5, color: '#71717a' }}>Fin de etapa productiva cercano</div>
+            </div>
+          </div>
+          <Card style={{ overflow: 'hidden' }}>
+            {cierre.map(({ f, dias }, i) => (
+              <div
+                key={f.id}
+                className={onOpenFicha ? 'nx-row' : undefined}
+                onClick={() => onOpenFicha?.(f.id)}
+                style={{
+                  padding: '11px 16px', borderBottom: i < cierre.length - 1 ? '1px solid #f1f1f3' : 'none',
+                  cursor: onOpenFicha ? 'pointer' : 'default',
+                  display: 'flex', alignItems: 'center', gap: 14,
+                }}
+              >
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Tag>{f.programa_codigo}</Tag>
+                    <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#52525b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.programa_nombre}</div>
+                </div>
+                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#dc2626', width: 48, textAlign: 'right' }}>{dias}d</span>
+              </div>
+            ))}
+          </Card>
         </div>
       )}
-    </div>
-  )
-}
-
-function Grupo({ titulo, sub, color, bg, bd, icon, fichas, render, onOpenFicha }: {
-  titulo: string; sub: string; color: string; bg: string; bd: string; icon: any
-  fichas: FichaRow[]; render: (f: FichaRow) => React.ReactNode
-  onOpenFicha?: (id: number) => void
-}) {
-  if (fichas.length === 0) return null
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <div style={{ width: 30, height: 30, borderRadius: 8, background: bg, border: `1px solid ${bd}`, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-          <Ic n={icon} s={15} style={{ color }}/>
-        </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>{titulo} · {fichas.length}</div>
-          <div style={{ fontSize: 11.5, color: '#71717a' }}>{sub}</div>
-        </div>
-      </div>
-      <Card style={{ overflow: 'hidden' }}>
-        {fichas.map((f, i) => (
-          <div
-            key={f.id}
-            className={onOpenFicha ? 'nx-row' : undefined}
-            onClick={() => onOpenFicha?.(f.id)}
-            style={{
-              padding: '11px 16px', borderBottom: i < fichas.length - 1 ? '1px solid #f1f1f3' : 'none',
-              cursor: onOpenFicha ? 'pointer' : 'default',
-            }}
-          >
-            {render(f)}
-          </div>
-        ))}
-      </Card>
-    </div>
-  )
-}
-
-function FichaHead({ f }: { f: FichaRow }) {
-  return (
-    <div style={{ minWidth: 0, flex: 1 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Tag>{f.programa_codigo}</Tag>
-        <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
-      </div>
-      <div style={{ fontSize: 12, color: '#52525b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.programa_nombre}</div>
-    </div>
-  )
-}
-
-function RiesgoRow({ f }: { f: FichaRow }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      <FichaHead f={f}/>
-      <div style={{ width: 110 }}><Prog value={f.avance} status={statusFromAvance(f.avance)} showLabel/></div>
-      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: f.dias_restantes <= 30 ? '#dc2626' : '#52525b', width: 48, textAlign: 'right' }}>{f.dias_restantes}d</span>
-    </div>
-  )
-}
-function CierreRow({ f }: { f: FichaRow }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      <FichaHead f={f}/>
-      {f.tiene_disenio_curricular
-        ? <div style={{ width: 110 }}><Prog value={f.avance} status={statusFromAvance(f.avance)} showLabel/></div>
-        : <span style={{ fontSize: 11, color: '#a16207', width: 110, textAlign: 'right' }}>sin digitalizar</span>}
-      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#dc2626', width: 48, textAlign: 'right' }}>{f.dias_restantes}d</span>
-    </div>
-  )
-}
-function SinDigRow({ f }: { f: FichaRow }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      <FichaHead f={f}/>
-      <span style={{ fontSize: 11.5, color: '#a16207' }}>Pídele al administrador digitalizar este programa</span>
     </div>
   )
 }

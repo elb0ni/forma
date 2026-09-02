@@ -41,6 +41,17 @@ export function jornadaLabel(j: string | null): string {
   return map[j.toUpperCase()] ?? j
 }
 
+// Días de calendario hasta una fecha ISO (redondeado hacia arriba; negativo
+// si ya pasó). Usado por las alertas/KPIs de cierre de etapa productiva
+// (fecha_fin_productiva) en superadmin/coordinador -- reemplaza el antiguo
+// `dias_restantes` que calculaba el backend sobre la etapa lectiva.
+export function diasHasta(fechaISO: string | null): number | null {
+  if (!fechaISO) return null
+  const d = new Date(fechaISO)
+  if (isNaN(d.getTime())) return null
+  return Math.ceil((d.getTime() - Date.now()) / 86400000)
+}
+
 // ─── Pill ────────────────────────────────────────────────────────────────────────
 
 export function Pill({ status = 'ok', size = 'md', label }: {

@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Ic, Card, Bdg, Ava, Prog, Pager, Btn, DigBadge } from '../../components/ui'
+import { Ic, Card, Bdg, Ava, Pager } from '../../components/ui'
 import type { IcName } from '../../components/ui'
 import api from '../../lib/api'
 import { FichasAdmin } from '../shared/FichasAdmin'
 import { InstructorDetalle } from '../shared/InstructorDetalle'
-import { ProgramaDetalleView } from '../shared/ProgramaDetalleView'
-import { statusFromAvance, SM } from '../shared/parts'
-import type { InstructorRow, CoordDetalle } from '../shared/types'
+import type { InstructorBasico } from '../shared/InstructorDetalle'
+import { diasHasta } from '../shared/parts'
+import type { CoordDetalle } from '../shared/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────
 
-function avColor(pct: number): string {
-  return SM[statusFromAvance(pct)].dot
-}
 function fmtAcceso(s: string | null): string {
   if (!s) return 'Nunca'
   const d = new Date(s)
@@ -25,39 +22,44 @@ function fmtAcceso(s: string | null): string {
   if (d.toDateString() === yest.toDateString()) return `Ayer · ${hh}`
   return `${d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })} · ${hh}`
 }
-function nivelStyle(n: string) {
-  const u = (n ?? '').toUpperCase()
-  if (u.includes('TECNÓLOGO'))       return { bg: '#dbeafe', fg: '#1d4ed8' }
-  if (u.includes('TÉCNICO'))         return { bg: '#dcfce7', fg: '#15803d' }
-  if (u.includes('ESPECIALIZACIÓN')) return { bg: '#f3e8ff', fg: '#6b21a8' }
-  return { bg: '#f1f1f3', fg: '#52525b' }
-}
 
 function Sk({ w, h, r = 5, delay = 0 }: { w: string | number; h: number; r?: number; delay?: number }) {
   return <div className="skeleton" style={{ width: w, height: h, borderRadius: r, animationDelay: `${delay}ms` }}/>
+}
+
+// Solo lo necesario de `GET /fichas?coordinacion_id=` para el KPI de cierre
+// de etapa productiva (mismo shape que el `FichaRow` de FichasAdmin.tsx).
+interface FichaMin {
+  estado: string
+  etapa_actual_teorica: string | null
+  fecha_fin_productiva: string | null
 }
 
 // ─── Componente ──────────────────────────────────────────────────────────────────
 
 type CoordView =
   | { mode: 'main' }
-  | { mode: 'instructor'; u: InstructorRow }
-  | { mode: 'programa';   id: number }
+  | { mode: 'instructor'; u: InstructorBasico }
 
-export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordId: number; onBack: () => void; onDigitalizar?: () => void }) {
+export function CoordinacionDetalle({ coordId, onBack }: { coordId: number; onBack: () => void }) {
   "use no memo"
   const [data, setData] = useState<CoordDetalle | null>(null)
+  const [instructores, setInstructores] = useState<InstructorBasico[] | null>(null)
+  const [fichas, setFichas] = useState<FichaMin[] | null>(null)
   const [error, setError] = useState(false)
   const [view, setView] = useState<CoordView>({ mode: 'main' })
-  const [tab, setTab] = useState<'instructores' | 'fichas' | 'programas'>('fichas')
+  const [tab, setTab] = useState<'instructores' | 'fichas'>('fichas')
   const [fichaFocused, setFichaFocused] = useState(false)
   const [instPage, setInstPage] = useState(0)
-  const [progPage, setProgPage] = useState(0)
 
   useEffect(() => {
-    setData(null); setError(false)
-    api.get<CoordDetalle>(`/coordinaciones/${coordId}/detalle`)
-      .then(r => setData(r.data))
+    setData(null); setInstructores(null); setFichas(null); setError(false)
+    Promise.all([
+      api.get<CoordDetalle>(`/coordinaciones/${coordId}/detalle`),
+      api.get<InstructorBasico[]>(`/usuarios?rol=INSTRUCTOR&coordinacion_id=${coordId}`),
+      api.get<FichaMin[]>(`/fichas?coordinacion_id=${coordId}`),
+    ])
+      .then(([d, u, f]) => { setData(d.data); setInstructores(u.data); setFichas(f.data) })
       .catch(() => setError(true))
   }, [coordId])
 
@@ -77,43 +79,38 @@ export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordI
     </div></Card></div>
   )
 
-  if (!data) return (
+  if (!data || !instructores || !fichas) return (
     <div>{back}
       <Sk w={260} h={20}/>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 20 }}>
-        {[0, 1, 2, 3].map(i => <Card key={i} style={{ padding: 16 }}><Sk w="60%" h={9} delay={i * 40}/><div style={{ marginTop: 10 }}><Sk w="40%" h={22} delay={i * 40 + 20}/></div></Card>)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginTop: 20 }}>
+        {[0, 1, 2].map(i => <Card key={i} style={{ padding: 16 }}><Sk w="60%" h={9} delay={i * 40}/><div style={{ marginTop: 10 }}><Sk w="40%" h={22} delay={i * 40 + 20}/></div></Card>)}
       </div>
       <Card style={{ padding: 20, marginTop: 16 }}><Sk w="40%" h={14}/><div style={{ marginTop: 14 }}><Sk w="100%" h={40}/></div></Card>
     </div>
   )
 
-  const { coordinacion: c, coordinador, kpi, instructores, programas, fichas } = data
+  const { coordinacion: c, coordinador, kpi } = data
 
-  // Fichas que no se pueden monitorear porque su programa aún no está digitalizado.
-  const fichasPendientes = fichas.filter(f => !f.tiene_disenio_curricular).length
+  const cierranPronto = fichas.filter(f => {
+    if (f.estado !== 'EN_EJECUCION' || f.etapa_actual_teorica !== 'PRACTICA') return false
+    const d = diasHasta(f.fecha_fin_productiva)
+    return d != null && d <= 30
+  }).length
 
-  // Drill-downs dentro de la coordinación (reutilizan las vistas de detalle del Super Admin)
+  // Drill-down: detalle de un instructor de práctica (reutiliza la vista de detalle del Super Admin)
   if (view.mode === 'instructor') {
-    return <InstructorDetalle id={view.u.id} onBack={() => setView({ mode: 'main' })}/>
-  }
-  if (view.mode === 'programa') {
-    return <ProgramaDetalleView id={view.id} onBack={() => setView({ mode: 'main' })} onDigitalizar={onDigitalizar}/>
+    return <InstructorDetalle instructor={view.u} onBack={() => setView({ mode: 'main' })}/>
   }
 
   const INST_PAGE = 10
   const instPageCount = Math.ceil(instructores.length / INST_PAGE)
   const instCur       = Math.min(instPage, Math.max(0, instPageCount - 1))
   const instItems     = instructores.slice(instCur * INST_PAGE, (instCur + 1) * INST_PAGE)
-  const PROG_PAGE = 12
-  const progPageCount = Math.ceil(programas.length / PROG_PAGE)
-  const progCur       = Math.min(progPage, Math.max(0, progPageCount - 1))
-  const progItems     = programas.slice(progCur * PROG_PAGE, (progCur + 1) * PROG_PAGE)
 
   const kpis: { label: string; value: string | number; icon: IcName; color?: string; sub?: string }[] = [
     { label: 'Fichas activas', value: kpi.fichas_activas, icon: 'briefcase', color: '#4f46e5', sub: `${kpi.fichas_total} en total` },
     { label: 'Instructores', value: kpi.instructores, icon: 'users', color: '#4f46e5', sub: `${kpi.instructores_activos_semana} activos esta semana` },
-    { label: 'Avance promedio', value: `${kpi.avance_promedio}%`, icon: 'target', color: avColor(kpi.avance_promedio), sub: `${kpi.ras_cerrados} RAs cerrados` },
-    { label: 'Sesiones esta semana', value: kpi.sesiones_semana, icon: 'calendar', color: '#4f46e5', sub: `${kpi.programas} programas` },
+    { label: 'Cierran en ≤30 días', value: cierranPronto, icon: 'clock', color: cierranPronto > 0 ? '#c2410c' : '#4f46e5', sub: 'etapa productiva' },
   ]
 
   return (
@@ -166,7 +163,7 @@ export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordI
       </Card>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
         {kpis.map(k => (
           <Card key={k.label} style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -179,28 +176,11 @@ export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordI
         ))}
       </div>
 
-      {/* Aviso: fichas que no se pueden monitorear por programa sin digitalizar */}
-      {fichasPendientes > 0 && (
-        <Card style={{ padding: '12px 16px', marginBottom: 24, background: '#fffbeb', border: '1px solid #fde68a' }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Ic n="alert" s={16} style={{ color: '#d97706', flexShrink: 0 }}/>
-            <span style={{ fontSize: 12.5, color: '#a16207', flex: 1, minWidth: 200 }}>
-              <strong>{fichasPendientes}</strong> {fichasPendientes === 1 ? 'ficha' : 'fichas'} de esta coordinación
-              {fichasPendientes === 1 ? ' tiene' : ' tienen'} el programa de formación sin digitalizar, por eso aún no se {fichasPendientes === 1 ? 'puede' : 'pueden'} monitorear y no suman al avance.
-            </span>
-            {onDigitalizar && (
-              <Btn variant="secondary" size="sm" icon="upload" onClick={onDigitalizar}>Digitalizar</Btn>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* Pestañas: fichas · instructores · programas */}
+      {/* Pestañas: fichas · instructores */}
       <div style={{ display: 'inline-flex', background: '#f1f1f3', borderRadius: 8, padding: 2, border: '1px solid #e4e4e7', marginBottom: 18 }}>
         {([
           { key: 'fichas',       label: 'Fichas',       icon: 'briefcase', count: kpi.fichas_total },
           { key: 'instructores', label: 'Instructores', icon: 'users',     count: instructores.length },
-          { key: 'programas',    label: 'Programas',    icon: 'layers',    count: programas.length },
         ] as const).map(t => {
           const active = tab === t.key
           return (
@@ -231,8 +211,8 @@ export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordI
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>
-                {['Instructor', 'Competencias', 'Fichas', 'Sesiones', 'Avance', 'Último acceso', 'Estado'].map((h, i) => (
-                  <th key={h} style={{ padding: '11px 14px', textAlign: i >= 1 && i <= 3 ? 'center' : 'left', fontWeight: 600 }}>{h}</th>
+                {['Instructor', 'Estado'].map(h => (
+                  <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -248,16 +228,6 @@ export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordI
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#27272a' }}>{u.competencias_asignadas}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#27272a' }}>{u.fichas}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#27272a' }}>{u.sesiones}</td>
-                  <td style={{ padding: '12px 14px', minWidth: 130 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ flex: 1 }}><Prog value={u.avance} status={statusFromAvance(u.avance)}/></div>
-                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#52525b', width: 34, textAlign: 'right' }}>{u.avance}%</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 14px', fontSize: 11.5, color: '#52525b', whiteSpace: 'nowrap' }}>{fmtAcceso(u.ultimo_acceso)}</td>
                   <td style={{ padding: '12px 14px' }}><Bdg tone={u.activo ? 'ok' : 'neutral'}>{u.activo ? 'Activo' : 'Inactivo'}</Bdg></td>
                 </tr>
               ))}
@@ -272,57 +242,7 @@ export function CoordinacionDetalle({ coordId, onBack, onDigitalizar }: { coordI
 
       {/* Fichas — misma tabla, toolbar, paginación y gestión que la pantalla de Fichas, acotada a esta coordinación */}
       {tab === 'fichas' && (
-        <FichasAdmin onDetailChange={setFichaFocused} onDigitalizar={onDigitalizar} scope={{ coordinacionId: c.id, centroId: c.centro.id }}/>
-      )}
-
-      {tab === 'programas' && (
-      <>
-      {programas.length === 0 ? (
-        <EmptyBox text="No hay programas con fichas en ejecución en esta coordinación."/>
-      ) : (
-        <div>
-        <Card style={{ overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>
-                {['Programa', 'Nivel', 'Fichas activas', ''].map((h, i) => (
-                  <th key={h} style={{ padding: '11px 14px', textAlign: i === 2 ? 'right' : 'left', fontWeight: 600 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {progItems.map(p => {
-                const ns = nivelStyle(p.nivel_formacion)
-                const sigla = p.nombre.split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 3) || p.codigo.slice(0, 3)
-                return (
-                  <tr key={p.id} className="nx-row" onClick={() => setView({ mode: 'programa', id: p.id })} style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 8, background: '#0a0a0b', color: '#fff', display: 'grid', placeItems: 'center', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>{sigla}</div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 360 }}>{p.nombre}</div>
-                            {!p.tiene_disenio_curricular && <DigBadge dig={false}/>}
-                          </div>
-                          <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, color: '#a1a1aa', marginTop: 2 }}>{p.codigo}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 600, padding: '3px 8px', borderRadius: 5, background: ns.bg, color: ns.fg }}>{p.nivel_formacion}</span>
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontFamily: '"JetBrains Mono", monospace', fontSize: 14, fontWeight: 600, color: '#0a0a0b' }}>{p.fichas_activas}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', color: '#a1a1aa' }}><Ic n="chevronRight" s={14}/></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </Card>
-        <Pager page={progCur} pageCount={progPageCount} total={programas.length} pageSize={PROG_PAGE} onPage={setProgPage} noun="programas"/>
-        </div>
-      )}
-      </>
+        <FichasAdmin onDetailChange={setFichaFocused} scope={{ coordinacionId: c.id, centroId: c.centro.id }}/>
       )}
     </div>
   )

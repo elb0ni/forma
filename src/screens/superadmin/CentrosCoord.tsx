@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Ic, Bdg, Card, Btn, Modal, Prog } from '../../components/ui'
+import { Ic, Bdg, Card, Btn, Modal } from '../../components/ui'
 import api from '../../lib/api'
 import { CoordinacionDetalle } from './CoordinacionDetalle'
 
@@ -12,10 +12,7 @@ interface CentroItem {
   regional:                  string
   activo:                    number
   fichas_activas:            number
-  programas_digitalizados:   number
-  programas_total:           number
   coordinaciones_academicas: number
-  estado:                    'AL_DIA' | 'REVISAR' | 'URGENTE'
 }
 
 interface CoordRow {
@@ -41,23 +38,7 @@ function Sk({ w, h, r = 5, delay = 0 }: { w: string | number; h: number; r?: num
   return <div className="skeleton" style={{ width: w, height: h, borderRadius: r, animationDelay: `${delay}ms` }}/>
 }
 
-function estadoTone(e: string): 'ok' | 'warn' | 'err' {
-  return e === 'AL_DIA' ? 'ok' : e === 'REVISAR' ? 'warn' : 'err'
-}
-function estadoLabel(e: string): string {
-  return e === 'AL_DIA' ? 'Al día' : e === 'REVISAR' ? 'Revisar' : 'Urgente'
-}
-function safePct(a: number, b: number) {
-  return b === 0 ? 0 : Math.round((a / b) * 100)
-}
-function digStatus(pct: number): 'ok' | 'warn' | 'crit' {
-  return pct >= 70 ? 'ok' : pct >= 40 ? 'warn' : 'crit'
-}
-function digColor(pct: number): string {
-  return pct >= 70 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626'
-}
-
-export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } = {}) {
+export function CentrosCoord() {
   "use no memo"
   const [state, setState] = useState<ListState>({ status: 'loading' })
   const [reloadKey, setReloadKey] = useState(0)
@@ -127,7 +108,7 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
 
   // Drill-down: detalle completo de una coordinación académica
   if (viewCoordId !== null) {
-    return <CoordinacionDetalle coordId={viewCoordId} onBack={() => setViewCoordId(null)} onDigitalizar={onDigitalizar}/>
+    return <CoordinacionDetalle coordId={viewCoordId} onBack={() => setViewCoordId(null)}/>
   }
 
   if (state.status === 'loading') {
@@ -213,7 +194,7 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>Centros y coordinaciones</h2>
           <div style={{ fontSize: 13, color: '#52525b', marginTop: 4 }}>
-            {state.centros.length} centros · gestiona las coordinaciones de cada centro. Haz clic en una coordinación para ver su detalle (coordinador, instructores y fichas).
+            {state.centros.length} centros · gestiona las coordinaciones de cada centro. Haz clic en una coordinación para ver su detalle (coordinador, instructores y fichas en etapa productiva).
           </div>
         </div>
         <Btn variant="accent" icon="plus" onClick={openCrearCentro}>Nuevo centro</Btn>
@@ -225,7 +206,6 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
           {state.centros.map(c => {
             const active = selected?.id === c.id
             const nCoord = state.coords.filter(co => co.centro_formacion_id === c.id).length
-            const digPct = safePct(c.programas_digitalizados, c.programas_total)
             const inactivo = !c.activo
             return (
               <button
@@ -244,9 +224,6 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
                 </div>
                 <div style={{ fontSize: 11, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>
                   {c.codigo} · {nCoord} coord · {c.fichas_activas} fichas
-                </div>
-                <div style={{ height: 4, background: '#f1f1f3', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${digPct}%`, background: digColor(digPct), borderRadius: 2 }}/>
                 </div>
               </button>
             )
@@ -267,7 +244,6 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <Bdg tone={estadoTone(selected.estado)}>{estadoLabel(selected.estado)}</Bdg>
                 <button title="Editar centro" onClick={() => openEditarCentro(selected)} style={iconBtn}><Ic n="edit" s={14}/></button>
                 <button title={selected.activo ? 'Desactivar centro' : 'Activar centro'} onClick={() => toggleCentro(selected)} disabled={busy}
                   style={{ ...iconBtn, color: selected.activo ? '#b91c1c' : '#15803d' }}>
@@ -276,7 +252,7 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 20 }}>
               {([
                 ['Fichas activas', selected.fichas_activas],
                 ['Coordinaciones', coordsSel.length],
@@ -286,17 +262,6 @@ export function CentrosCoord({ onDigitalizar }: { onDigitalizar?: () => void } =
                   <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 18, fontWeight: 600, color: '#0a0a0b', marginTop: 4 }}>{v}</div>
                 </div>
               ))}
-            </div>
-
-            {/* Barra de digitalización */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#71717a', marginBottom: 6 }}>
-                <span>Digitalización de programas</span>
-                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 700, color: digColor(safePct(selected.programas_digitalizados, selected.programas_total)) }}>
-                  {selected.programas_digitalizados}/{selected.programas_total} · {safePct(selected.programas_digitalizados, selected.programas_total)}%
-                </span>
-              </div>
-              <Prog value={safePct(selected.programas_digitalizados, selected.programas_total)} status={digStatus(safePct(selected.programas_digitalizados, selected.programas_total))} height={8}/>
             </div>
 
             {/* Coordinaciones */}

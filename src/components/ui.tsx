@@ -151,13 +151,6 @@ export function Bdg({ tone = 'neutral', icon, children }: {
   )
 }
 
-// Estado de digitalización del diseño curricular — lenguaje visual único en toda la app.
-export function DigBadge({ dig }: { dig: boolean }) {
-  return dig
-    ? <Bdg tone="ok"   icon="checkCircle">Digitalizado</Bdg>
-    : <Bdg tone="warn" icon="alert">Sin digitalizar</Bdg>
-}
-
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
 export function Card({ children, style: s, onClick }: {

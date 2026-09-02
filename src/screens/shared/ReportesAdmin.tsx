@@ -182,7 +182,7 @@ function ReportePreview({ data }: { data: ReporteData }) {
             <BrandMark size={22}/>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.5px', color: '#4f46e5' }}>FORMA</div>
-              <div style={{ fontSize: 9, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Plataforma de seguimiento curricular</div>
+              <div style={{ fontSize: 9, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Plataforma de seguimiento de etapa productiva</div>
             </div>
           </div>
           <div style={{ textAlign: 'right', fontSize: 10, color: '#71717a' }}>
