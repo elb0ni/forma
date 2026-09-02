@@ -96,10 +96,11 @@ function KpiCards({ resumen, fichasFiltradas, centros }: {
   resumen: ResumenKPI | null; fichasFiltradas: FichaRow[]; centros: CentroMin[]
 }) {
   const enPractica = fichasFiltradas.filter(f => f.estado === 'EN_EJECUCION' && f.etapa_actual_teorica === 'PRACTICA')
-  const cierranPronto = enPractica.filter(f => {
-    const d = diasHasta(f.fecha_fin_productiva)
-    return d != null && d <= 30
-  }).length
+  const conDias = enPractica
+    .map(f => ({ f, dias: diasHasta(f.fecha_fin_productiva) }))
+    .filter((x): x is { f: FichaRow; dias: number } => x.dias != null)
+  const vencidasCount = conDias.filter(x => x.dias < 0).length
+  const cierranPronto = conDias.filter(x => x.dias >= 0 && x.dias <= 30).length
   const activasCount = fichasFiltradas.filter(f => f.estado === 'EN_EJECUCION').length
 
   const activePct = resumen && resumen.instructores_total_asignados > 0
@@ -120,8 +121,10 @@ function KpiCards({ resumen, fichasFiltradas, centros }: {
           {enPractica.length}
           <span className="kpi2-value-sub"> / {activasCount} en ejecución</span>
         </div>
-        <div className="kpi2-sub" style={{ color: cierranPronto > 0 ? '#c2410c' : undefined }}>
-          {cierranPronto > 0 ? `${cierranPronto} cierran en ≤30 días` : 'Ninguna cierra en los próximos 30 días'}
+        <div className="kpi2-sub" style={{ color: vencidasCount > 0 ? '#dc2626' : cierranPronto > 0 ? '#c2410c' : undefined }}>
+          {vencidasCount > 0
+            ? `${vencidasCount} vencida${vencidasCount === 1 ? '' : 's'} sin cerrar`
+            : cierranPronto > 0 ? `${cierranPronto} cierran en ≤30 días` : 'Ninguna cierra en los próximos 30 días'}
         </div>
       </Card>
 
@@ -155,31 +158,41 @@ function KpiCards({ resumen, fichasFiltradas, centros }: {
   )
 }
 
-// ─── Fichas que cierran pronto ────────────────────────────────────────────────
+// ─── Listas de fichas por fecha (vencidas / cierran pronto / van a práctica) ────
+// Un mismo componente para las 3: cada una es una lista de fichas con "días"
+// (negativo = ya pasó la fecha, positivo = faltan) contra una fecha de
+// referencia distinta -- ver los 3 usos en ResumenTab.
 
-function FichasCierranPronto({ fichas, onOpenFicha }: { fichas: FichaRow[]; onOpenFicha?: (id: number) => void }) {
-  const cierran = fichas
-    .filter(f => f.estado === 'EN_EJECUCION' && f.etapa_actual_teorica === 'PRACTICA')
-    .map(f => ({ f, dias: diasHasta(f.fecha_fin_productiva) }))
-    .filter((x): x is { f: FichaRow; dias: number } => x.dias != null && x.dias <= 30)
+interface FichaConDias { f: FichaRow; dias: number }
+
+function fichasConDias(fichas: FichaRow[], fechaFn: (f: FichaRow) => string | null, tope: number): FichaConDias[] {
+  return fichas
+    .map(f => ({ f, dias: diasHasta(fechaFn(f)) }))
+    .filter((x): x is FichaConDias => x.dias != null && x.dias <= tope)
     .sort((a, b) => a.dias - b.dias)
-    .slice(0, 8)
+}
 
+function ListaFichasFecha({ titulo, items, colorFn, labelFn, onOpenFicha, emptyTitle, emptySub }: {
+  titulo: string; items: FichaConDias[]
+  colorFn: (dias: number) => string; labelFn: (dias: number) => string
+  onOpenFicha?: (id: number) => void; emptyTitle: string; emptySub: string
+}) {
+  const view = items.slice(0, 8)
   return (
     <div>
-      <div className="section-title">Fichas que cierran pronto</div>
-      {cierran.length === 0 ? (
-        <EmptyState icon="checkCircle" title="Sin cierres próximos" sub="Ninguna ficha en etapa práctica del filtro actual cierra en los próximos 30 días."/>
+      <div className="section-title">{titulo}{items.length > 0 && <span style={{ fontWeight: 400, color: '#71717a', marginLeft: 8, fontSize: 12 }}>· {items.length}</span>}</div>
+      {view.length === 0 ? (
+        <EmptyState icon="checkCircle" title={emptyTitle} sub={emptySub}/>
       ) : (
         <Card style={{ overflow: 'hidden' }}>
-          {cierran.map(({ f, dias }, i) => (
+          {view.map(({ f, dias }, i) => (
             <div
               key={f.id}
               className={onOpenFicha ? 'nx-row' : undefined}
               onClick={() => onOpenFicha?.(f.id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
-                borderBottom: i < cierran.length - 1 ? '1px solid #f1f1f3' : 'none',
+                borderBottom: i < view.length - 1 ? '1px solid #f1f1f3' : 'none',
                 cursor: onOpenFicha ? 'pointer' : 'default',
               }}
             >
@@ -190,14 +203,21 @@ function FichasCierranPronto({ fichas, onOpenFicha }: { fichas: FichaRow[]; onOp
                 </div>
                 <div style={{ fontSize: 12, color: '#52525b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.programa_nombre}</div>
               </div>
-              <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#dc2626', width: 44, textAlign: 'right' }}>{dias}d</span>
+              <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 700, color: colorFn(dias), whiteSpace: 'nowrap', textAlign: 'right' }}>{labelFn(dias)}</span>
             </div>
           ))}
+          {items.length > view.length && (
+            <div style={{ padding: '8px 16px', fontSize: 11.5, color: '#a1a1aa', textAlign: 'center' }}>+{items.length - view.length} más</div>
+          )}
         </Card>
       )}
     </div>
   )
 }
+
+// Etiqueta/color compartidos: negativo = ya pasó (crítico), positivo = faltan (alerta).
+function diasLabel(dias: number): string { return dias < 0 ? `${Math.abs(dias)}d vencida` : dias === 0 ? 'Hoy' : `${dias}d` }
+function diasColor(dias: number): string { return dias < 0 ? '#dc2626' : dias <= 7 ? '#c2410c' : '#a16207' }
 
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
@@ -218,6 +238,18 @@ function ResumenTab({ todas, filtradas, onOpenFicha }: {
     { key: 'LECTIVA',  label: 'Lectiva',  value: activasFiltradas.filter(f => f.etapa_actual_teorica !== 'PRACTICA').length, color: LECTIVA_COLOR },
   ]
 
+  // En práctica, contra fecha_fin_productiva: lo que ya venció (crítico) vs.
+  // lo que cierra en los próximos 30 días.
+  const enPractica  = activasFiltradas.filter(f => f.etapa_actual_teorica === 'PRACTICA')
+  const vencidas    = fichasConDias(enPractica, f => f.fecha_fin_productiva, -1)
+  const cierranPronto = fichasConDias(enPractica, f => f.fecha_fin_productiva, 30).filter(x => x.dias >= 0)
+
+  // Todavía en lectiva, contra fecha_inicio_productiva (si ya se definió) o
+  // fecha_fin_lectiva como proxy -- negativo = ya debería haber pasado a
+  // práctica y sigue en lectiva.
+  const enLectiva = activasFiltradas.filter(f => f.etapa_actual_teorica !== 'PRACTICA')
+  const vanAPractica = fichasConDias(enLectiva, f => f.fecha_inicio_productiva ?? f.fecha_fin_lectiva, 30)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Card style={{ padding: 20 }}>
@@ -232,7 +264,21 @@ function ResumenTab({ todas, filtradas, onOpenFicha }: {
           : <SingleStackedBar segments={porEtapa}/>}
       </Card>
 
-      <FichasCierranPronto fichas={filtradas} onOpenFicha={onOpenFicha}/>
+      <ListaFichasFecha
+        titulo="Fichas vencidas sin cerrar"
+        items={vencidas} colorFn={diasColor} labelFn={diasLabel} onOpenFicha={onOpenFicha}
+        emptyTitle="Sin fichas vencidas" emptySub="Ninguna ficha en práctica pasó su fecha de fin sin cerrarse."
+      />
+      <ListaFichasFecha
+        titulo="Cierran pronto (≤ 30 días)"
+        items={cierranPronto} colorFn={diasColor} labelFn={diasLabel} onOpenFicha={onOpenFicha}
+        emptyTitle="Sin cierres próximos" emptySub="Ninguna ficha en práctica cierra en los próximos 30 días."
+      />
+      <ListaFichasFecha
+        titulo="Van a pasar a etapa práctica"
+        items={vanAPractica} colorFn={diasColor} labelFn={diasLabel} onOpenFicha={onOpenFicha}
+        emptyTitle="Sin transiciones próximas" emptySub="Ninguna ficha en lectiva tiene fecha de paso a práctica en los próximos 30 días."
+      />
     </div>
   )
 }
@@ -242,14 +288,14 @@ function ResumenTab({ todas, filtradas, onOpenFicha }: {
 // "cierran pronto" desc -- ninguna llamada nueva, todo agregado client-side
 // sobre /fichas (ya cargado) + /coordinaciones o /dashboard/super-admin/centros.
 
-interface FilaRanking { id: number | string; nombre: string; total: number; practica: number; cierranPronto: number; finalizadas: number }
+interface FilaRanking { id: number | string; nombre: string; total: number; practica: number; vencidas: number; cierranPronto: number; finalizadas: number }
 
 function agrupar(fichas: FichaRow[], keyFn: (f: FichaRow) => number | string | null, nombres: Map<number | string, string>, fallback: string): FilaRanking[] {
   const map = new Map<number | string, FilaRanking>()
   for (const f of fichas) {
     const key = keyFn(f) ?? '__sin_asignar__'
     if (!map.has(key)) {
-      map.set(key, { id: key, nombre: key === '__sin_asignar__' ? fallback : (nombres.get(key) ?? `#${key}`), total: 0, practica: 0, cierranPronto: 0, finalizadas: 0 })
+      map.set(key, { id: key, nombre: key === '__sin_asignar__' ? fallback : (nombres.get(key) ?? `#${key}`), total: 0, practica: 0, vencidas: 0, cierranPronto: 0, finalizadas: 0 })
     }
     const row = map.get(key)!
     row.total++
@@ -257,10 +303,13 @@ function agrupar(fichas: FichaRow[], keyFn: (f: FichaRow) => number | string | n
     if (f.estado === 'EN_EJECUCION' && f.etapa_actual_teorica === 'PRACTICA') {
       row.practica++
       const d = diasHasta(f.fecha_fin_productiva)
-      if (d != null && d <= 30) row.cierranPronto++
+      if (d != null) {
+        if (d < 0) row.vencidas++
+        else if (d <= 30) row.cierranPronto++
+      }
     }
   }
-  return [...map.values()].sort((a, b) => b.cierranPronto - a.cierranPronto || b.practica - a.practica)
+  return [...map.values()].sort((a, b) => b.vencidas - a.vencidas || b.cierranPronto - a.cierranPronto || b.practica - a.practica)
 }
 
 function RankingTable({ filas, columnaNombre }: { filas: FilaRanking[]; columnaNombre: string }) {
@@ -274,6 +323,7 @@ function RankingTable({ filas, columnaNombre }: { filas: FilaRanking[]; columnaN
             <th className="data-table__th">{columnaNombre}</th>
             <th className="data-table__th" style={{ textAlign: 'right' }}>Total</th>
             <th className="data-table__th" style={{ textAlign: 'right' }}>En práctica</th>
+            <th className="data-table__th" style={{ textAlign: 'right' }}>Vencidas</th>
             <th className="data-table__th" style={{ textAlign: 'right' }}>Cierran ≤30d</th>
             <th className="data-table__th" style={{ textAlign: 'right' }}>Finalizadas</th>
             <th className="data-table__th" style={{ minWidth: 140 }}>Práctica / activas</th>
@@ -285,7 +335,8 @@ function RankingTable({ filas, columnaNombre }: { filas: FilaRanking[]; columnaN
               <td className="data-table__td--name">{r.nombre}</td>
               <td className="data-table__td--fichas" style={{ textAlign: 'right' }}>{r.total}</td>
               <td className="data-table__td--fichas" style={{ textAlign: 'right', color: PRACTICA_COLOR }}>{r.practica}</td>
-              <td className="data-table__td--fichas" style={{ textAlign: 'right', color: r.cierranPronto > 0 ? '#dc2626' : '#a1a1aa' }}>{r.cierranPronto}</td>
+              <td className="data-table__td--fichas" style={{ textAlign: 'right', color: r.vencidas > 0 ? '#dc2626' : '#a1a1aa' }}>{r.vencidas}</td>
+              <td className="data-table__td--fichas" style={{ textAlign: 'right', color: r.cierranPronto > 0 ? '#c2410c' : '#a1a1aa' }}>{r.cierranPronto}</td>
               <td className="data-table__td--fichas" style={{ textAlign: 'right', color: ESTADO_COLOR.FINALIZADA }}>{r.finalizadas}</td>
               <td className="data-table__td" style={{ minWidth: 140 }}>
                 <Prog value={r.total > 0 ? Math.round((r.practica / r.total) * 100) : 0} showLabel/>
