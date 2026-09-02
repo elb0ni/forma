@@ -43,67 +43,59 @@ const ESTADO_CHIPS: { key: EstadoFilt; label: string }[] = [
   { key: 'SUSPENDIDA',   label: 'Suspendidas'  },
 ]
 
-// Paleta validada con scripts/validate_palette.js (skill dataviz): el verde
-// oscuro que se usaba antes para "Finalizada" fallaba separación CVD contra
-// el rojo de "Suspendida" (protanopia) y se leía gris (chroma floor) --
-// #2563eb pasa las 5 verificaciones. El gris de "Lectiva" es intencional
-// (categoría recesiva frente a "Práctica"), pero se sube a #71717a para
-// cruzar el piso de contraste 3:1; su chroma floor sigue en FAIL a
-// propósito (mitigado con el label directo en la leyenda).
-const ESTADO_COLOR: Record<string, string> = { EN_EJECUCION: '#16a34a', FINALIZADA: '#2563eb', SUSPENDIDA: '#dc2626' }
+// Paleta validada con scripts/validate_palette.js (skill dataviz): teal para
+// "En ejecución" en vez del verde original (que junto al rojo de
+// "Suspendida" y el azul de "Finalizada" quedaba demasiado cerca en tono);
+// #0d9488 / #2563eb / #dc2626 pasan las 5 verificaciones (lightness, chroma,
+// separación CVD, piso de visión normal y contraste). El gris de "Lectiva"
+// es intencional (categoría recesiva frente a "Práctica"), pero se sube a
+// #71717a para cruzar el piso de contraste 3:1; su chroma floor sigue en
+// FAIL a propósito (mitigado con el label directo en la leyenda).
+const ESTADO_COLOR: Record<string, string> = { EN_EJECUCION: '#0d9488', FINALIZADA: '#2563eb', SUSPENDIDA: '#dc2626' }
 const ESTADO_LABEL: Record<string, string> = { EN_EJECUCION: 'En ejecución', FINALIZADA: 'Finalizada', SUSPENDIDA: 'Suspendida' }
 const PRACTICA_COLOR = '#4f46e5'
 const LECTIVA_COLOR  = '#71717a'
 
 // ─── Barra apilada genérica (un total, N segmentos con color fijo por categoría) ─
-// Estilo "segmented progress bar": cada categoría es su propia píldora
-// redondeada separada por un gap real (no un borde blanco cortando la
-// barra) -- mark spec del skill dataviz (extremos redondeados, 2px+ de
-// separación entre fills). El % se imprime dentro del segmento cuando hay
-// espacio real para que quepa (label directo, no solo en el hover).
+// Estilo "segmented progress bar" delgado: cada categoría es su propia
+// píldora redondeada separada por un gap real (no un borde blanco cortando
+// la barra) -- mark spec del skill dataviz (extremos redondeados, 2px+ de
+// separación entre fills). A esta altura no entra texto legible dentro del
+// segmento, así que valor y % van en la leyenda de abajo (label directo).
 
 interface Segmento { key: string; label: string; value: number; color: string }
 
-function SingleStackedBar({ segments, height = 16 }: { segments: Segmento[]; height?: number }) {
+function SingleStackedBar({ segments, height = 9 }: { segments: Segmento[]; height?: number }) {
   const total = segments.reduce((a, s) => a + s.value, 0)
   const visibles = segments.filter(s => s.value > 0)
   return (
     <div>
-      <div style={{ display: 'flex', gap: 3, height, background: total === 0 ? '#f1f1f3' : 'transparent', borderRadius: height }}>
+      <div style={{ display: 'flex', gap: 2, height, background: total === 0 ? '#f1f1f3' : 'transparent', borderRadius: height }}>
         {total === 0
           ? null
-          : visibles.map(s => {
-            const pct = Math.round((s.value / total) * 100)
-            return (
-              <div
-                key={s.key}
-                title={`${s.label}: ${s.value} (${pct}%)`}
-                style={{
-                  flex: s.value, background: s.color, borderRadius: height,
-                  minWidth: height, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'flex 200ms ease',
-                }}
-              >
-                {pct >= 14 && (
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.02em' }}>
-                    {pct}%
-                  </span>
-                )}
-              </div>
-            )
-          })}
+          : visibles.map(s => (
+            <div
+              key={s.key}
+              title={`${s.label}: ${s.value} (${Math.round((s.value / total) * 100)}%)`}
+              style={{ flex: s.value, background: s.color, borderRadius: height, minWidth: height, transition: 'flex 200ms ease' }}
+            />
+          ))}
       </div>
-      <div className="legend" style={{ marginTop: 12 }}>
-        {segments.map(s => (
-          <div key={s.key} className="legend-item" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7, padding: '4px 10px 4px 8px',
-            borderRadius: 20, background: '#f7f7f8', fontSize: 12,
-          }}>
-            <span className="legend-dot" style={{ background: s.color, width: 8, height: 8, borderRadius: '50%' }}/>
-            <span style={{ color: '#52525b' }}>{s.label}</span>
-            <strong style={{ color: '#18181b', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700 }}>{s.value}</strong>
-          </div>
-        ))}
+      <div className="legend" style={{ marginTop: 10 }}>
+        {segments.map(s => {
+          const pct = total > 0 ? Math.round((s.value / total) * 100) : 0
+          return (
+            <div key={s.key} className="legend-item" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px 3px 7px',
+              borderRadius: 20, background: '#f7f7f8', fontSize: 11.5,
+            }}>
+              <span className="legend-dot" style={{ background: s.color, width: 7, height: 7, borderRadius: '50%' }}/>
+              <span style={{ color: '#52525b' }}>{s.label}</span>
+              <strong style={{ color: '#18181b', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700 }}>{s.value}</strong>
+              <span style={{ color: '#a1a1aa', fontFamily: '"JetBrains Mono", monospace' }}>{pct}%</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -191,26 +183,101 @@ function fichasConDias(fichas: FichaRow[], fechaFn: (f: FichaRow) => string | nu
     .sort((a, b) => a.dias - b.dias)
 }
 
-function ListaFichasFecha({ titulo, items, colorFn, labelFn, onOpenFicha, emptyTitle, emptySub }: {
-  titulo: string; items: FichaConDias[]
-  colorFn: (dias: number) => string; labelFn: (dias: number) => string
-  onOpenFicha?: (id: number) => void; emptyTitle: string; emptySub: string
+// Etiqueta/color compartidos: negativo = ya pasó (crítico), positivo = faltan (alerta).
+function diasLabel(dias: number): string { return dias < 0 ? `${Math.abs(dias)}d vencida` : dias === 0 ? 'Hoy' : `${dias}d` }
+function diasColor(dias: number): string { return dias < 0 ? '#dc2626' : dias <= 7 ? '#c2410c' : '#a16207' }
+
+// ─── Panel de alertas de fecha: control total en un solo lugar ───────────────
+// Las 3 categorías (vencidas / cierran pronto / van a práctica) como tabs de
+// un mismo panel en vez de 3 listas apiladas -- con buscador propio y la
+// lista COMPLETA con scroll interno (no solo un preview de 8 con "+N más").
+
+type AlertaId = 'vencidas' | 'cierran' | 'transicion'
+
+function AlertasFichas({ vencidas, cierranPronto, vanAPractica, onOpenFicha }: {
+  vencidas: FichaConDias[]; cierranPronto: FichaConDias[]; vanAPractica: FichaConDias[]
+  onOpenFicha?: (id: number) => void
 }) {
-  const view = items.slice(0, 8)
+  "use no memo"
+  const grupos: { id: AlertaId; label: string; items: FichaConDias[]; color: string; icon: IcName }[] = [
+    { id: 'vencidas',   label: 'Vencidas',        items: vencidas,      color: '#dc2626', icon: 'alert' },
+    { id: 'cierran',    label: 'Cierran pronto',  items: cierranPronto, color: '#c2410c', icon: 'clock' },
+    { id: 'transicion', label: 'Van a práctica',  items: vanAPractica,  color: '#4338ca', icon: 'briefcase' },
+  ]
+  const primeraConDatos = grupos.find(g => g.items.length > 0)?.id ?? 'vencidas'
+  const [tab, setTab] = useState<AlertaId>(primeraConDatos)
+  const [q, setQ] = useState('')
+
+  const activo = grupos.find(g => g.id === tab)!
+  const ql = q.trim().toLowerCase()
+  const view = activo.items.filter(({ f }) => !ql
+    || f.numero_ficha.toLowerCase().includes(ql)
+    || f.programa_nombre.toLowerCase().includes(ql)
+    || f.programa_codigo.toLowerCase().includes(ql))
+
   return (
-    <div>
-      <div className="section-title">{titulo}{items.length > 0 && <span style={{ fontWeight: 400, color: '#71717a', marginLeft: 8, fontSize: 12 }}>· {items.length}</span>}</div>
+    <Card style={{ overflow: 'hidden' }}>
+      {/* Tabs de categoría */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #e4e4e7' }}>
+        {grupos.map(g => {
+          const active = g.id === tab
+          return (
+            <button
+              key={g.id}
+              onClick={() => { setTab(g.id); setQ('') }}
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                padding: '13px 10px', border: 'none', borderBottom: active ? `2px solid ${g.color}` : '2px solid transparent',
+                background: active ? '#fafafa' : '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                fontSize: 12.5, fontWeight: active ? 600 : 500, color: active ? '#18181b' : '#71717a',
+                transition: 'all 120ms',
+              }}
+            >
+              <Ic n={g.icon} s={13} style={{ color: g.color }}/>
+              {g.label}
+              <span style={{
+                fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
+                background: g.items.length > 0 ? g.color : '#e4e4e7', color: g.items.length > 0 ? '#fff' : '#a1a1aa',
+                padding: '1px 6px', borderRadius: 10,
+              }}>{g.items.length}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Buscador de la categoría activa */}
+      {activo.items.length > 0 && (
+        <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f1f3', position: 'relative' }}>
+          <Ic n="search" s={13} style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa' }}/>
+          <input
+            value={q} onChange={e => setQ(e.target.value)}
+            placeholder={`Buscar en ${activo.items.length} ficha${activo.items.length === 1 ? '' : 's'}…`}
+            style={{
+              width: '100%', height: 32, padding: '0 10px 0 30px', border: '1px solid #e4e4e7', borderRadius: 7,
+              fontSize: 12.5, color: '#18181b', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Lista completa, con scroll interno */}
       {view.length === 0 ? (
-        <EmptyState icon="checkCircle" title={emptyTitle} sub={emptySub}/>
+        <div style={{ padding: 32 }}>
+          <EmptyState
+            icon="checkCircle"
+            title={activo.items.length === 0 ? `Sin fichas en "${activo.label.toLowerCase()}"` : 'Sin resultados'}
+            sub={activo.items.length === 0 ? 'Nada que reportar en esta categoría por ahora.' : `Ninguna ficha coincide con "${q}".`}
+          />
+        </div>
       ) : (
-        <Card style={{ overflow: 'hidden' }}>
+        <div style={{ maxHeight: 420, overflowY: 'auto' }}>
           {view.map(({ f, dias }, i) => (
             <div
               key={f.id}
               className={onOpenFicha ? 'nx-row' : undefined}
               onClick={() => onOpenFicha?.(f.id)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
+                display: 'flex', alignItems: 'center', gap: 14, padding: '11px 16px',
                 borderBottom: i < view.length - 1 ? '1px solid #f1f1f3' : 'none',
                 cursor: onOpenFicha ? 'pointer' : 'default',
               }}
@@ -222,21 +289,22 @@ function ListaFichasFecha({ titulo, items, colorFn, labelFn, onOpenFicha, emptyT
                 </div>
                 <div style={{ fontSize: 12, color: '#52525b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.programa_nombre}</div>
               </div>
-              <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 700, color: colorFn(dias), whiteSpace: 'nowrap', textAlign: 'right' }}>{labelFn(dias)}</span>
+              <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 700, color: diasColor(dias), whiteSpace: 'nowrap', textAlign: 'right' }}>{diasLabel(dias)}</span>
+              {onOpenFicha && <Ic n="chevronRight" s={14} style={{ color: '#d4d4d8', flexShrink: 0 }}/>}
             </div>
           ))}
-          {items.length > view.length && (
-            <div style={{ padding: '8px 16px', fontSize: 11.5, color: '#a1a1aa', textAlign: 'center' }}>+{items.length - view.length} más</div>
-          )}
-        </Card>
+        </div>
       )}
-    </div>
+
+      {/* Footer: cuántas se están viendo */}
+      {activo.items.length > 0 && (
+        <div style={{ padding: '9px 16px', borderTop: '1px solid #f1f1f3', fontSize: 11.5, color: '#a1a1aa', background: '#fafafa' }}>
+          {view.length === activo.items.length ? `${view.length} ficha${view.length === 1 ? '' : 's'}` : `${view.length} de ${activo.items.length} fichas`}
+        </div>
+      )}
+    </Card>
   )
 }
-
-// Etiqueta/color compartidos: negativo = ya pasó (crítico), positivo = faltan (alerta).
-function diasLabel(dias: number): string { return dias < 0 ? `${Math.abs(dias)}d vencida` : dias === 0 ? 'Hoy' : `${dias}d` }
-function diasColor(dias: number): string { return dias < 0 ? '#dc2626' : dias <= 7 ? '#c2410c' : '#a16207' }
 
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
@@ -283,21 +351,10 @@ function ResumenTab({ todas, filtradas, onOpenFicha }: {
           : <SingleStackedBar segments={porEtapa}/>}
       </Card>
 
-      <ListaFichasFecha
-        titulo="Fichas vencidas sin cerrar"
-        items={vencidas} colorFn={diasColor} labelFn={diasLabel} onOpenFicha={onOpenFicha}
-        emptyTitle="Sin fichas vencidas" emptySub="Ninguna ficha en práctica pasó su fecha de fin sin cerrarse."
-      />
-      <ListaFichasFecha
-        titulo="Cierran pronto (≤ 30 días)"
-        items={cierranPronto} colorFn={diasColor} labelFn={diasLabel} onOpenFicha={onOpenFicha}
-        emptyTitle="Sin cierres próximos" emptySub="Ninguna ficha en práctica cierra en los próximos 30 días."
-      />
-      <ListaFichasFecha
-        titulo="Van a pasar a etapa práctica"
-        items={vanAPractica} colorFn={diasColor} labelFn={diasLabel} onOpenFicha={onOpenFicha}
-        emptyTitle="Sin transiciones próximas" emptySub="Ninguna ficha en lectiva tiene fecha de paso a práctica en los próximos 30 días."
-      />
+      <div>
+        <div className="section-title">Fichas que requieren seguimiento por fecha</div>
+        <AlertasFichas vencidas={vencidas} cierranPronto={cierranPronto} vanAPractica={vanAPractica} onOpenFicha={onOpenFicha}/>
+      </div>
     </div>
   )
 }
