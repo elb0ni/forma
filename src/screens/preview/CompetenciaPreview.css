@@ -1,0 +1,212 @@
+/* ─── Vista de competencia (prototipo) ────────────────────────────────────────
+   Paleta y radios calcados de .card / .btn / SM en ui.css y shared/parts.tsx —
+   nada de tokens inventados, todo literal como el resto del proyecto. */
+
+.cp-page {
+  width: 100%;
+}
+
+/* Línea de sesiones */
+.cp-chip {
+  flex-shrink: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 108px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-align: left;
+  font-family: inherit;
+  background: none;
+  transition: opacity 100ms, box-shadow 100ms;
+}
+.cp-chip:hover { opacity: 0.85; }
+.cp-chip:focus { outline: none; }
+.cp-chip:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #c7d2fe; }
+
+.cp-chip--done {
+  background: #f7f7f8;
+  border-color: #e4e4e7;
+}
+
+.cp-chip--active {
+  background: #4f46e5;
+}
+
+.cp-chip--preview {
+  border: 1px dashed #d4d4d8;
+  opacity: 0.75;
+}
+
+.cp-chip--sinplanear {
+  border: 1px dashed #e4e4e7;
+  opacity: 0.55;
+}
+
+.cp-chip--selected {
+  box-shadow: 0 0 0 1.5px #4f46e5;
+}
+
+.cp-chip-ellipsis {
+  flex-shrink: 0;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a1a1aa;
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+
+/* Calendario */
+.cp-cal-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+.cp-cal-btn:focus { outline: none; }
+.cp-cal-btn:focus-visible:not(:disabled) { box-shadow: 0 0 0 2px #c7d2fe; border-radius: 50%; }
+
+/* Próximas sesiones */
+.cp-upcoming-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 100ms;
+}
+.cp-upcoming-btn:hover { background: #f7f7f8; }
+.cp-upcoming-btn:focus { outline: none; }
+.cp-upcoming-btn:focus-visible { box-shadow: 0 0 0 2px #c7d2fe; }
+.cp-upcoming-btn--active,
+.cp-upcoming-btn--active:hover {
+  background: #eef2ff;
+}
+
+/* Guía de sesión — tarjeta tipo documento (mismo lenguaje que el preview de Reportes) */
+.cp-doc {
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  padding: 28px 32px;
+}
+
+.cp-doc__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71717a;
+  margin: 0 0 6px;
+}
+
+.cp-doc__value {
+  font-size: 14.5px;
+  color: #18181b;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cp-doc__foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f1f3;
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+/* Timeline de fases — recorrido de la sesión, no filas separadas por líneas */
+.cp-doc__timeline {
+  position: relative;
+  margin-top: 24px;
+  padding-left: 42px;
+}
+
+.cp-doc__timeline::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: #e4e4e7;
+}
+
+.cp-doc__step {
+  position: relative;
+  padding-bottom: 24px;
+}
+.cp-doc__step:last-child { padding-bottom: 0; }
+
+.cp-doc__step-num {
+  position: absolute;
+  left: -42px;
+  top: -3px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid #e4e4e7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #52525b;
+}
+
+/* Ruta de la actividad — pasos numerados con tiempo, dentro de la fase "actividad" */
+.cp-doc__substeps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cp-doc__substep {
+  display: flex;
+  gap: 10px;
+}
+
+.cp-doc__substep-num {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 5px;
+  background: #f1f1f3;
+  color: #52525b;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cp-doc__substep-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #18181b;
+  margin: 0 0 3px;
+}
+
+.cp-doc__substep-dur {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #71717a;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}

@@ -4,6 +4,7 @@ import { Login } from '../screens/Login'
 import { CambiarContrasena } from '../screens/CambiarContrasena'
 import { Spinner, RootLayout, RequireAuth, RequirePrimerLogin, PublicOnly, RequireRole, DashboardRedirect } from './guards'
 import { SuperAdminDashboard, CoordinadorDashboard, InstructorDashboard } from './lazyDashboards'
+import { CompetenciaPreview } from '../screens/preview/CompetenciaPreview'
 import './router.css'
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -48,6 +49,9 @@ export const router = createBrowserRouter([
           },
         ],
       },
+      // Vista de prueba/maqueta, sin autenticación — solo para validar diseño.
+      { path: '/preview/competencia', element: <CompetenciaPreview/> },
+
       { path: '/',  element: <Navigate to="/dashboard" replace/> },
       { path: '*',  element: <Navigate to="/dashboard" replace/> },
     ],
