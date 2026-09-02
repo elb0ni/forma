@@ -340,15 +340,18 @@ function ResumenTab({ todas, filtradas, onOpenFicha }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Card style={{ padding: 20 }}>
-        <div className="section-title">Fichas por estado · toda la regional</div>
-        <SingleStackedBar segments={porEstado}/>
-
-        <div style={{ height: 1, background: '#f1f1f3', margin: '22px 0' }}/>
-
-        <div className="section-title">Etapa de las fichas en ejecución{filtradas.length !== todas.length ? ' · filtro actual' : ''}</div>
-        {activasFiltradas.length === 0
-          ? <div style={{ fontSize: 12.5, color: '#a1a1aa' }}>Sin fichas en ejecución en el filtro actual.</div>
-          : <SingleStackedBar segments={porEtapa}/>}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+          <div>
+            <div className="section-title">Fichas por estado · toda la regional</div>
+            <SingleStackedBar segments={porEstado}/>
+          </div>
+          <div style={{ borderLeft: '1px solid #f1f1f3', paddingLeft: 28 }}>
+            <div className="section-title">Etapa de las fichas en ejecución{filtradas.length !== todas.length ? ' · filtro actual' : ''}</div>
+            {activasFiltradas.length === 0
+              ? <div style={{ fontSize: 12.5, color: '#a1a1aa' }}>Sin fichas en ejecución en el filtro actual.</div>
+              : <SingleStackedBar segments={porEtapa}/>}
+          </div>
+        </div>
       </Card>
 
       <div>
