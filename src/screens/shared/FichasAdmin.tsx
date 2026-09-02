@@ -3,7 +3,7 @@ import { Ic, Card, Ava, Btn, Tag, Pager } from '../../components/ui'
 import api from '../../lib/api'
 import { FichaForm } from './FichaForm'
 import type { FichaEdit } from './FichaForm'
-import { jornadaLabel } from './parts'
+import { jornadaLabel, diasHasta } from './parts'
 import { AprendicesPracticaTable } from './AprendicesPractica'
 import type { AprendizPractica, InstructorPracticaInfo } from './AprendicesPractica'
 
@@ -90,6 +90,36 @@ function EtapaPill({ etapa }: { etapa: string | null }) {
   )
 }
 
+// Urgencia de fecha: la característica pedida para el catálogo -- de un
+// vistazo, qué fichas ya debieron cerrar (vencidas en práctica), cuáles
+// cierran pronto, y cuáles todavía en lectiva están por pasar a práctica
+// (o ya deberían haber pasado y siguen ahí). Solo aplica a EN_EJECUCION.
+function UrgenciaBadge({ f }: { f: FichaRow }) {
+  if (f.estado !== 'EN_EJECUCION') return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
+
+  const enPractica = f.etapa_actual_teorica === 'PRACTICA'
+  const fecha = enPractica ? f.fecha_fin_productiva : (f.fecha_inicio_productiva ?? f.fecha_fin_lectiva)
+  const dias = diasHasta(fecha)
+  if (dias == null) return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
+
+  const chip = (label: string, fg: string, bg: string) => (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: 20,
+      fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', color: fg, background: bg,
+      fontFamily: '"JetBrains Mono", monospace',
+    }}>{label}</span>
+  )
+
+  if (enPractica) {
+    if (dias < 0)  return chip(`${Math.abs(dias)}d vencida`, '#b91c1c', '#fee2e2')
+    if (dias <= 30) return chip(`Cierra en ${dias}d`, '#c2410c', '#ffedd5')
+    return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
+  }
+  if (dias < 0)  return chip(`Debió pasar hace ${Math.abs(dias)}d`, '#a16207', '#fef9c3')
+  if (dias <= 30) return chip(`Pasa a práctica en ${dias}d`, '#4338ca', '#eef2ff')
+  return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
+}
+
 function EstadoPill({ estado }: { estado: string }) {
   const s = ESTADO_PILL[estado] ?? { label: estado, dot: '#a1a1aa', bg: '#f1f1f3', fg: '#52525b', bd: '#e4e4e7' }
   return (
@@ -142,7 +172,7 @@ const SEL = {
   fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none',
 }
 
-const THEAD = ['Número', 'Programa', 'Coordinador', 'Inicio', 'Inicio productiva', 'Fin productiva', 'Etapa teórica', 'Estado', '']
+const THEAD = ['Número', 'Programa', 'Coordinador', 'Inicio', 'Inicio productiva', 'Fin productiva', 'Etapa teórica', 'Urgencia', 'Estado', '']
 const TH_S = { padding: '10px 14px', textAlign: 'left' as const, fontWeight: 600 }
 const TD_S = { padding: '12px 14px' }
 
@@ -400,9 +430,27 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
   const all = state.status === 'ok' ? state.data : []
   const q   = search.trim().toLowerCase()
   const fechaActiva = !!(fechaDesde || fechaHasta)
-  // "Práctica" es el default de la pantalla (no un filtro que el usuario aplicó
-  // a propósito), así que no cuenta para el badge de "filtros activos".
-  const filtrosExtraCount = (estadoFilt ? 1 : 0) + (etapaFilt !== 'PRACTICA' ? 1 : 0) + (fechaActiva ? 1 : 0)
+  // Solo la fecha queda dentro del dropdown "Filtros" -- estado y etapa ahora
+  // son chips visibles en la propia pantalla (ver debajo).
+  const filtrosExtraCount = fechaActiva ? 1 : 0
+
+  const estadoCounts: Record<EstadoFilt, number> = {
+    '':            all.length,
+    EN_EJECUCION:  all.filter(f => f.estado === 'EN_EJECUCION').length,
+    FINALIZADA:    all.filter(f => f.estado === 'FINALIZADA').length,
+    SUSPENDIDA:    all.filter(f => f.estado === 'SUSPENDIDA').length,
+  }
+  const etapaCounts: Record<EtapaFilt, number> = {
+    '':         all.length,
+    LECTIVA:    all.filter(f => f.etapa_actual_teorica === 'LECTIVA').length,
+    PRACTICA:   all.filter(f => f.etapa_actual_teorica === 'PRACTICA').length,
+  }
+  const vencidasCount = all.filter(f => {
+    if (f.estado !== 'EN_EJECUCION' || f.etapa_actual_teorica !== 'PRACTICA') return false
+    const d = diasHasta(f.fecha_fin_productiva)
+    return d != null && d < 0
+  }).length
+
   const filtered = all
     .filter(f => {
       if (estadoFilt && f.estado !== estadoFilt) return false
@@ -443,17 +491,83 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>Fichas</h2>
-          <div style={{ fontSize: 13, color: '#52525b', marginTop: 4 }}>
-            {scope ? 'Fichas de tu coordinación académica' : 'Todas las fichas del sistema'}
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 700, color: '#0a0a0b', lineHeight: 1 }}>
+              {all.length.toLocaleString('es-CO')}
+            </span>
+            <span style={{ fontSize: 13, color: '#52525b' }}>
+              {scope ? 'fichas de tu coordinación académica' : 'fichas en la regional'}
+              {' · '}<strong style={{ color: '#4f46e5', fontWeight: 600 }}>{etapaCounts.PRACTICA}</strong> en práctica
+              {vencidasCount > 0 && <> · <strong style={{ color: '#dc2626', fontWeight: 600 }}>{vencidasCount} vencida{vencidasCount === 1 ? '' : 's'}</strong></>}
+            </span>
           </div>
         </div>
         <Btn variant="accent" icon="plus" onClick={() => setFormFicha(null)}>Crear ficha</Btn>
       </div>
 
-      {/* Toolbar: búsqueda + orden + filtros */}
+      {/* Chips de Estado y Etapa -- filtros principales, siempre visibles */}
+      {state.status === 'ok' && all.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            {ESTADO_CHIPS.map(c => {
+              const active = estadoFilt === c.key
+              return (
+                <button
+                  key={c.key || 'todas-estado'}
+                  onClick={() => setEstadoFilt(c.key)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    padding: '6px 12px', borderRadius: 20, cursor: 'pointer',
+                    border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
+                    background: active ? '#eef2ff' : '#fff',
+                    color: active ? '#4f46e5' : '#3f3f46',
+                    fontSize: 12.5, fontWeight: active ? 600 : 500, fontFamily: 'Inter, sans-serif',
+                    transition: 'all 120ms',
+                  }}
+                >
+                  {c.label}
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
+                    background: active ? '#c7d2fe' : '#f1f1f3', color: active ? '#4338ca' : '#71717a',
+                    padding: '1px 6px', borderRadius: 10,
+                  }}>{estadoCounts[c.key]}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            {ETAPA_CHIPS.map(c => {
+              const active = etapaFilt === c.key
+              return (
+                <button
+                  key={c.key || 'todas-etapa'}
+                  onClick={() => setEtapaFilt(c.key)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    padding: '5px 11px', borderRadius: 8, cursor: 'pointer',
+                    border: active ? '1.5px solid #4f46e5' : '1px solid #e4e4e7',
+                    background: active ? '#4f46e5' : '#fafafa',
+                    color: active ? '#fff' : '#52525b',
+                    fontSize: 12, fontWeight: active ? 600 : 500, fontFamily: 'Inter, sans-serif',
+                    transition: 'all 120ms',
+                  }}
+                >
+                  {c.label}
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
+                    color: active ? 'rgba(255,255,255,.85)' : '#a1a1aa',
+                  }}>{etapaCounts[c.key]}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Toolbar: búsqueda + orden + filtro de fecha */}
       {state.status === 'ok' && all.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -494,8 +608,8 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                 fontWeight: filtrosExtraCount ? 600 : 400,
               }}
             >
-              <Ic n="filter" s={13}/>
-              Filtros
+              <Ic n="calendar" s={13}/>
+              Fecha
               {filtrosExtraCount > 0 && (
                 <span style={{
                   fontSize: 11, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
@@ -510,72 +624,13 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                 <div onClick={() => setFiltrosOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }}/>
                 <div className="pop-in" style={{
                   position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
-                  width: 320, maxWidth: 'calc(100vw - 32px)', background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12,
+                  width: 280, maxWidth: 'calc(100vw - 32px)', background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12,
                   boxShadow: '0 8px 24px -8px rgba(0,0,0,.18)', padding: 16,
                   display: 'flex', flexDirection: 'column', gap: 16, boxSizing: 'border-box',
                 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
-                      Estado
-                    </div>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {ESTADO_CHIPS.map(c => {
-                        const active = estadoFilt === c.key
-                        const count = c.key === '' ? all.length : all.filter(f => f.estado === c.key).length
-                        return (
-                          <button
-                            key={c.key}
-                            onClick={() => setEstadoFilt(c.key)}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 6,
-                              padding: '5px 10px', borderRadius: 7, cursor: 'pointer',
-                              border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
-                              background: active ? '#eef2ff' : '#fff',
-                              color: active ? '#4f46e5' : '#52525b',
-                              fontSize: 12, fontWeight: active ? 600 : 400, fontFamily: 'Inter, sans-serif',
-                            }}
-                          >
-                            {c.label}
-                            <span style={{
-                              fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
-                              background: active ? '#c7d2fe' : '#f1f1f3', color: active ? '#4338ca' : '#71717a',
-                              padding: '1px 5px', borderRadius: 10,
-                            }}>{count}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
-                      Etapa teórica
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {ETAPA_CHIPS.map(c => {
-                        const active = etapaFilt === c.key
-                        return (
-                          <button
-                            key={c.key}
-                            onClick={() => setEtapaFilt(c.key)}
-                            style={{
-                              flex: 1, padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
-                              border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
-                              background: active ? '#eef2ff' : '#fff',
-                              color: active ? '#4f46e5' : '#52525b',
-                              fontSize: 12, fontWeight: active ? 600 : 400, fontFamily: 'Inter, sans-serif',
-                            }}
-                          >
-                            {c.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
-                      Fecha
+                      Filtrar por fecha
                     </div>
                     <select
                       value={fechaCampo}
@@ -600,14 +655,14 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
 
                   {filtrosExtraCount > 0 && (
                     <button
-                      onClick={() => { setEstadoFilt(''); setEtapaFilt('PRACTICA'); setFechaDesde(''); setFechaHasta('') }}
+                      onClick={() => { setFechaDesde(''); setFechaHasta('') }}
                       style={{
                         alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 5,
                         background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                         fontSize: 12, color: '#4f46e5', fontWeight: 600, fontFamily: 'Inter, sans-serif',
                       }}
                     >
-                      <Ic n="x" s={11}/> Limpiar filtros
+                      <Ic n="x" s={11}/> Limpiar fecha
                     </button>
                   )}
                 </div>
@@ -631,6 +686,7 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                   <td style={TD_S}><Sk w={90} h={12}/></td>
                   <td style={TD_S}><Sk w={90} h={12}/></td>
                   <td style={TD_S}><Sk w={90} h={12}/></td>
+                  <td style={TD_S}><Sk w={90} h={20} r={20}/></td>
                   <td style={TD_S}><Sk w={80} h={20} r={20}/></td>
                   <td style={TD_S}/>
                 </tr>
@@ -722,6 +778,7 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                     {fdISO(f.fecha_fin_productiva)}
                   </td>
                   <td style={TD_S}><EtapaPill etapa={f.etapa_actual_teorica}/></td>
+                  <td style={TD_S}><UrgenciaBadge f={f}/></td>
                   <td style={TD_S}><EstadoPill estado={f.estado}/></td>
                   <td style={{ ...TD_S, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                     <button

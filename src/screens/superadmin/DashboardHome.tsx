@@ -56,33 +56,52 @@ const PRACTICA_COLOR = '#4f46e5'
 const LECTIVA_COLOR  = '#71717a'
 
 // ─── Barra apilada genérica (un total, N segmentos con color fijo por categoría) ─
+// Estilo "segmented progress bar": cada categoría es su propia píldora
+// redondeada separada por un gap real (no un borde blanco cortando la
+// barra) -- mark spec del skill dataviz (extremos redondeados, 2px+ de
+// separación entre fills). El % se imprime dentro del segmento cuando hay
+// espacio real para que quepa (label directo, no solo en el hover).
 
 interface Segmento { key: string; label: string; value: number; color: string }
 
-function SingleStackedBar({ segments, height = 26 }: { segments: Segmento[]; height?: number }) {
+function SingleStackedBar({ segments, height = 16 }: { segments: Segmento[]; height?: number }) {
   const total = segments.reduce((a, s) => a + s.value, 0)
   const visibles = segments.filter(s => s.value > 0)
   return (
     <div>
-      <div className="stacked-track" style={{ height }}>
+      <div style={{ display: 'flex', gap: 3, height, background: total === 0 ? '#f1f1f3' : 'transparent', borderRadius: height }}>
         {total === 0
-          ? <div style={{ flex: 1, background: '#f1f1f3' }}/>
-          : visibles.map((s, i) => (
-            <div
-              key={s.key}
-              title={`${s.label}: ${s.value} (${Math.round((s.value / total) * 100)}%)`}
-              style={{
-                flex: s.value, background: s.color,
-                borderRight: i < visibles.length - 1 ? '2px solid #fff' : 'none',
-              }}
-            />
-          ))}
+          ? null
+          : visibles.map(s => {
+            const pct = Math.round((s.value / total) * 100)
+            return (
+              <div
+                key={s.key}
+                title={`${s.label}: ${s.value} (${pct}%)`}
+                style={{
+                  flex: s.value, background: s.color, borderRadius: height,
+                  minWidth: height, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'flex 200ms ease',
+                }}
+              >
+                {pct >= 14 && (
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.02em' }}>
+                    {pct}%
+                  </span>
+                )}
+              </div>
+            )
+          })}
       </div>
-      <div className="legend">
+      <div className="legend" style={{ marginTop: 12 }}>
         {segments.map(s => (
-          <div key={s.key} className="legend-item">
-            <span className="legend-dot" style={{ background: s.color }}/>
-            {s.label} <strong style={{ color: '#27272a', fontFamily: '"JetBrains Mono", monospace' }}>{s.value}</strong>
+          <div key={s.key} className="legend-item" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, padding: '4px 10px 4px 8px',
+            borderRadius: 20, background: '#f7f7f8', fontSize: 12,
+          }}>
+            <span className="legend-dot" style={{ background: s.color, width: 8, height: 8, borderRadius: '50%' }}/>
+            <span style={{ color: '#52525b' }}>{s.label}</span>
+            <strong style={{ color: '#18181b', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700 }}>{s.value}</strong>
           </div>
         ))}
       </div>
