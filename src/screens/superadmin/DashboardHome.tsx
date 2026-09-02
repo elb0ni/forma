@@ -94,7 +94,9 @@ function KpiCards({ resumen, fichas, centros }: { resumen: ResumenKPI | null; fi
 
 // ─── Fichas que cierran pronto ────────────────────────────────────────────────
 
-function FichasCierranPronto({ fichas, onNav }: { fichas: FichaRow[]; onNav?: (id: string) => void }) {
+function FichasCierranPronto({ fichas, onNav, onOpenFicha }: {
+  fichas: FichaRow[]; onNav?: (id: string) => void; onOpenFicha?: (id: number) => void
+}) {
   const cierran = fichas
     .filter(f => f.estado === 'EN_EJECUCION' && f.etapa_actual_teorica === 'PRACTICA')
     .map(f => ({ f, dias: diasHasta(f.fecha_fin_productiva) }))
@@ -117,12 +119,12 @@ function FichasCierranPronto({ fichas, onNav }: { fichas: FichaRow[]; onNav?: (i
           {cierran.map(({ f, dias }, i) => (
             <div
               key={f.id}
-              className={onNav ? 'nx-row' : undefined}
-              onClick={() => onNav?.('admin-fichas')}
+              className={onOpenFicha ? 'nx-row' : undefined}
+              onClick={() => onOpenFicha?.(f.id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
                 borderBottom: i < cierran.length - 1 ? '1px solid #f1f1f3' : 'none',
-                cursor: onNav ? 'pointer' : 'default',
+                cursor: onOpenFicha ? 'pointer' : 'default',
               }}
             >
               <div style={{ minWidth: 0, flex: 1 }}>
@@ -178,7 +180,7 @@ function QuickActions({ onNav }: { onNav?: (id: string) => void }) {
 // regionales (fichas en práctica, instructores activos, estructura) +
 // fichas que cierran pronto + accesos rápidos. Reemplaza el home anterior
 // (tabs Digitalización/Operativo/Analítica, todos sobre currículo lectivo).
-export function DashboardHome({ onNav }: { onNav?: (id: string) => void }) {
+export function DashboardHome({ onNav, onOpenFicha }: { onNav?: (id: string) => void; onOpenFicha?: (id: number) => void }) {
   "use no memo"
   const [resumen, setResumen] = useState<ResumenKPI | null>(null)
   const [fichas,  setFichas]  = useState<FichaRow[] | null>(null)
@@ -215,7 +217,7 @@ export function DashboardHome({ onNav }: { onNav?: (id: string) => void }) {
 
       <div className="dash-lower">
         <div className="dash-lower__main">
-          {loading ? <Card style={{ padding: 40 }}><Sk w="40%" h={16}/></Card> : <FichasCierranPronto fichas={fichas} onNav={onNav}/>}
+          {loading ? <Card style={{ padding: 40 }}><Sk w="40%" h={16}/></Card> : <FichasCierranPronto fichas={fichas} onNav={onNav} onOpenFicha={onOpenFicha}/>}
         </div>
         <aside className="dash-lower__side">
           <QuickActions onNav={onNav}/>

@@ -345,7 +345,11 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
   const [focusId, setFocusId] = useState<number | null>(initialFichaId ?? null)
   const detalleId = fichaId != null ? Number(fichaId) : focusId
   const [estadoFilt, setEstadoFilt] = useState<EstadoFilt>('')
-  const [etapaFilt,  setEtapaFilt]  = useState<EtapaFilt>('')
+  // Por defecto solo se ven las fichas en etapa práctica -- FORMA se centra en
+  // seguimiento productivo; "Todas"/"Lectiva" quedan disponibles para cuando
+  // hace falta gestionar una ficha antes de que llegue a esa etapa (p. ej.
+  // asignarle instructor de práctica con antelación).
+  const [etapaFilt,  setEtapaFilt]  = useState<EtapaFilt>('PRACTICA')
   const [fechaCampo, setFechaCampo] = useState<FechaCampo>('fecha_inicio')
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
@@ -398,7 +402,9 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
   const all = state.status === 'ok' ? state.data : []
   const q   = search.trim().toLowerCase()
   const fechaActiva = !!(fechaDesde || fechaHasta)
-  const filtrosExtraCount = (estadoFilt ? 1 : 0) + (etapaFilt ? 1 : 0) + (fechaActiva ? 1 : 0)
+  // "Práctica" es el default de la pantalla (no un filtro que el usuario aplicó
+  // a propósito), así que no cuenta para el badge de "filtros activos".
+  const filtrosExtraCount = (estadoFilt ? 1 : 0) + (etapaFilt !== 'PRACTICA' ? 1 : 0) + (fechaActiva ? 1 : 0)
   const filtered = all
     .filter(f => {
       if (estadoFilt && f.estado !== estadoFilt) return false
@@ -596,7 +602,7 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
 
                   {filtrosExtraCount > 0 && (
                     <button
-                      onClick={() => { setEstadoFilt(''); setEtapaFilt(''); setFechaDesde(''); setFechaHasta('') }}
+                      onClick={() => { setEstadoFilt(''); setEtapaFilt('PRACTICA'); setFechaDesde(''); setFechaHasta('') }}
                       style={{
                         alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 5,
                         background: 'none', border: 'none', cursor: 'pointer', padding: 0,
