@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 import { Ic, Card, Ava, Btn, Tag, Pager } from '../../components/ui'
 import api from '../../lib/api'
 import { FichaForm } from './FichaForm'
@@ -328,22 +327,21 @@ export function FichaDetalle({ id, onBack, onEditar }: {
 }
 
 // scope: cuando lo usa un coordinador, ve y crea solo fichas de su coordinación.
-// El detalle (id de ficha) se toma de la ruta -- FichasAdmin se monta una vez
-// como índice ("fichas") y otra vez como hijo con parámetro ("fichas/:fichaId"),
-// tanto en el dashboard de coordinador como en el de super admin, y la
-// navegación relativa (navigate(String(id)) / navigate('..')) funciona igual
-// en ambos casos sin que el componente necesite conocer su ruta base.
+// SuperAdminDashboard/CoordinadorDashboard/CoordinacionDetalle navegan entre
+// secciones por estado interno (navItem/tab), no por rutas reales de React
+// Router -- por eso el detalle de una ficha también se maneja 100% con
+// estado local (focusId), sin useNavigate/useParams: no hay ninguna ruta
+// ":fichaId" declarada en el router que los capture.
 export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
   scope?: { coordinacionId: number; centroId: number }
   onDetailChange?: (inDetail: boolean) => void
   initialFichaId?: number
 } = {}) {
   "use no memo"
-  const navigate = useNavigate()
-  const { fichaId } = useParams()
-  // Foco inicial (p. ej. desde el dashboard o alertas), independiente de la ruta.
+  // Ficha en foco (p. ej. al abrir el detalle desde la lista, o desde el
+  // dashboard/alertas vía initialFichaId); null = mostrando la lista.
   const [focusId, setFocusId] = useState<number | null>(initialFichaId ?? null)
-  const detalleId = fichaId != null ? Number(fichaId) : focusId
+  const detalleId = focusId
   const [estadoFilt, setEstadoFilt] = useState<EstadoFilt>('')
   // Por defecto solo se ven las fichas en etapa práctica -- FORMA se centra en
   // seguimiento productivo; "Todas"/"Lectiva" quedan disponibles para cuando
@@ -393,7 +391,7 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
     return (
       <FichaDetalle
         id={detalleId}
-        onBack={() => (fichaId != null ? navigate('..') : setFocusId(null))}
+        onBack={() => setFocusId(null)}
         onEditar={ficha => setFormFicha(ficha)}
       />
     )
@@ -682,7 +680,7 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                 <tr
                   key={f.id}
                   className="nx-row"
-                  onClick={() => navigate(String(f.id))}
+                  onClick={() => setFocusId(f.id)}
                   style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}
                 >
                   <td style={TD_S}>
