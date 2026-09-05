@@ -59,10 +59,15 @@ const TD_S = { padding: '12px 14px' }
 // aprendiz (si ya eligió alternativa), ya ordenado por el backend de mayor a
 // menor avance de juicios. `onOpen` es opcional: si se pasa, cada fila es
 // clicable (usado por el instructor para entrar a gestionar el seguimiento).
-export function AprendicesPracticaTable({ aprendices, onOpen }: {
+// `soloConEtapa`: solo hace clicables las filas que ya tienen etapa productiva
+// (para el drill-down de solo lectura desde super admin / coordinación, donde
+// no se crean etapas sino que se abren las sesiones ya registradas).
+export function AprendicesPracticaTable({ aprendices, onOpen, soloConEtapa }: {
   aprendices: AprendizPractica[]
   onOpen?: (a: AprendizPractica) => void
+  soloConEtapa?: boolean
 }) {
+  const esClicable = (a: AprendizPractica) => !!onOpen && (!soloConEtapa || a.etapa_id != null)
   const listos = aprendices.filter(a => a.caso === 'LISTO_PARA_INICIAR').length
 
   return (
@@ -96,16 +101,19 @@ export function AprendicesPracticaTable({ aprendices, onOpen }: {
                 <th style={TH_S}>No aprobados</th>
                 <th style={TH_S}>Sin evaluar</th>
                 <th style={TH_S}>Reporte</th>
+                {onOpen && <th style={TH_S}/>}
               </tr>
             </thead>
             <tbody>
               {aprendices.map((a, i) => {
                 const badge = casoBadge(a)
+                const clicable = esClicable(a)
                 return (
                 <tr
                   key={a.numero_documento}
-                  onClick={onOpen ? () => onOpen(a) : undefined}
-                  style={{ borderBottom: i < aprendices.length - 1 ? '1px solid #f1f1f3' : 'none', cursor: onOpen ? 'pointer' : 'default' }}
+                  onClick={clicable ? () => onOpen!(a) : undefined}
+                  className={clicable ? 'nx-row' : undefined}
+                  style={{ borderBottom: i < aprendices.length - 1 ? '1px solid #f1f1f3' : 'none', cursor: clicable ? 'pointer' : 'default' }}
                 >
                   <td style={TD_S}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -126,6 +134,15 @@ export function AprendicesPracticaTable({ aprendices, onOpen }: {
                   <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: (a.ra_no_aprobados ?? 0) > 0 ? '#b91c1c' : '#a1a1aa' }}>{a.ra_no_aprobados ?? '—'}</td>
                   <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: (a.ra_sin_evaluar ?? 0) > 0 ? '#a16207' : '#a1a1aa' }}>{a.ra_sin_evaluar ?? '—'}</td>
                   <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: '#52525b', whiteSpace: 'nowrap' }}>{fdISO(a.fecha_reporte)}</td>
+                  {onOpen && (
+                    <td style={{ ...TD_S, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {clicable && a.etapa_id
+                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: '#4f46e5' }}>Ver seguimientos <Ic n="chevronRight" s={13}/></span>
+                        : soloConEtapa
+                          ? <span style={{ fontSize: 11, color: '#c4c4c8' }}>Sin etapa</span>
+                          : null}
+                    </td>
+                  )}
                 </tr>
                 )
               })}

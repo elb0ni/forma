@@ -43,12 +43,14 @@ async function subirFirmas(seguimientoId: number, firmas: FirmasEstado, requiere
 
 // ─── Contenedor: carga la etapa + su estado real y enruta entre tabs ───────────
 
-export function EtapaProductivaDetalle({ etapaId, onBack }: { etapaId: number; onBack: () => void }) {
+export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general', backLabel = 'Etapa productiva' }: {
+  etapaId: number; onBack: () => void; initialTab?: TabId; backLabel?: string
+}) {
   "use no memo"
   const [etapa, setEtapa] = useState<EtapaConSeguimientos | null>(null)
   const [estadoCalc, setEstadoCalc] = useState<EstadoAprendiz | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<TabId>('general')
+  const [tab, setTab] = useState<TabId>(initialTab)
 
   function load() {
     api.get<EtapaConSeguimientos>(`/etapas-productivas/${etapaId}`)
@@ -63,7 +65,7 @@ export function EtapaProductivaDetalle({ etapaId, onBack }: { etapaId: number; o
 
   const back = (
     <button onClick={onBack} style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
-      <Ic n="arrowLeft" s={14}/>Etapa productiva
+      <Ic n="arrowLeft" s={14}/>{backLabel}
     </button>
   )
 

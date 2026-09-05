@@ -270,6 +270,24 @@ function FirmaCampo({ label, value, onChange }: { label: string; value: string |
 
 // ─── Ubicación (geolocalización del navegador) al momento de firmar ────────────
 
+// Mapa embebido (OpenStreetMap, sin API key ni dependencias) con un marcador
+// en el punto exacto desde donde el instructor registró la sesión.
+function MapaUbicacion({ lat, lng, alerta }: { lat: number; lng: number; alerta?: boolean }) {
+  const d = 0.0045
+  const bbox = `${lng - d}%2C${lat - d}%2C${lng + d}%2C${lat + d}`
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`
+  return (
+    <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${alerta ? '#fecaca' : '#e4e4e7'}`, marginLeft: 22, maxWidth: 460 }}>
+      <iframe
+        title="Ubicación del registro de la sesión"
+        src={src}
+        loading="lazy"
+        style={{ width: '100%', height: 190, border: 0, display: 'block' }}
+      />
+    </div>
+  )
+}
+
 function UbicacionSlot({ seguimientoId, lat, lng, precision, distancia, alerta, onCaptured }: {
   seguimientoId: number
   lat: number | null; lng: number | null; precision: number | null
@@ -300,17 +318,27 @@ function UbicacionSlot({ seguimientoId, lat, lng, precision, distancia, alerta, 
   }
 
   if (lat != null && lng != null) {
+    const la = Number(lat), lo = Number(lng)
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#3f3f46' }}>
-          <Ic n="pin" s={14} style={{ color: '#15803d' }}/>
-          Ubicación capturada · precisión ±{precision ?? '—'} m
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#3f3f46', flexWrap: 'wrap' }}>
+          <Ic n="pin" s={14} style={{ color: alerta ? '#b91c1c' : '#15803d' }}/>
+          <span>Registrado desde <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{la.toFixed(5)}, {lo.toFixed(5)}</span> · precisión ±{precision ?? '—'} m</span>
+          <a
+            href={`https://www.google.com/maps?q=${la},${lo}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: 11.5, color: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+          >
+            Abrir en Google Maps <Ic n="external" s={11}/>
+          </a>
         </div>
         {distancia != null && (
           <div style={{ fontSize: 11.5, color: alerta ? '#b91c1c' : '#71717a', marginLeft: 22 }}>
-            {distancia} m de la empresa {alerta && '· fuera del rango esperado'}
+            a {distancia} m de la empresa{alerta && ' · fuera del rango esperado (> 200 m)'}
           </div>
         )}
+        <MapaUbicacion lat={la} lng={lo} alerta={alerta}/>
       </div>
     )
   }

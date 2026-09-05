@@ -6,6 +6,7 @@ import type { FichaEdit } from './FichaForm'
 import { jornadaLabel, diasHasta } from './parts'
 import { AprendicesPracticaTable } from './AprendicesPractica'
 import type { AprendizPractica, InstructorPracticaInfo } from './AprendicesPractica'
+import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
 
 export interface FichaRow {
   id:                        number
@@ -259,6 +260,9 @@ export function FichaDetalle({ id, onBack, onEditar }: {
 }) {
   "use no memo"
   const [state, setState] = useState<DetState>({ status: 'loading' })
+  // Aprendiz cuyo detalle de etapa productiva (planeación + seguimientos +
+  // evaluación) se está viendo, en solo lectura, desde el detalle de la ficha.
+  const [etapaId, setEtapaId] = useState<number | null>(null)
 
   useEffect(() => {
     setState({ status: 'loading' })
@@ -272,6 +276,19 @@ export function FichaDetalle({ id, onBack, onEditar }: {
       <Ic n="arrowLeft" s={14}/> Fichas
     </button>
   )
+
+  if (etapaId != null) {
+    const numero = state.status === 'ok' ? state.data.ficha.numero_ficha : ''
+    return (
+      <div style={{ maxWidth: 1100 }}>
+        <EtapaProductivaDetalle
+          etapaId={etapaId}
+          backLabel={numero ? `Ficha ${numero}` : 'Ficha'}
+          onBack={() => setEtapaId(null)}
+        />
+      </div>
+    )
+  }
 
   if (state.status === 'loading') return <div>{back}<Card style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Sk w={220} h={16}/></Card></div>
   if (state.status === 'error') return (
@@ -338,7 +355,11 @@ export function FichaDetalle({ id, onBack, onEditar }: {
 
       {/* Contenido: roster de aprendices en práctica + lateral con la meta de la ficha */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
-        <AprendicesPracticaTable aprendices={aprendices_practica}/>
+        <AprendicesPracticaTable
+          aprendices={aprendices_practica}
+          soloConEtapa
+          onOpen={a => { if (a.etapa_id != null) setEtapaId(a.etapa_id) }}
+        />
 
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', marginBottom: 14 }}>Coordinación</div>
