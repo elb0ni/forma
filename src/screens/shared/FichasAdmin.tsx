@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom'
 import { Ic, Card, Ava, Btn, Tag, Pager } from '../../components/ui'
+import type { IcName } from '../../components/ui'
 import api from '../../lib/api'
 import { FichaForm } from './FichaForm'
 import type { FichaEdit } from './FichaForm'
-import { jornadaLabel, diasHasta } from './parts'
-import { AprendicesPracticaTable } from './AprendicesPractica'
-import type { AprendizPractica, InstructorPracticaInfo } from './AprendicesPractica'
+import { jornadaLabel, centroLabel } from './parts'
+import { AprendicesPracticaTable, EstadoAprendicesResumen } from './AprendicesPractica'
+import type { AprendizPractica, InstructorPracticaInfo, KpiAprendicesPractica } from './AprendicesPractica'
 import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
 
 export interface FichaRow {
@@ -15,8 +17,13 @@ export interface FichaRow {
   programa_nombre:           string
   programa_codigo:           string
   centro_formacion_id:       number
+  centro_nombre:             string | null
   coordinacion_academica_id: number | null
+  coordinacion_nombre:       string | null
   coordinador_nombre:        string | null
+  instructor_practica:       string | null   // instructor de seguimiento de la ficha (asignacion_practica ACTIVA)
+  aprendices:                number           // total de aprendices (reporte de juicios)
+  aprendices_en_practica:    number           // de esos, con etapa productiva en ejecución
   estado:                    'EN_EJECUCION' | 'FINALIZADA' | 'SUSPENDIDA'
   fecha_inicio:              string
   fecha_fin_lectiva:         string
@@ -64,94 +71,68 @@ function programaShort(nombre: string): string {
   return sigla.slice(0, 4) || nombre.slice(0, 2).toUpperCase()
 }
 
-const ESTADO_PILL: Record<string, { label: string; dot: string; bg: string; fg: string; bd: string }> = {
-  EN_EJECUCION: { label: 'En ejecución', dot: '#16a34a', bg: '#dcfce7', fg: '#15803d', bd: '#86efac' },
-  FINALIZADA:   { label: 'Finalizada',   dot: '#16a34a', bg: '#d1fae5', fg: '#065f46', bd: '#a7f3d0' },
-  SUSPENDIDA:   { label: 'Suspendida',   dot: '#dc2626', bg: '#fee2e2', fg: '#b91c1c', bd: '#fecaca' },
+// ─── Fase operativa de la ficha ─────────────────────────────────────────────────
+// FORMA no razona por "estado" (En ejecución / Finalizada de Sofía) ni por
+// "etapa lectiva/práctica" -- razona por en qué punto del proceso productivo
+// está la ficha. Se deriva de las fechas de etapa productiva + el estado:
+//   PRÓXIMA      la etapa productiva todavía no arranca -> preparar (instructor)
+//   EN PRÁCTICA  arrancó, la fecha de fin no llegó -> seguimiento en curso
+//   EN CIERRE    la fecha de fin ya pasó pero la ficha sigue abierta ->
+//                seguimientos y evaluación final pendientes. NO es un error:
+//                la práctica dura hasta 6 meses y Sofía marca "Terminada por
+//                fecha" mientras los aprendices siguen en la empresa.
+//   FINALIZADA   cerrada de verdad -> solo historial
+export type FaseFicha = 'PROXIMA' | 'EN_PRACTICA' | 'EN_CIERRE' | 'FINALIZADA'
+
+export function faseFicha(f: {
+  estado: string
+  fecha_inicio_productiva: string | null
+  fecha_fin_productiva: string | null
+}): FaseFicha {
+  const hoy = new Date().toISOString().slice(0, 10)
+  const ini = f.fecha_inicio_productiva ? f.fecha_inicio_productiva.slice(0, 10) : null
+  const fin = f.fecha_fin_productiva ? f.fecha_fin_productiva.slice(0, 10) : null
+  if (ini && ini > hoy) return 'PROXIMA'
+  if (!fin || fin >= hoy) return 'EN_PRACTICA'
+  return f.estado === 'FINALIZADA' ? 'FINALIZADA' : 'EN_CIERRE'
 }
 
-const ETAPA_PILL: Record<string, { icon: 'briefcase' | 'layers'; color: string; bd: string }> = {
-  PRACTICA:   { icon: 'briefcase', color: '#4f46e5', bd: '#c7d2fe' },
-  LECTIVA:    { icon: 'layers',    color: '#52525b', bd: '#e4e4e7' },
+const FASE_META: Record<FaseFicha, {
+  label: string; icon: IcName; fg: string; bg: string; bd: string; dot: string
+}> = {
+  PROXIMA:     { label: 'Próxima a práctica', icon: 'calendar',    fg: '#3730a3', bg: '#eef2ff', bd: '#c7d2fe', dot: '#6366f1' },
+  EN_PRACTICA: { label: 'En práctica',        icon: 'briefcase',   fg: '#4338ca', bg: '#e0e7ff', bd: '#a5b4fc', dot: '#4f46e5' },
+  EN_CIERRE:   { label: 'En cierre',          icon: 'clock',       fg: '#a16207', bg: '#fef9c3', bd: '#fde68a', dot: '#ca8a04' },
+  FINALIZADA:  { label: 'Finalizada',         icon: 'checkCircle', fg: '#52525b', bg: '#f1f1f3', bd: '#e4e4e7', dot: '#a1a1aa' },
 }
 
-function EtapaPill({ etapa }: { etapa: string | null }) {
-  if (!etapa) return <span style={{ color: '#a1a1aa', fontSize: 12 }}>—</span>
-  const p = ETAPA_PILL[etapa] ?? { icon: 'layers' as const, color: '#52525b', bd: '#e4e4e7' }
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '3px 9px', borderRadius: 6, background: '#fff',
-      border: `1px solid ${p.bd}`, fontSize: 10.5, fontWeight: 700,
-      textTransform: 'uppercase', letterSpacing: '0.03em', color: p.color,
-    }}>
-      <Ic n={p.icon} s={11}/>
-      {etapa}
-    </span>
-  )
-}
-
-// Urgencia de fecha: la característica pedida para el catálogo -- de un
-// vistazo, qué fichas ya debieron cerrar (vencidas en práctica), cuáles
-// cierran pronto, y cuáles todavía en lectiva están por pasar a práctica
-// (o ya deberían haber pasado y siguen ahí). Solo aplica a EN_EJECUCION.
-function UrgenciaBadge({ f }: { f: FichaRow }) {
-  if (f.estado !== 'EN_EJECUCION') return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
-
-  const enPractica = f.etapa_actual_teorica === 'PRACTICA'
-  const fecha = enPractica ? f.fecha_fin_productiva : (f.fecha_inicio_productiva ?? f.fecha_fin_lectiva)
-  const dias = diasHasta(fecha)
-  if (dias == null) return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
-
-  const chip = (label: string, fg: string, bg: string) => (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: 20,
-      fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', color: fg, background: bg,
-      fontFamily: '"JetBrains Mono", monospace',
-    }}>{label}</span>
-  )
-
-  if (enPractica) {
-    if (dias < 0)  return chip(`${Math.abs(dias)}d vencida`, '#b91c1c', '#fee2e2')
-    if (dias <= 30) return chip(`Cierra en ${dias}d`, '#c2410c', '#ffedd5')
-    return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
-  }
-  if (dias < 0)  return chip(`Debió pasar hace ${Math.abs(dias)}d`, '#a16207', '#fef9c3')
-  if (dias <= 30) return chip(`Pasa a práctica en ${dias}d`, '#4338ca', '#eef2ff')
-  return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
-}
-
-function EstadoPill({ estado }: { estado: string }) {
-  const s = ESTADO_PILL[estado] ?? { label: estado, dot: '#a1a1aa', bg: '#f1f1f3', fg: '#52525b', bd: '#e4e4e7' }
+function FasePill({ fase }: { fase: FaseFicha }) {
+  const m = FASE_META[fase]
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '3px 9px', borderRadius: 20, background: s.bg,
-      border: `1px solid ${s.bd}`, fontSize: 10.5, fontWeight: 700,
-      textTransform: 'uppercase', letterSpacing: '0.04em', color: s.fg,
+      padding: '3px 9px', borderRadius: 20, background: m.bg,
+      border: `1px solid ${m.bd}`, fontSize: 10.5, fontWeight: 700,
+      textTransform: 'uppercase', letterSpacing: '0.03em', color: m.fg, whiteSpace: 'nowrap',
     }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }}/>
-      {s.label}
+      <Ic n={m.icon} s={11}/>
+      {m.label}
     </span>
   )
 }
 
-type EstadoFilt = '' | 'EN_EJECUCION' | 'FINALIZADA' | 'SUSPENDIDA'
-type EtapaFilt  = '' | 'LECTIVA' | 'PRACTICA'
+// '' = todas · 'ACTIVAS' = en práctica + en cierre (lo que FORMA gestiona a diario)
+type FaseFilt   = '' | 'ACTIVAS' | FaseFicha
 type FechaCampo = 'fecha_inicio' | 'fecha_inicio_productiva' | 'fecha_fin_productiva'
-type FichaSort  = 'inicio_reciente' | 'cierre_proximo' | 'numero' | 'programa'
+type FichaSort  = 'inicio_reciente' | 'cierre_proximo' | 'mas_aprendices' | 'sin_instructor' | 'numero' | 'programa'
 
-const ESTADO_CHIPS: { key: EstadoFilt; label: string }[] = [
-  { key: '',             label: 'Todas'        },
-  { key: 'EN_EJECUCION', label: 'En ejecución' },
-  { key: 'FINALIZADA',   label: 'Finalizadas'  },
-  { key: 'SUSPENDIDA',   label: 'Suspendidas'  },
-]
-
-const ETAPA_CHIPS: { key: EtapaFilt; label: string }[] = [
-  { key: '',           label: 'Todas'       },
-  { key: 'LECTIVA',    label: 'Lectiva'     },
-  { key: 'PRACTICA',   label: 'Práctica'    },
+const FASE_CHIPS: { key: FaseFilt; label: string }[] = [
+  { key: 'ACTIVAS',     label: 'Activas'      },
+  { key: 'EN_PRACTICA', label: 'En práctica' },
+  { key: 'EN_CIERRE',   label: 'En cierre'   },
+  { key: 'PROXIMA',     label: 'Próximas'    },
+  { key: 'FINALIZADA',  label: 'Finalizadas' },
+  { key: '',            label: 'Todas'       },
 ]
 
 const FECHA_CAMPO_LABEL: Record<FechaCampo, string> = {
@@ -163,6 +144,8 @@ const FECHA_CAMPO_LABEL: Record<FechaCampo, string> = {
 const FICHA_SORT_LABEL: Record<FichaSort, string> = {
   inicio_reciente: 'Inicio más reciente',
   cierre_proximo:  'Cierre más próximo',
+  mas_aprendices:  'Más aprendices en práctica',
+  sin_instructor:  'Sin instructor primero',
   numero:          'Número de ficha',
   programa:        'Programa (A–Z)',
 }
@@ -173,27 +156,9 @@ const SEL = {
   fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none',
 }
 
-const THEAD = ['Número', 'Programa', 'Coordinador', 'Inicio', 'Inicio productiva', 'Fin productiva', 'Etapa teórica', 'Urgencia', 'Estado', '']
+const THEAD = ['Número', 'Programa', 'Coordinador', 'Instructor de práctica', 'Aprendices', 'Fin productiva', 'Fase', '']
 const TH_S = { padding: '10px 14px', textAlign: 'left' as const, fontWeight: 600 }
 const TD_S = { padding: '12px 14px' }
-
-function toFichaEdit(f: FichaRow): FichaEdit {
-  return {
-    id:                        f.id,
-    numero_ficha:              f.numero_ficha,
-    programa_id:               f.programa_id,
-    programa_nombre:           f.programa_nombre,
-    centro_formacion_id:       f.centro_formacion_id,
-    coordinacion_academica_id: f.coordinacion_academica_id,
-    estado:                    f.estado,
-    fecha_inicio:              f.fecha_inicio,
-    fecha_fin_lectiva:         f.fecha_fin_lectiva,
-    fecha_fin_productiva:      f.fecha_fin_productiva,
-    sede:                      f.sede,
-    jornada:                   f.jornada,
-    etapa_actual:              f.etapa_actual_teorica as 'LECTIVA' | 'PRACTICA' | null,
-  }
-}
 
 // ─── Detalle de ficha (read-only: instructor de práctica + roster de aprendices) ─
 // Independientemente de si la ficha ya entró a etapa productiva o todavía
@@ -212,10 +177,8 @@ interface FichaDetalleData {
     nivel_formacion: string
     coordinador_nombre: string; coordinacion_nombre: string
   }
-  kpi: {
-    aprendices_total: number; listos_para_iniciar: number; en_curso: number; concluidos: number
-  }
-  aprendices_practica: AprendizPractica[]
+  kpi: KpiAprendicesPractica
+  aprendices: AprendizPractica[]
   instructor_practica: InstructorPracticaInfo | null
 }
 
@@ -242,27 +205,11 @@ function detalleToEdit(f: FichaDetalleData['ficha']): FichaEdit {
   }
 }
 
-function KpiBox({ label, value, sub, icon }: { label: string; value: string; sub: string; icon: any }) {
-  return (
-    <Card style={{ padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600 }}>{label}</div>
-        <Ic n={icon} s={14} style={{ color: '#a1a1aa' }}/>
-      </div>
-      <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 600, color: '#0a0a0b', marginTop: 10 }}>{value}</div>
-      <div style={{ fontSize: 11.5, color: '#52525b', marginTop: 4 }}>{sub}</div>
-    </Card>
-  )
-}
-
-export function FichaDetalle({ id, onBack, onEditar }: {
-  id: number; onBack: () => void; onEditar: (f: FichaEdit) => void
+export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
+  id: number; onBack: () => void; onEditar: () => void; onOpenEtapa: (etapaId: number) => void
 }) {
   "use no memo"
   const [state, setState] = useState<DetState>({ status: 'loading' })
-  // Aprendiz cuyo detalle de etapa productiva (planeación + seguimientos +
-  // evaluación) se está viendo, en solo lectura, desde el detalle de la ficha.
-  const [etapaId, setEtapaId] = useState<number | null>(null)
 
   useEffect(() => {
     setState({ status: 'loading' })
@@ -277,19 +224,6 @@ export function FichaDetalle({ id, onBack, onEditar }: {
     </button>
   )
 
-  if (etapaId != null) {
-    const numero = state.status === 'ok' ? state.data.ficha.numero_ficha : ''
-    return (
-      <div style={{ maxWidth: 1100 }}>
-        <EtapaProductivaDetalle
-          etapaId={etapaId}
-          backLabel={numero ? `Ficha ${numero}` : 'Ficha'}
-          onBack={() => setEtapaId(null)}
-        />
-      </div>
-    )
-  }
-
   if (state.status === 'loading') return <div>{back}<Card style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Sk w={220} h={16}/></Card></div>
   if (state.status === 'error') return (
     <div>{back}
@@ -302,7 +236,7 @@ export function FichaDetalle({ id, onBack, onEditar }: {
     </div>
   )
 
-  const { ficha, kpi, aprendices_practica, instructor_practica } = state.data
+  const { ficha, kpi, aprendices, instructor_practica } = state.data
   const meta: [string, string][] = [
     ['Coordinador', ficha.coordinador_nombre],
     ['Coordinación', ficha.coordinacion_nombre],
@@ -330,8 +264,11 @@ export function FichaDetalle({ id, onBack, onEditar }: {
             <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: '#18181b' }}>Ficha {ficha.numero_ficha}</span>
             <span style={{ color: '#a1a1aa' }}>·</span>
             <span>{jornadaLabel(ficha.jornada)}{ficha.sede ? ` · ${ficha.sede}` : ''}</span>
-            <EstadoPill estado={ficha.estado}/>
-            <EtapaPill etapa={ficha.etapa_actual}/>
+            <FasePill fase={faseFicha({
+              estado: ficha.estado,
+              fecha_inicio_productiva: ficha.fecha_fin_lectiva,
+              fecha_fin_productiva: ficha.fecha_fin_productiva,
+            })}/>
           </div>
           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
             <Ic n="user" s={13} style={{ color: instructor_practica ? '#15803d' : '#a16207' }}/>
@@ -342,23 +279,18 @@ export function FichaDetalle({ id, onBack, onEditar }: {
             )}
           </div>
         </div>
-        <Btn variant="accent" icon="users" onClick={() => onEditar(detalleToEdit(ficha))}>Editar ficha y asignaciones</Btn>
+        <Btn variant="accent" icon="users" onClick={onEditar}>Editar ficha y asignaciones</Btn>
       </div>
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-        <KpiBox label="Aprendices" value={String(kpi.aprendices_total)} sub="en la ficha" icon="users"/>
-        <KpiBox label="Listos para iniciar" value={String(kpi.listos_para_iniciar)} sub="sin alternativa, al día en juicios" icon="alert"/>
-        <KpiBox label="En curso" value={String(kpi.en_curso)} sub="con etapa productiva activa" icon="briefcase"/>
-        <KpiBox label="Concluidos" value={String(kpi.concluidos)} sub="confirmados por Sofia" icon="checkCircle"/>
-      </div>
+      {/* Distribución de los aprendices entre los 5 estados de práctica */}
+      <EstadoAprendicesResumen kpi={kpi}/>
 
       {/* Contenido: roster de aprendices en práctica + lateral con la meta de la ficha */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
         <AprendicesPracticaTable
-          aprendices={aprendices_practica}
+          aprendices={aprendices}
           soloConEtapa
-          onOpen={a => { if (a.etapa_id != null) setEtapaId(a.etapa_id) }}
+          onOpen={a => { if (a.etapa_id != null) onOpenEtapa(a.etapa_id) }}
         />
 
         <div>
@@ -377,28 +309,17 @@ export function FichaDetalle({ id, onBack, onEditar }: {
   )
 }
 
+// ─── Lista de fichas ─────────────────────────────────────────────────────────────
 // scope: cuando lo usa un coordinador, ve y crea solo fichas de su coordinación.
-// SuperAdminDashboard/CoordinadorDashboard/CoordinacionDetalle navegan entre
-// secciones por estado interno (navItem/tab), no por rutas reales de React
-// Router -- por eso el detalle de una ficha también se maneja 100% con
-// estado local (focusId), sin useNavigate/useParams: no hay ninguna ruta
-// ":fichaId" declarada en el router que los capture.
-export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
-  scope?: { coordinacionId: number; centroId: number }
-  onDetailChange?: (inDetail: boolean) => void
-  initialFichaId?: number
-} = {}) {
+
+function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: number } }) {
   "use no memo"
-  // Ficha en foco (p. ej. al abrir el detalle desde la lista, o desde el
-  // dashboard/alertas vía initialFichaId); null = mostrando la lista.
-  const [focusId, setFocusId] = useState<number | null>(initialFichaId ?? null)
-  const detalleId = focusId
-  const [estadoFilt, setEstadoFilt] = useState<EstadoFilt>('')
-  // Por defecto solo se ven las fichas en etapa práctica -- FORMA se centra en
-  // seguimiento productivo; "Todas"/"Lectiva" quedan disponibles para cuando
-  // hace falta gestionar una ficha antes de que llegue a esa etapa (p. ej.
-  // asignarle instructor de práctica con antelación).
-  const [etapaFilt,  setEtapaFilt]  = useState<EtapaFilt>('PRACTICA')
+  const navigate = useNavigate()
+  // Por defecto se ven las fichas "activas" (en práctica + en cierre) -- lo que
+  // FORMA gestiona a diario. Próximas y finalizadas quedan a un chip de distancia.
+  const [faseFilt, setFaseFilt] = useState<FaseFilt>('ACTIVAS')
+  const [centroFilt, setCentroFilt] = useState('')
+  const [soloSinInstr, setSoloSinInstr] = useState(false)
   const [fechaCampo, setFechaCampo] = useState<FechaCampo>('fecha_inicio')
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
@@ -407,10 +328,6 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
   const [sort,       setSort]       = useState<FichaSort>('inicio_reciente')
   const [state,      setState]      = useState<ListState>({ status: 'loading' })
   const [page,       setPage]       = useState(0)
-  // Formulario de crear/editar: overlay local, independiente de si se abrió
-  // desde la lista o desde el detalle de una ficha.
-  const [formFicha,  setFormFicha]  = useState<FichaEdit | null | undefined>(undefined)
-  const [reloadKey,  setReloadKey]  = useState(0)
 
   const coordScope = scope?.coordinacionId ?? null
 
@@ -419,63 +336,47 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
     api.get<FichaRow[]>(coordScope != null ? `/fichas?coordinacion_id=${coordScope}` : '/fichas')
       .then(r => setState({ status: 'ok', data: r.data }))
       .catch(() => setState({ status: 'error' }))
-  }, [reloadKey, coordScope])
+  }, [coordScope])
 
-  useEffect(() => { setPage(0) }, [estadoFilt, etapaFilt, fechaCampo, fechaDesde, fechaHasta, search, sort])
-
-  // Avisa al contenedor (p. ej. CoordinacionDetalle) cuando se entra/sale del detalle/edición de una
-  // ficha, para que pueda enfocar solo la ficha y ocultar su propio encabezado.
-  useEffect(() => { onDetailChange?.(detalleId != null || formFicha !== undefined) }, [detalleId, formFicha])
-
-  if (formFicha !== undefined) {
-    return (
-      <FichaForm
-        ficha={formFicha}
-        lockScope={scope ? { centroId: scope.centroId, coordinacionId: scope.coordinacionId } : undefined}
-        onCancel={() => setFormFicha(undefined)}
-        onSaved={() => { setFormFicha(undefined); setReloadKey(k => k + 1) }}
-      />
-    )
-  }
-
-  if (detalleId != null) {
-    return (
-      <FichaDetalle
-        id={detalleId}
-        onBack={() => setFocusId(null)}
-        onEditar={ficha => setFormFicha(ficha)}
-      />
-    )
-  }
+  useEffect(() => { setPage(0) }, [faseFilt, centroFilt, soloSinInstr, fechaCampo, fechaDesde, fechaHasta, search, sort])
 
   const all = state.status === 'ok' ? state.data : []
   const q   = search.trim().toLowerCase()
   const fechaActiva = !!(fechaDesde || fechaHasta)
-  // Solo la fecha queda dentro del dropdown "Filtros" -- estado y etapa ahora
-  // son chips visibles en la propia pantalla (ver debajo).
+  // Solo la fecha queda dentro del dropdown "Filtros" -- la fase ahora son chips
+  // visibles en la propia pantalla (ver debajo).
   const filtrosExtraCount = fechaActiva ? 1 : 0
 
-  const estadoCounts: Record<EstadoFilt, number> = {
-    '':            all.length,
-    EN_EJECUCION:  all.filter(f => f.estado === 'EN_EJECUCION').length,
-    FINALIZADA:    all.filter(f => f.estado === 'FINALIZADA').length,
-    SUSPENDIDA:    all.filter(f => f.estado === 'SUSPENDIDA').length,
+  const fasesAll = all.map(f => faseFicha(f))
+
+  // "Sin instructor" = ficha que ya debería tenerlo (en práctica o en cierre) y
+  // no lo tiene -- la alerta de cobertura de toda la app.
+  const esSinInstructor = (f: FichaRow) => {
+    const fs = faseFicha(f)
+    return (fs === 'EN_PRACTICA' || fs === 'EN_CIERRE') && !f.instructor_practica
   }
-  const etapaCounts: Record<EtapaFilt, number> = {
-    '':         all.length,
-    LECTIVA:    all.filter(f => f.etapa_actual_teorica === 'LECTIVA').length,
-    PRACTICA:   all.filter(f => f.etapa_actual_teorica === 'PRACTICA').length,
+
+  const centrosDisponibles = [...new Set(all.map(f => f.centro_nombre).filter((n): n is string => !!n))]
+    .sort((a, b) => a.localeCompare(b, 'es'))
+
+  const faseCount = (k: FaseFilt): number => {
+    if (k === '') return all.length
+    if (k === 'ACTIVAS') return fasesAll.filter(x => x === 'EN_PRACTICA' || x === 'EN_CIERRE').length
+    return fasesAll.filter(x => x === k).length
   }
-  const vencidasCount = all.filter(f => {
-    if (f.estado !== 'EN_EJECUCION' || f.etapa_actual_teorica !== 'PRACTICA') return false
-    const d = diasHasta(f.fecha_fin_productiva)
-    return d != null && d < 0
-  }).length
+  const enPracticaCount = faseCount('EN_PRACTICA')
+  const enCierreCount   = faseCount('EN_CIERRE')
+  const proximasCount   = faseCount('PROXIMA')
+  const activasCount    = faseCount('ACTIVAS')
+  const sinInstrCount   = all.filter(esSinInstructor).length
 
   const filtered = all
     .filter(f => {
-      if (estadoFilt && f.estado !== estadoFilt) return false
-      if (etapaFilt && f.etapa_actual_teorica !== etapaFilt) return false
+      const fs = faseFicha(f)
+      if (faseFilt === 'ACTIVAS' && fs !== 'EN_PRACTICA' && fs !== 'EN_CIERRE') return false
+      if (faseFilt && faseFilt !== 'ACTIVAS' && fs !== faseFilt) return false
+      if (centroFilt && f.centro_nombre !== centroFilt) return false
+      if (soloSinInstr && !esSinInstructor(f)) return false
       if (fechaActiva) {
         const raw = f[fechaCampo]
         if (!raw) return false
@@ -487,7 +388,8 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
         && !f.numero_ficha.toLowerCase().includes(q)
         && !f.programa_nombre.toLowerCase().includes(q)
         && !f.programa_codigo.toLowerCase().includes(q)
-        && !(f.coordinador_nombre ?? '').toLowerCase().includes(q)) return false
+        && !(f.coordinador_nombre ?? '').toLowerCase().includes(q)
+        && !(f.instructor_practica ?? '').toLowerCase().includes(q)) return false
       return true
     })
     .sort((a, b) => {
@@ -495,6 +397,8 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
         case 'numero':         return a.numero_ficha.localeCompare(b.numero_ficha, 'es')
         case 'programa':       return a.programa_nombre.localeCompare(b.programa_nombre, 'es')
         case 'cierre_proximo': return (a.fecha_fin_productiva || a.fecha_fin_lectiva || '').localeCompare(b.fecha_fin_productiva || b.fecha_fin_lectiva || '')
+        case 'mas_aprendices': return (b.aprendices_en_practica - a.aprendices_en_practica) || (b.aprendices - a.aprendices) || a.numero_ficha.localeCompare(b.numero_ficha, 'es')
+        case 'sin_instructor': return (esSinInstructor(b) ? 1 : 0) - (esSinInstructor(a) ? 1 : 0) || (a.fecha_fin_productiva || '').localeCompare(b.fecha_fin_productiva || '')
         default:               return (b.fecha_inicio || '').localeCompare(a.fecha_inicio || '')
       }
     })
@@ -516,29 +420,32 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>Fichas</h2>
           <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 700, color: '#0a0a0b', lineHeight: 1 }}>
-              {all.length.toLocaleString('es-CO')}
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 700, color: '#4f46e5', lineHeight: 1 }}>
+              {activasCount.toLocaleString('es-CO')}
             </span>
             <span style={{ fontSize: 13, color: '#52525b' }}>
-              {scope ? 'fichas de tu coordinación académica' : 'fichas en la regional'}
-              {' · '}<strong style={{ color: '#4f46e5', fontWeight: 600 }}>{etapaCounts.PRACTICA}</strong> en práctica
-              {vencidasCount > 0 && <> · <strong style={{ color: '#dc2626', fontWeight: 600 }}>{vencidasCount} vencida{vencidasCount === 1 ? '' : 's'}</strong></>}
+              fichas activas {scope ? 'en tu coordinación' : 'en la regional'}
+              {' · '}<span>{enPracticaCount.toLocaleString('es-CO')} en práctica</span>
+              {enCierreCount > 0 && <> · <span style={{ color: '#a16207' }}>{enCierreCount.toLocaleString('es-CO')} en cierre</span></>}
+              {proximasCount > 0 && <> · <span style={{ color: '#6366f1' }}>{proximasCount.toLocaleString('es-CO')} próxima{proximasCount === 1 ? '' : 's'}</span></>}
+              {' · '}<span style={{ color: '#a1a1aa' }}>{all.length.toLocaleString('es-CO')} en total</span>
+              {sinInstrCount > 0 && <> · <strong style={{ color: '#c2410c', fontWeight: 600 }}>{sinInstrCount} sin instructor</strong></>}
             </span>
           </div>
         </div>
-        <Btn variant="accent" icon="plus" onClick={() => setFormFicha(null)}>Crear ficha</Btn>
+        <Btn variant="accent" icon="plus" onClick={() => navigate('nueva', { relative: 'path' })}>Crear ficha</Btn>
       </div>
 
-      {/* Chips de Estado y Etapa -- filtros principales, siempre visibles */}
+      {/* Chips de fase -- filtro principal, siempre visible */}
       {state.status === 'ok' && all.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-            {ESTADO_CHIPS.map(c => {
-              const active = estadoFilt === c.key
+            {FASE_CHIPS.map(c => {
+              const active = faseFilt === c.key
               return (
                 <button
-                  key={c.key || 'todas-estado'}
-                  onClick={() => setEstadoFilt(c.key)}
+                  key={c.key || 'todas-fase'}
+                  onClick={() => setFaseFilt(c.key)}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 7,
                     padding: '6px 12px', borderRadius: 20, cursor: 'pointer',
@@ -554,36 +461,40 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                     fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
                     background: active ? '#c7d2fe' : '#f1f1f3', color: active ? '#4338ca' : '#71717a',
                     padding: '1px 6px', borderRadius: 10,
-                  }}>{estadoCounts[c.key]}</span>
+                  }}>{faseCount(c.key)}</span>
                 </button>
               )
             })}
           </div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-            {ETAPA_CHIPS.map(c => {
-              const active = etapaFilt === c.key
-              return (
-                <button
-                  key={c.key || 'todas-etapa'}
-                  onClick={() => setEtapaFilt(c.key)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 7,
-                    padding: '5px 11px', borderRadius: 8, cursor: 'pointer',
-                    border: active ? '1.5px solid #4f46e5' : '1px solid #e4e4e7',
-                    background: active ? '#4f46e5' : '#fafafa',
-                    color: active ? '#fff' : '#52525b',
-                    fontSize: 12, fontWeight: active ? 600 : 500, fontFamily: 'Inter, sans-serif',
-                    transition: 'all 120ms',
-                  }}
-                >
-                  {c.label}
-                  <span style={{
-                    fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
-                    color: active ? 'rgba(255,255,255,.85)' : '#a1a1aa',
-                  }}>{etapaCounts[c.key]}</span>
-                </button>
-              )
-            })}
+            {sinInstrCount > 0 && (
+              <button
+                onClick={() => setSoloSinInstr(v => !v)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '5px 11px', borderRadius: 8, cursor: 'pointer',
+                  border: soloSinInstr ? '1.5px solid #c2410c' : '1px solid #fed7aa',
+                  background: soloSinInstr ? '#c2410c' : '#fff7ed',
+                  color: soloSinInstr ? '#fff' : '#c2410c',
+                  fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', transition: 'all 120ms',
+                }}
+              >
+                <Ic n="user" s={12}/>
+                Sin instructor
+                <span style={{ fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', color: soloSinInstr ? 'rgba(255,255,255,.85)' : '#c2410c' }}>{sinInstrCount}</span>
+              </button>
+            )}
+
+            {!scope && centrosDisponibles.length > 1 && (
+              <select
+                value={centroFilt}
+                onChange={e => setCentroFilt(e.target.value)}
+                style={{ ...SEL, height: 30, border: centroFilt ? '1.5px solid #4f46e5' : '1px solid #e4e4e7', color: centroFilt ? '#4f46e5' : '#3f3f46' }}
+              >
+                <option value="">Todos los centros</option>
+                {centrosDisponibles.map(c => <option key={c} value={c}>{centroLabel(c)}</option>)}
+              </select>
+            )}
           </div>
         </div>
       )}
@@ -596,7 +507,7 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar ficha, programa o coordinador…"
+              placeholder="Buscar ficha, programa, coordinador o instructor…"
               style={{
                 width: 260, maxWidth: '100%', height: 34, padding: '0 30px 0 32px',
                 border: '1px solid #e4e4e7', borderRadius: 8, fontSize: 12.5, color: '#18181b',
@@ -703,12 +614,10 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                   <td style={TD_S}><Sk w={56} h={12}/></td>
                   <td style={TD_S}><Sk w={170} h={12}/></td>
                   <td style={TD_S}><Sk w={130} h={12}/></td>
+                  <td style={TD_S}><Sk w={120} h={12}/></td>
+                  <td style={TD_S}><Sk w={50} h={12}/></td>
                   <td style={TD_S}><Sk w={90} h={12}/></td>
-                  <td style={TD_S}><Sk w={90} h={12}/></td>
-                  <td style={TD_S}><Sk w={90} h={12}/></td>
-                  <td style={TD_S}><Sk w={90} h={12}/></td>
-                  <td style={TD_S}><Sk w={90} h={20} r={20}/></td>
-                  <td style={TD_S}><Sk w={80} h={20} r={20}/></td>
+                  <td style={TD_S}><Sk w={110} h={20} r={20}/></td>
                   <td style={TD_S}/>
                 </tr>
               ))}
@@ -757,14 +666,19 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                 <tr
                   key={f.id}
                   className="nx-row"
-                  onClick={() => setFocusId(f.id)}
+                  onClick={() => navigate(String(f.id), { relative: 'path' })}
                   style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}
                 >
                   <td style={TD_S}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: ESTADO_PILL[f.estado]?.dot ?? '#a1a1aa', flexShrink: 0 }}/>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: FASE_META[faseFicha(f)].dot, flexShrink: 0 }}/>
                       <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: '#0a0a0b' }}>{f.numero_ficha}</span>
                     </div>
+                    {(f.centro_nombre || f.coordinacion_nombre) && (
+                      <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 3 }}>
+                        {[f.centro_nombre && centroLabel(f.centro_nombre), f.coordinacion_nombre].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </td>
                   <td style={TD_S}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -789,22 +703,40 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
                       <span style={{ fontSize: 12, color: '#a1a1aa' }}>Sin coordinador</span>
                     )}
                   </td>
-                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#27272a', whiteSpace: 'nowrap' }}>
-                    {fdISO(f.fecha_inicio)}
+                  <td style={TD_S}>
+                    {f.instructor_practica ? (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <Ava name={f.instructor_practica} size={22}/>
+                        <span style={{ fontSize: 12, color: '#27272a', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {f.instructor_practica}
+                        </span>
+                      </div>
+                    ) : esSinInstructor(f) ? (
+                      <span style={{ fontSize: 11.5, fontWeight: 600, color: '#c2410c', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <Ic n="alert" s={12}/>Sin asignar
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 12, color: '#d4d4d8' }}>—</span>
+                    )}
                   </td>
-                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#27272a', whiteSpace: 'nowrap' }}>
-                    {fdISO(f.fecha_inicio_productiva)}
+                  <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
+                    {f.aprendices_en_practica > 0 || faseFicha(f) !== 'PROXIMA' ? (
+                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12.5 }}>
+                        <strong style={{ color: '#4f46e5' }}>{f.aprendices_en_practica}</strong>
+                        <span style={{ color: '#a1a1aa' }}>/{f.aprendices}</span>
+                      </span>
+                    ) : (
+                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#a1a1aa' }}>{f.aprendices || '—'}</span>
+                    )}
                   </td>
                   <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#27272a', whiteSpace: 'nowrap' }}>
                     {fdISO(f.fecha_fin_productiva)}
                   </td>
-                  <td style={TD_S}><EtapaPill etapa={f.etapa_actual_teorica}/></td>
-                  <td style={TD_S}><UrgenciaBadge f={f}/></td>
-                  <td style={TD_S}><EstadoPill estado={f.estado}/></td>
+                  <td style={TD_S}><FasePill fase={faseFicha(f)}/></td>
                   <td style={{ ...TD_S, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                     <button
                       title="Editar ficha"
-                      onClick={() => setFormFicha(toFichaEdit(f))}
+                      onClick={() => navigate(`${f.id}/editar`, { relative: 'path' })}
                       style={{ width: 28, height: 28, borderRadius: 6, background: 'none', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', color: '#71717a' }}
                     >
                       <Ic n="edit" s={13}/>
@@ -826,5 +758,92 @@ export function FichasAdmin({ scope, onDetailChange, initialFichaId }: {
         </>
       )}
     </div>
+  )
+}
+
+// ─── Wrappers de ruta ────────────────────────────────────────────────────────────
+// FichasAdmin se monta bajo un splat (p. ej. `/dashboard/superadmin/fichas/*` o
+// `/dashboard/coordinador/fichas/*`, o embebido en CoordinacionDetalle). Cada
+// nivel navega con rutas relativas -- no necesita saber su ruta base.
+
+type Scope = { coordinacionId: number; centroId: number }
+
+export function FichasAdmin({ scope }: { scope?: Scope } = {}) {
+  "use no memo"
+  return (
+    <Routes>
+      <Route index element={<FichasList scope={scope}/>}/>
+      <Route path="nueva" element={<FichaCrearRoute scope={scope}/>}/>
+      <Route path=":fichaId/editar" element={<FichaEditarRoute scope={scope}/>}/>
+      <Route path=":fichaId" element={<FichaDetalleRoute/>}/>
+      <Route path=":fichaId/etapa/:etapaId" element={<FichaEtapaRoute/>}/>
+    </Routes>
+  )
+}
+
+function FichaDetalleRoute() {
+  "use no memo"
+  const { fichaId } = useParams()
+  const navigate = useNavigate()
+  return (
+    <FichaDetalle
+      id={Number(fichaId)}
+      onBack={() => navigate('..', { relative: 'path' })}
+      onEditar={() => navigate('editar', { relative: 'path' })}
+      onOpenEtapa={etapaId => navigate(`etapa/${etapaId}`, { relative: 'path' })}
+    />
+  )
+}
+
+function FichaCrearRoute({ scope }: { scope?: Scope }) {
+  "use no memo"
+  const navigate = useNavigate()
+  return (
+    <FichaForm
+      ficha={null}
+      lockScope={scope ? { centroId: scope.centroId, coordinacionId: scope.coordinacionId } : undefined}
+      onCancel={() => navigate('..', { relative: 'path' })}
+      onSaved={() => navigate('..', { relative: 'path' })}
+    />
+  )
+}
+
+function FichaEditarRoute({ scope }: { scope?: Scope }) {
+  "use no memo"
+  const { fichaId } = useParams()
+  const navigate = useNavigate()
+  const [ficha, setFicha] = useState<FichaEdit | null | undefined>(undefined)
+
+  useEffect(() => {
+    let live = true
+    api.get<FichaDetalleData>(`/fichas/${fichaId}/detalle`)
+      .then(r => { if (live) setFicha(detalleToEdit(r.data.ficha)) })
+      .catch(() => { if (live) navigate('..', { relative: 'path', replace: true }) })
+    return () => { live = false }
+  }, [fichaId, navigate])
+
+  if (ficha === undefined) {
+    return <Card style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Sk w={220} h={16}/></Card>
+  }
+  return (
+    <FichaForm
+      ficha={ficha}
+      lockScope={scope ? { centroId: scope.centroId, coordinacionId: scope.coordinacionId } : undefined}
+      onCancel={() => navigate('..', { relative: 'path' })}
+      onSaved={() => navigate('..', { relative: 'path' })}
+    />
+  )
+}
+
+function FichaEtapaRoute() {
+  "use no memo"
+  const { etapaId } = useParams()
+  const navigate = useNavigate()
+  return (
+    <EtapaProductivaDetalle
+      etapaId={Number(etapaId)}
+      backLabel="Ficha"
+      onBack={() => navigate('../..', { relative: 'path' })}
+    />
   )
 }
