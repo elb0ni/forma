@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Ic, Card, Bdg, Btn } from '../../components/ui'
 import type { IcName } from '../../components/ui'
 import { FirmaPad } from '../../components/FirmaModal'
 import api from '../../lib/api'
+import { fd } from '../shared/parts'
 import type { EstadoCalculado, FactorItem, ValorFactor } from './types'
 import { ESTADO_META } from './types'
 
@@ -165,6 +166,40 @@ export async function subirFirma(seguimientoId: number, firmante: Firmante, data
   await api.post(`/seguimientos-productivos/${seguimientoId}/firma?firmante=${firmante}`, fd)
 }
 
+// Muestra el PNG de una firma ya subida. Se baja vía `api` (con credenciales +
+// interceptor de refresh) como blob y se pinta con un object URL -- así no
+// depende de que el <img> pueda mandar la cookie ni del CORP de helmet.
+// `ruta` es solo la señal de que hay firma; si es null no pide nada.
+export function FirmaImg({ seguimientoId, firmante, ruta, height = 40 }: {
+  seguimientoId: number; firmante: Firmante; ruta: string | null; height?: number
+}) {
+  "use no memo"
+  const key = `${seguimientoId}/${firmante}`
+  const [state, setState] = useState<{ key: string; src: string | null; error: boolean }>({ key: '', src: null, error: false })
+
+  useEffect(() => {
+    if (!ruta) return
+    let vivo = true
+    let obj: string | null = null
+    api.get(`/seguimientos-productivos/${seguimientoId}/firma/${firmante}`, { responseType: 'blob' })
+      .then(r => {
+        if (!vivo) return
+        obj = URL.createObjectURL(r.data as Blob)
+        setState({ key, src: obj, error: false })
+      })
+      .catch(() => { if (vivo) setState({ key, src: null, error: true }) })
+    return () => { vivo = false; if (obj) URL.revokeObjectURL(obj) }
+  }, [seguimientoId, firmante, ruta, key])
+
+  // Ignora un estado que quedó de otra firma (cambió seguimientoId/firmante).
+  const cur = state.key === key ? state : { src: null as string | null, error: false }
+
+  if (!ruta) return <span style={{ fontSize: 11, color: '#a1a1aa' }}>Sin firmar</span>
+  if (cur.error) return <span style={{ fontSize: 11, color: '#a1a1aa' }}>Firma no disponible</span>
+  if (!cur.src) return <span className="pulse" style={{ display: 'inline-block', width: 110, height, background: '#f1f1f3', borderRadius: 4 }}/>
+  return <img src={cur.src} alt={`Firma · ${firmante}`} style={{ height, maxWidth: 200, objectFit: 'contain', display: 'block' }}/>
+}
+
 function FirmaSlot({ seguimientoId, firmante, label, rutaActual, onUploaded }: {
   seguimientoId: number; firmante: Firmante; label: string; rutaActual: string | null; onUploaded: () => void
 }) {
@@ -185,36 +220,37 @@ function FirmaSlot({ seguimientoId, firmante, label, rutaActual, onUploaded }: {
     } finally { setBusy(false) }
   }
 
-  if (rutaActual && !abierto) {
+  if (abierto) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Ic n="checkCircle" s={14} style={{ color: '#15803d' }}/>
-        <span style={{ fontSize: 12, color: '#3f3f46' }}>{label}</span>
-        <button onClick={() => setAbierto(true)} style={{ fontSize: 11, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Volver a firmar</button>
+      <div style={{ gridColumn: '1 / -1', border: '1px solid #c7d2fe', borderRadius: 8, padding: 12 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#27272a', marginBottom: 8 }}>{label}</div>
+        <FirmaPad value={dataUrl} onChange={setDataUrl}/>
+        {err && <div style={{ fontSize: 11.5, color: '#b91c1c', marginTop: 8 }}>{err}</div>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+          <Btn variant="ghost" size="sm" onClick={() => { setAbierto(false); setDataUrl(null); setErr(null) }} disabled={busy}>Cancelar</Btn>
+          <Btn variant="accent" size="sm" icon="check" onClick={guardar} disabled={busy}>{busy ? 'Guardando…' : 'Guardar firma'}</Btn>
+        </div>
       </div>
     )
   }
 
-  if (!abierto) {
-    return (
-      <button onClick={() => setAbierto(true)} style={{
-        display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0,
-      }}>
-        <Ic n="clock" s={14} style={{ color: '#a1a1aa' }}/>
-        <span style={{ fontSize: 12, color: '#3f3f46' }}>{label}</span>
-        <span style={{ fontSize: 11, color: '#4f46e5' }}>Firmar</span>
-      </button>
-    )
-  }
-
+  // Tarjeta con la vista previa de la firma (o el hueco vacío), como en la hoja
+  // firmable: imagen, línea y rol debajo.
   return (
-    <div style={{ border: '1px solid #c7d2fe', borderRadius: 8, padding: 12, minWidth: 320 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#27272a', marginBottom: 8 }}>{label}</div>
-      <FirmaPad value={dataUrl} onChange={setDataUrl}/>
-      {err && <div style={{ fontSize: 11.5, color: '#b91c1c', marginTop: 8 }}>{err}</div>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-        <Btn variant="ghost" size="sm" onClick={() => { setAbierto(false); setDataUrl(null); setErr(null) }} disabled={busy}>Cancelar</Btn>
-        <Btn variant="accent" size="sm" icon="check" onClick={guardar} disabled={busy}>{busy ? 'Guardando…' : 'Guardar firma'}</Btn>
+    <div style={{ border: '1px solid #e4e4e7', borderRadius: 8, padding: 12, background: '#fff', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+      <div style={{ height: 72, display: 'grid', placeItems: 'center', borderRadius: 6, background: rutaActual ? '#fff' : '#fafafa', border: rutaActual ? 'none' : '1px dashed #e4e4e7' }}>
+        {rutaActual
+          ? <FirmaImg seguimientoId={seguimientoId} firmante={firmante} ruta={rutaActual} height={64}/>
+          : <span style={{ fontSize: 11, color: '#a1a1aa' }}>Sin firmar</span>}
+      </div>
+      <div style={{ borderTop: '1px solid #3f3f46' }}/>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#27272a', display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+          <Ic n={rutaActual ? 'checkCircle' : 'clock'} s={13} style={{ color: rutaActual ? '#15803d' : '#a1a1aa', flexShrink: 0 }}/>{label}
+        </span>
+        <button onClick={() => setAbierto(true)} style={{ fontSize: 11, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, whiteSpace: 'nowrap' }}>
+          {rutaActual ? 'Volver a firmar' : 'Firmar'}
+        </button>
       </div>
     </div>
   )
@@ -235,21 +271,96 @@ export function firmasCompletas(f: FirmasEstado, requiereJefe: boolean): boolean
   return !!f.instructor && !!f.aprendiz && (!requiereJefe || !!f.jefe)
 }
 
-export function FirmasCaptura({ requiereJefe, value, onChange }: {
+function blobADataUrl(b: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => resolve(fr.result as string)
+    fr.onerror = () => reject(fr.error)
+    fr.readAsDataURL(b)
+  })
+}
+
+// Trae las firmas ya registradas en otro momento (instructor + aprendiz, y jefe
+// si la etapa tiene co-formador) como data URLs, para reutilizarlas en un
+// momento nuevo sin volver a dibujarlas.
+async function cargarFirmasDe(seguimientoId: number, requiereJefe: boolean): Promise<FirmasEstado> {
+  const firmantes: Firmante[] = requiereJefe
+    ? ['instructor', 'aprendiz', 'jefe']
+    : ['instructor', 'aprendiz']
+  const out = firmasVacias()
+  await Promise.all(firmantes.map(async f => {
+    const r = await api.get(`/seguimientos-productivos/${seguimientoId}/firma/${f}`, { responseType: 'blob' })
+    out[f] = await blobADataUrl(r.data as Blob)
+  }))
+  return out
+}
+
+// Momento del que se pueden reutilizar las firmas (el más reciente ya firmado
+// por completo dentro de la misma etapa productiva).
+export interface FirmaFuente { seguimientoId: number; fecha: string | null; etiqueta: string }
+
+export function FirmasCaptura({ requiereJefe, value, onChange, fuente }: {
   requiereJefe: boolean
   value: FirmasEstado
   onChange: (next: FirmasEstado) => void
+  fuente?: FirmaFuente | null
 }) {
+  "use no memo"
+  const [cargando, setCargando] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  // Al reutilizar cambia `nonce` para remontar los FirmaPad y que repinten el
+  // lienzo con la firma traída (FirmaPad solo pinta el value al montar).
+  const [nonce, setNonce] = useState(0)
+  const vacias = !value.instructor && !value.aprendiz && !value.jefe
+
+  async function reutilizar() {
+    if (!fuente) return
+    setCargando(true); setErr(null)
+    try {
+      onChange(await cargarFirmasDe(fuente.seguimientoId, requiereJefe))
+      setNonce(n => n + 1)
+    } catch {
+      setErr('No se pudieron traer las firmas anteriores. Fírmalas de nuevo abajo.')
+    } finally {
+      setCargando(false)
+    }
+  }
+
   return (
     <Card style={{ padding: 16 }}>
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600, marginBottom: 12 }}>
-        Firmas
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600 }}>
+          Firmas
+        </div>
+        {fuente && (
+          <button
+            type="button"
+            onClick={reutilizar}
+            disabled={cargando}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px',
+              border: '1px solid #c7d2fe', borderRadius: 8, background: '#eef2ff', color: '#4338ca',
+              fontSize: 11.5, fontWeight: 600, cursor: cargando ? 'default' : 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <Ic n="refresh" s={12}/>
+            {cargando
+              ? 'Trayendo firmas…'
+              : `Usar las mismas firmas de ${fuente.etiqueta}${fuente.fecha ? ` · ${fd(fuente.fecha)}` : ''}`}
+          </button>
+        )}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <FirmaCampo label="Instructor de seguimiento" value={value.instructor} onChange={v => onChange({ ...value, instructor: v })}/>
-        <FirmaCampo label="Aprendiz" value={value.aprendiz} onChange={v => onChange({ ...value, aprendiz: v })}/>
+      {fuente && vacias && !err && (
+        <div style={{ fontSize: 11, color: '#71717a', marginBottom: 12 }}>
+          Ya se firmó antes en esta etapa. Puedes reutilizar esas firmas y reemplazar solo las que hagan falta.
+        </div>
+      )}
+      {err && <div style={{ fontSize: 11.5, color: '#b91c1c', marginBottom: 12 }}>{err}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18 }}>
+        <FirmaCampo key={`i${nonce}`} label="Instructor de seguimiento" value={value.instructor} onChange={v => onChange({ ...value, instructor: v })}/>
+        <FirmaCampo key={`a${nonce}`} label="Aprendiz" value={value.aprendiz} onChange={v => onChange({ ...value, aprendiz: v })}/>
         {requiereJefe && (
-          <FirmaCampo label="Ente co-formador" value={value.jefe} onChange={v => onChange({ ...value, jefe: v })}/>
+          <FirmaCampo key={`j${nonce}`} label="Ente co-formador" value={value.jefe} onChange={v => onChange({ ...value, jefe: v })}/>
         )}
       </div>
     </Card>
@@ -373,20 +484,20 @@ export function FirmasYUbicacion({ seguimiento, requiereJefe, onChanged }: {
       <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600, marginBottom: 10 }}>
         Firmas y ubicación {seguimiento.firmado_at && <span style={{ color: '#15803d' }}>· completas</span>}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <FirmaSlot seguimientoId={seguimiento.id} firmante="instructor" label="Instructor de seguimiento" rutaActual={seguimiento.firma_instructor_ruta} onUploaded={onChanged}/>
         <FirmaSlot seguimientoId={seguimiento.id} firmante="aprendiz" label="Aprendiz" rutaActual={seguimiento.firma_aprendiz_ruta} onUploaded={onChanged}/>
         {requiereJefe && (
           <FirmaSlot seguimientoId={seguimiento.id} firmante="jefe" label="Ente co-formador" rutaActual={seguimiento.firma_jefe_ruta} onUploaded={onChanged}/>
         )}
-        <div style={{ borderTop: '1px solid #f1f1f3', paddingTop: 10, marginTop: 4 }}>
-          <UbicacionSlot
-            seguimientoId={seguimiento.id}
-            lat={seguimiento.ubicacion_lat} lng={seguimiento.ubicacion_lng} precision={seguimiento.ubicacion_precision_m}
-            distancia={seguimiento.distancia_empresa_m} alerta={seguimiento.ubicacion_alerta}
-            onCaptured={onChanged}
-          />
-        </div>
+      </div>
+      <div style={{ borderTop: '1px solid #f1f1f3', paddingTop: 10, marginTop: 14 }}>
+        <UbicacionSlot
+          seguimientoId={seguimiento.id}
+          lat={seguimiento.ubicacion_lat} lng={seguimiento.ubicacion_lng} precision={seguimiento.ubicacion_precision_m}
+          distancia={seguimiento.distancia_empresa_m} alerta={seguimiento.ubicacion_alerta}
+          onCaptured={onChanged}
+        />
       </div>
     </Card>
   )

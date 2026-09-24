@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom'
-import { Ic, Card, Tag } from '../../components/ui'
+import { Ic, Card } from '../../components/ui'
 import api from '../../lib/api'
-import { Pill, jornadaLabel, LoadingBlock, CenterState } from '../shared/parts'
+import { LoadingBlock, CenterState } from '../shared/parts'
 import type { FichaInstructor } from './types'
+import { FichasInstructorTable } from './FichasInstructorTable'
 import { InstFichaPractica } from './InstFichaPractica'
 import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
+import { CrearEtapaProductivaForm } from '../productiva/EtapaProductivaList'
+import type { Aprendiz } from '../productiva/types'
 import './instructor.css'
 
-// ─── Lista de fichas (solo las de práctica: el instructor es su instructor de
-// seguimiento a etapa productiva) ────────────────────────────────────────────
+// ─── Lista de fichas: donde el instructor hace seguimiento a la etapa
+// productiva de sus aprendices (GET /instructores/mi/fichas) ──────────────────
 
 type EstadoFilt = 'TODAS' | 'EN_EJECUCION' | 'FINALIZADA' | 'SUSPENDIDA'
 
@@ -20,37 +23,6 @@ const ESTADO_CHIPS: { key: EstadoFilt; label: string }[] = [
   { key: 'SUSPENDIDA', label: 'Suspendidas' },
 ]
 
-// Tarjeta compacta de una ficha en práctica -- se usa tanto en el listado
-// "Mis fichas" como en el resumen del Home del instructor.
-export function FichaCard({ f, onClick }: { f: FichaInstructor; onClick: () => void }) {
-  return (
-    <Card onClick={onClick} style={{ padding: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
-      <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#eef2ff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-        <Ic n="briefcase" s={22} style={{ color: '#4f46e5' }}/>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
-          <Tag>{f.programa_codigo}</Tag>
-          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
-          <Pill status={f.status} size="sm"/>
-        </div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {f.programa_nombre}
-        </div>
-        <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <span>{jornadaLabel(f.jornada)}</span>
-          {f.estado === 'EN_EJECUCION' && (
-            <span style={{ fontFamily: '"JetBrains Mono", monospace', color: f.dias_restantes < 60 ? '#dc2626' : '#52525b' }}>
-              {f.dias_restantes}d
-            </span>
-          )}
-        </div>
-      </div>
-      <Ic n="chevronRight" s={16} style={{ color: '#d4d4d8', flexShrink: 0 }}/>
-    </Card>
-  )
-}
-
 function FichasList({ onOpen }: { onOpen: (f: FichaInstructor) => void }) {
   "use no memo"
   const [fichas, setFichas] = useState<FichaInstructor[] | null>(null)
@@ -59,8 +31,8 @@ function FichasList({ onOpen }: { onOpen: (f: FichaInstructor) => void }) {
   const [q, setQ] = useState('')
 
   useEffect(() => {
-    api.get<FichaInstructor[]>('/dashboard/instructor/fichas')
-      .then(r => setFichas(r.data.filter(f => f.es_practica)))
+    api.get<FichaInstructor[]>('/instructores/mi/fichas')
+      .then(r => setFichas(r.data))
       .catch(() => setError(true))
   }, [])
 
@@ -105,18 +77,13 @@ function FichasList({ onOpen }: { onOpen: (f: FichaInstructor) => void }) {
       {view.length === 0 ? (
         <Card><CenterState icon="folder" title="Sin fichas" sub={fichas.length === 0 ? 'Todavía no eres instructor de práctica de ninguna ficha.' : 'No hay fichas que coincidan con el filtro.'}/></Card>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 14 }}>
-          {view.map(f => <FichaCard key={f.id} f={f} onClick={() => onOpen(f)}/>)}
-        </div>
+        <FichasInstructorTable fichas={view} onOpen={onOpen} paginate/>
       )}
     </div>
   )
 }
 
 // ─── Wrapper: lista ↔ detalle (rutas) ────────────────────────────────────────────
-// Con la lista ya acotada a fichas de práctica, el detalle siempre es el
-// roster de aprendices (InstFichaPractica) -- ya no hace falta resolver si la
-// ficha es lectiva o de práctica.
 
 export function InstFichas() {
   "use no memo"
@@ -139,9 +106,47 @@ function FichaRoute() {
 
   return (
     <Routes>
-      <Route index element={<InstFichaPractica fichaId={id} onBack={back} onOpenEtapa={etapaId => navigate(`etapa/${etapaId}`)}/>}/>
+      <Route index element={
+        <InstFichaPractica
+          fichaId={id}
+          onBack={back}
+          onOpenEtapa={etapaId => navigate(`etapa/${etapaId}`)}
+          onCrear={aprendizId => navigate(`crear/${aprendizId}`)}
+        />
+      }/>
+      <Route path="crear/:aprendizId" element={<FichaCrearRoute/>}/>
       <Route path="etapa/:etapaId" element={<FichaEtapaRoute/>}/>
     </Routes>
+  )
+}
+
+function FichaCrearRoute() {
+  "use no memo"
+  const { aprendizId } = useParams()
+  const navigate = useNavigate()
+  const [aprendiz, setAprendiz] = useState<Aprendiz | null | undefined>(undefined)
+
+  useEffect(() => {
+    let live = true
+    api.get<Aprendiz>(`/aprendices/${aprendizId}`)
+      .then(r => { if (live) setAprendiz(r.data) })
+      .catch(() => { if (live) navigate('../..', { relative: 'path', replace: true }) })
+    return () => { live = false }
+  }, [aprendizId, navigate])
+
+  if (aprendiz === undefined) return <LoadingBlock/>
+  if (!aprendiz) return null
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <button onClick={() => navigate('../..', { relative: 'path' })} style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
+        <Ic n="arrowLeft" s={14}/>Volver a la ficha
+      </button>
+      <CrearEtapaProductivaForm
+        aprendiz={aprendiz}
+        onBack={() => navigate('../..', { relative: 'path' })}
+        onCreated={etapaId => navigate(`../../etapa/${etapaId}`, { relative: 'path' })}
+      />
+    </div>
   )
 }
 

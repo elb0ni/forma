@@ -2,8 +2,9 @@ import { useState, useEffect, Fragment } from 'react'
 import type { ReactNode } from 'react'
 import axios from 'axios'
 import { Ic, Card, Btn } from '../../components/ui'
-import type { ProgramaListItem } from '../../types'
+import type { ProgramaResumen } from '../../types'
 import api from '../../lib/api'
+import { AprendicesAsignacion } from './AprendicesAsignacion'
 
 type Jornada = 'MAÑANA' | 'TARDE' | 'NOCHE' | 'MIXTA'
 type EstadoFicha = 'EN_EJECUCION' | 'FINALIZADA' | 'SUSPENDIDA'
@@ -22,6 +23,8 @@ export interface FichaEdit {
   fecha_fin_productiva:      string | null
   sede:                      string | null
   jornada:                   string | null
+  modalidad_formacion?:      'PRESENCIAL' | 'VIRTUAL' | 'A_DISTANCIA' | null
+  estrategia_formativa?:     string | null
   etapa_actual?:             'LECTIVA' | 'PRACTICA' | null
 }
 
@@ -190,7 +193,7 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
   const editando = ficha !== null
 
   // Catálogos
-  const [programs,     setPrograms]     = useState<ProgramaListItem[]>([])
+  const [programs,     setPrograms]     = useState<ProgramaResumen[]>([])
   const [centros,      setCentros]      = useState<CentroOpt[]>([])
   const [coords,       setCoords]       = useState<CoordOpt[]>([])
   const [instructores, setInstructores] = useState<InstructorOpt[]>([])
@@ -204,6 +207,10 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
   const [fechaFin,    setFechaFin]    = useState(toInputDate(ficha?.fecha_fin_lectiva ?? null))
   const [sede,        setSede]        = useState(ficha?.sede ?? '')
   const [jornada,     setJornada]     = useState<Jornada>(normalizeJornada(ficha?.jornada))
+  // GFPI-F-023: en el formato de etapa productiva salen bloqueados, así que
+  // este es el único sitio donde se diligencian.
+  const [modalidadForm,  setModalidadForm]  = useState(ficha?.modalidad_formacion ?? '')
+  const [estrategiaForm, setEstrategiaForm] = useState(ficha?.estrategia_formativa ?? '')
   const [estado,      setEstado]      = useState<EstadoFicha>(ficha?.estado ?? 'EN_EJECUCION')
 
   const [savedId,  setSavedId]  = useState<number | null>(ficha?.id ?? null)
@@ -220,12 +227,12 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
   const soloAsignacionCoord = !!lockScope && locked
 
   useEffect(() => {
-    api.get<ProgramaListItem[]>('/programas')
+    api.get<ProgramaResumen[]>('/programas')
       .then(r => setPrograms(r.data))
       .catch(() => {})
     // El centro solo se elige cuando NO hay scope fijo (el coordinador ya tiene el suyo).
     if (!lockScope) {
-      api.get<CentroOpt[]>('/dashboard/super-admin/centros')
+      api.get<CentroOpt[]>('/centros')
         .then(r => setCentros(r.data))
         .catch(() => {})
     }
@@ -269,6 +276,8 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
           fecha_fin_lectiva:         fechaFin,
           sede:                      sede.trim() || undefined,
           jornada,
+          modalidad_formacion:       modalidadForm || undefined,
+          estrategia_formativa:      estrategiaForm.trim() || undefined,
         })
         fichaId = res.data.id
         setSavedId(fichaId)
@@ -280,6 +289,8 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
           fecha_fin_lectiva:         fechaFin,
           sede:                      sede.trim() || undefined,
           jornada,
+          modalidad_formacion:       modalidadForm || undefined,
+          estrategia_formativa:      estrategiaForm.trim() || undefined,
           estado,
         })
       }
@@ -365,6 +376,17 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
               <Field label="Jornada">
                 <Seg name="jornada" value={jornada} onChange={v => setJornada(v as Jornada)} options={JORNADAS} disabled={soloAsignacionCoord}/>
               </Field>
+              <Field label="Modalidad de formación" hint="GFPI-F-023">
+                <select className="nx-input" value={modalidadForm} onChange={e => setModalidadForm(e.target.value as typeof modalidadForm)} disabled={soloAsignacionCoord}>
+                  <option value="">Sin definir</option>
+                  <option value="PRESENCIAL">Presencial</option>
+                  <option value="VIRTUAL">Virtual</option>
+                  <option value="A_DISTANCIA">A distancia</option>
+                </select>
+              </Field>
+              <Field label="Estrategia formativa" hint="GFPI-F-023">
+                <input className="nx-input" value={estrategiaForm} onChange={e => setEstrategiaForm(e.target.value)} disabled={soloAsignacionCoord}/>
+              </Field>
               {editando && (
                 <Field label="Estado">
                   <select className="nx-input" value={estado} onChange={e => setEstado(e.target.value as EstadoFicha)} disabled={soloAsignacionCoord}>
@@ -387,6 +409,11 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
           {/* Instructor de práctica (etapa productiva): uno por ficha */}
           {savedId != null && (
             <InstructorPracticaSection fichaId={savedId} coordId={coordId} instructores={instructores}/>
+          )}
+
+          {/* Override por aprendiz, para los que ya pueden arrancar práctica */}
+          {savedId != null && (
+            <AprendicesAsignacion fichaId={savedId} instructores={instructores}/>
           )}
 
           {/* Error + acciones */}
@@ -423,10 +450,14 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
                     </div>
                   </div>
                 </div>
-                <div style={{ paddingTop: 12, borderTop: '1px solid #f1f1f3' }}>
-                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>Horas totales</div>
-                  <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 15, fontWeight: 600, color: '#0a0a0b', marginTop: 4 }}>
-                    {(selProg.horas_lectivas + (selProg.horas_productivas ?? 0)).toLocaleString('es-CO')} h
+                <div style={{ paddingTop: 12, borderTop: '1px solid #f1f1f3', display: 'grid', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>Nivel de formación</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#18181b', marginTop: 3 }}>{selProg.nivel_formacion}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>Título que otorga</div>
+                    <div style={{ fontSize: 12.5, color: '#3f3f46', marginTop: 3, lineHeight: 1.4 }}>{selProg.titulo_otorga}</div>
                   </div>
                 </div>
               </>

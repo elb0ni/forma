@@ -3,22 +3,55 @@ import { Ic, Card, Btn, Tag, Bdg } from '../../components/ui'
 import type { IcName } from '../../components/ui'
 import { fd, Seg, InlineAlert, CenterState, LoadingBlock } from '../shared/parts'
 import {
-  Field, SectionIntro, FactoresBlock, MetaRow, EmptyHint, EstadoBdg, FirmasYUbicacion,
+  SectionIntro, FactoresBlock, MetaRow, EmptyHint, EstadoBdg, FirmasYUbicacion,
   FirmasCaptura, firmasVacias, firmasCompletas, subirFirma,
 } from './parts'
-import type { FirmasEstado, Firmante } from './parts'
+import type { FirmasEstado, Firmante, FirmaFuente } from './parts'
+import { ReportePreview } from './ReportePreview'
+import { Bloque, Campo, Dato, DatoLargo, Gfpi023Head } from './Gfpi023Campos'
+import { PlanTrabajoEditor } from './PlanTrabajoEditor'
+import { PlanTrabajoVista } from './PlanTrabajoVista'
+import { planDesdeGuardado, planAGuardar, erroresPlan } from './planTrabajo'
+import type { PlanEstado } from './planTrabajo'
 import {
-  MODALIDAD_LABEL, MODALIDAD_TIENE_EMPRESA,
+  MODALIDAD_LABEL, MODALIDAD_TIENE_EMPRESA, ESTADO_META,
   FACTORES_TECNICOS, FACTORES_ACTITUDINALES, factoresDesde, factoresAJson,
-  lineasATexto, textoALineas,
+  normalizeSeguimiento,
 } from './types'
 import type {
   EtapaProductiva, SeguimientoProductivo, EstadoAprendiz, FactorItem,
   TipoSeguimiento, ResultadoFinal, EstadoEtapaProductiva,
 } from './types'
+import { ProgresoPracticaTarjeta } from '../shared/ProgresoPractica'
+import type { AprendizPractica } from '../shared/AprendicesPractica'
 import api from '../../lib/api'
+import { soloDigitos } from '../../lib/input'
 
 type TabId = 'general' | 'planeacion' | 'seguimientos' | 'evaluacion'
+
+// El progreso de la práctica (mismo que el popover de la lista de aprendices)
+// necesita al aprendiz con su último corte de juicios; acá se arma con la
+// etapa y el estado calculado que ya trae esta vista.
+function aprendizDesde(etapa: EtapaProductiva, estado: EstadoAprendiz): AprendizPractica {
+  const j = estado.avance_juicios
+  return {
+    aprendiz_id: etapa.aprendiz_id,
+    etapa_id: etapa.id,
+    numero_documento: etapa.aprendiz_documento ?? '',
+    tipo_documento: etapa.aprendiz_tipo_documento ?? '',
+    nombre_completo: etapa.aprendiz_nombre ?? '',
+    modalidad: etapa.modalidad,
+    etapa_estado: etapa.estado,
+    resultado_final: etapa.resultado_final,
+    etapa_instructor_nombre: etapa.instructor_nombre ?? null,
+    total_ra: j?.total_ra ?? null,
+    ra_aprobados: j?.ra_aprobados ?? null,
+    ra_no_aprobados: j?.ra_no_aprobados ?? null,
+    ra_sin_evaluar: j?.ra_sin_evaluar ?? null,
+    fecha_reporte: j?.fecha_reporte ?? null,
+    caso: estado.estado,
+  }
+}
 type EtapaConSeguimientos = EtapaProductiva & { seguimientos: SeguimientoProductivo[] }
 
 const MODALIDAD_SEG_OPTS = [
@@ -41,6 +74,31 @@ async function subirFirmas(seguimientoId: number, firmas: FirmasEstado, requiere
   }
 }
 
+// Momento del que se pueden reutilizar las firmas: el más reciente ya firmado
+// por completo dentro de la misma etapa -- así el instructor no vuelve a
+// dibujar las mismas 3 firmas en cada momento.
+function firmaFuenteDe(seguimientos: SeguimientoProductivo[]): FirmaFuente | null {
+  const firmados = seguimientos.filter(s => s.firmado_at)
+  if (firmados.length === 0) return null
+  const s = [...firmados].sort((a, b) => (b.firmado_at ?? '').localeCompare(a.firmado_at ?? ''))[0]
+  const etiqueta = s.tipo_momento === 'PLANEACION' ? 'la planeación'
+    : s.tipo_momento === 'EVALUACION' ? 'la evaluación'
+    : `el seguimiento N.º ${s.numero_seguimiento}`
+  return { seguimientoId: s.id, fecha: s.fecha_realizada, etiqueta }
+}
+
+// La vista previa es opcional: el trabajo es diligenciar el formato. Se
+// recuerda por navegador si el instructor prefiere tenerla abierta.
+const PREVIEW_KEY = 'forma.ep.verPreview'
+
+function leerVerPreview(): boolean {
+  try { return localStorage.getItem(PREVIEW_KEY) === '1' } catch { return false }
+}
+
+function guardarVerPreview(v: boolean) {
+  try { localStorage.setItem(PREVIEW_KEY, v ? '1' : '0') } catch { /* sin almacenamiento: solo dura la sesión */ }
+}
+
 // ─── Contenedor: carga la etapa + su estado real y enruta entre tabs ───────────
 
 export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general', backLabel = 'Etapa productiva' }: {
@@ -51,11 +109,12 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
   const [estadoCalc, setEstadoCalc] = useState<EstadoAprendiz | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<TabId>(initialTab)
+  const [verPreview, setVerPreview] = useState(leerVerPreview)
 
   function load() {
     api.get<EtapaConSeguimientos>(`/etapas-productivas/${etapaId}`)
       .then(r => {
-        setEtapa(r.data)
+        setEtapa({ ...r.data, seguimientos: (r.data.seguimientos ?? []).map(normalizeSeguimiento) })
         return api.get<EstadoAprendiz>(`/aprendices/${r.data.aprendiz_id}/estado`)
       })
       .then(r => setEstadoCalc(r.data))
@@ -76,6 +135,7 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
   const seguimientos = etapa.seguimientos.filter(s => s.tipo_momento === 'SEGUIMIENTO')
   const evaluacion = etapa.seguimientos.find(s => s.tipo_momento === 'EVALUACION') ?? null
   const requiereJefe = MODALIDAD_TIENE_EMPRESA[etapa.modalidad]
+  const firmaFuente = firmaFuenteDe(etapa.seguimientos)
 
   const TABS: { id: TabId; label: string; icon: IcName; badge?: 'ok' | 'warn' | 'count' }[] = [
     { id: 'general', label: 'Información general', icon: 'user' },
@@ -85,7 +145,7 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
   ]
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
       {back}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
@@ -99,7 +159,22 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
             <EstadoBdg estado={estadoCalc.estado}/>
           </div>
         </div>
+        <Btn
+          variant="secondary"
+          size="sm"
+          icon="eye"
+          onClick={() => { const v = !verPreview; setVerPreview(v); guardarVerPreview(v) }}
+        >
+          {verPreview ? 'Ocultar vista previa' : 'Ver vista previa del formato'}
+        </Btn>
       </div>
+
+      <ProgresoPracticaTarjeta
+        a={aprendizDesde(etapa, estadoCalc)}
+        etapa={etapa}
+        badge={ESTADO_META[estadoCalc.estado]}
+        modalidad={MODALIDAD_LABEL[etapa.modalidad]}
+      />
 
       {estadoCalc.caso === 2 && (
         <InlineAlert tone="warn" icon="clock" style={{ marginBottom: 20 }}>
@@ -107,38 +182,50 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
         </InlineAlert>
       )}
 
-      <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid #e4e4e7', marginBottom: 24, overflowX: 'auto' }}>
-        {TABS.map(t => {
-          const active = tab === t.id
-          return (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 7, padding: '10px 4px', marginBottom: -1,
-              background: 'none', border: 'none', borderBottom: `2px solid ${active ? '#4f46e5' : 'transparent'}`,
-              color: active ? '#0a0a0b' : '#71717a', fontSize: 12.5, fontWeight: active ? 600 : 500,
-              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-            }}>
-              <Ic n={t.icon} s={13} style={{ color: active ? '#4f46e5' : '#a1a1aa' }}/>
-              {t.label}
-              {t.badge === 'ok' && <Ic n="checkCircle" s={12} style={{ color: '#15803d' }}/>}
-              {t.badge === 'warn' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ca8a04' }}/>}
-              {t.badge === 'count' && (
-                <span style={{ fontSize: 10, fontFamily: '"JetBrains Mono", monospace', background: '#f1f1f3', borderRadius: 10, padding: '1px 6px', color: '#52525b' }}>
-                  {seguimientos.length}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+      <div className={`ep-layout${verPreview ? '' : ' ep-layout--solo'}`}>
+        {/* Izquierda: los 4 tabs donde el instructor va diligenciando */}
+        <div className="ep-layout__editor">
+          <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid #e4e4e7', marginBottom: 24, overflowX: 'auto' }}>
+            {TABS.map(t => {
+              const active = tab === t.id
+              return (
+                <button key={t.id} onClick={() => setTab(t.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 7, padding: '10px 4px', marginBottom: -1,
+                  background: 'none', border: 'none', borderBottom: `2px solid ${active ? '#4f46e5' : 'transparent'}`,
+                  color: active ? '#0a0a0b' : '#71717a', fontSize: 12.5, fontWeight: active ? 600 : 500,
+                  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                }}>
+                  <Ic n={t.icon} s={13} style={{ color: active ? '#4f46e5' : '#a1a1aa' }}/>
+                  {t.label}
+                  {t.badge === 'ok' && <Ic n="checkCircle" s={12} style={{ color: '#15803d' }}/>}
+                  {t.badge === 'warn' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ca8a04' }}/>}
+                  {t.badge === 'count' && (
+                    <span style={{ fontSize: 10, fontFamily: '"JetBrains Mono", monospace', background: '#f1f1f3', borderRadius: 10, padding: '1px 6px', color: '#52525b' }}>
+                      {seguimientos.length}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
 
-      {tab === 'general' && <GeneralTab etapa={etapa} onSaved={load}/>}
-      {tab === 'planeacion' && <PlaneacionTab etapaId={etapa.id} requiereJefe={requiereJefe} planeacion={planeacion} onChanged={load}/>}
-      {tab === 'seguimientos' && (
-        <SeguimientosTab etapaId={etapa.id} requiereJefe={requiereJefe} planeacion={planeacion} seguimientos={seguimientos} onChanged={load}/>
-      )}
-      {tab === 'evaluacion' && (
-        <EvaluacionTab etapaId={etapa.id} requiereJefe={requiereJefe} planeacion={planeacion} evaluacion={evaluacion} onChanged={load}/>
-      )}
+          {tab === 'general' && <GeneralTab etapa={etapa} onSaved={load}/>}
+          {tab === 'planeacion' && <PlaneacionTab etapa={etapa} etapaId={etapa.id} requiereJefe={requiereJefe} planeacion={planeacion} firmaFuente={firmaFuente} onChanged={load}/>}
+          {tab === 'seguimientos' && (
+            <SeguimientosTab etapa={etapa} etapaId={etapa.id} requiereJefe={requiereJefe} planeacion={planeacion} seguimientos={seguimientos} firmaFuente={firmaFuente} onChanged={load}/>
+          )}
+          {tab === 'evaluacion' && (
+            <EvaluacionTab etapa={etapa} etapaId={etapa.id} visitas={seguimientos.length} requiereJefe={requiereJefe} planeacion={planeacion} evaluacion={evaluacion} firmaFuente={firmaFuente} onChanged={load}/>
+          )}
+        </div>
+
+        {/* Derecha, opcional: vista previa del reporte, se arma con lo registrado */}
+        {verPreview && (
+          <div className="ep-layout__preview">
+            <ReportePreview etapa={etapa}/>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -158,12 +245,18 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
   const [empresaNombre, setEmpresaNombre] = useState(etapa.empresa_nombre ?? '')
   const [empresaNit, setEmpresaNit] = useState(etapa.empresa_nit ?? '')
   const [empresaDireccion, setEmpresaDireccion] = useState(etapa.empresa_direccion ?? '')
+  const [empresaEmail, setEmpresaEmail] = useState(etapa.empresa_email ?? '')
   const [empresaLat, setEmpresaLat] = useState(etapa.empresa_lat != null ? String(etapa.empresa_lat) : '')
   const [empresaLng, setEmpresaLng] = useState(etapa.empresa_lng != null ? String(etapa.empresa_lng) : '')
   const [jefeNombre, setJefeNombre] = useState(etapa.jefe_inmediato_nombre ?? '')
   const [jefeCargo, setJefeCargo] = useState(etapa.jefe_inmediato_cargo ?? '')
   const [jefeTelefono, setJefeTelefono] = useState(etapa.jefe_inmediato_telefono ?? '')
   const [jefeEmail, setJefeEmail] = useState(etapa.jefe_inmediato_email ?? '')
+  const [otroNombre, setOtroNombre] = useState(etapa.otro_contacto_nombre ?? '')
+  const [otroTelefono, setOtroTelefono] = useState(etapa.otro_contacto_telefono ?? '')
+  const [asisteNombre, setAsisteNombre] = useState(etapa.asiste_nombre ?? '')
+  const [asisteTipo, setAsisteTipo] = useState(etapa.asiste_tipo ?? '')
+  const [asisteTelefono, setAsisteTelefono] = useState(etapa.asiste_telefono ?? '')
   const [estado, setEstado] = useState<EstadoEtapaProductiva>(etapa.estado)
   const [resultado, setResultado] = useState<ResultadoFinal | ''>(etapa.resultado_final ?? '')
 
@@ -177,6 +270,21 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
     })
   }
 
+  // Los mismos bloques se pintan en lectura y en edición: en lectura cada
+  // campo es un `Dato` y en edición un input. Así el instructor no tiene que
+  // reubicarse al entrar a editar -- es el mismo documento, no otra pantalla.
+  const campo = (valor: string, set: (v: string) => void, extra?: { tipo?: string; placeholder?: string; soloNum?: boolean }) =>
+    editing
+      ? <input
+          type={extra?.tipo ?? 'text'}
+          inputMode={extra?.soloNum ? 'numeric' : undefined}
+          className="nx-input"
+          value={valor}
+          onChange={e => set(extra?.soloNum ? soloDigitos(e.target.value) : e.target.value)}
+          placeholder={extra?.placeholder}
+        />
+      : <Dato valor={extra?.tipo === 'date' ? (valor ? fd(valor) : null) : (valor || null)} mono={extra?.soloNum}/>
+
   async function guardar() {
     setBusy(true); setErr(null)
     try {
@@ -186,154 +294,204 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
         empresa_nombre: tieneEmpresa ? (empresaNombre || undefined) : undefined,
         empresa_nit: tieneEmpresa ? (empresaNit || undefined) : undefined,
         empresa_direccion: tieneEmpresa ? (empresaDireccion || undefined) : undefined,
+        empresa_email: tieneEmpresa ? (empresaEmail || undefined) : undefined,
         empresa_lat: tieneEmpresa && empresaLat ? Number(empresaLat) : undefined,
         empresa_lng: tieneEmpresa && empresaLng ? Number(empresaLng) : undefined,
         jefe_inmediato_nombre: tieneEmpresa ? (jefeNombre || undefined) : undefined,
         jefe_inmediato_cargo: tieneEmpresa ? (jefeCargo || undefined) : undefined,
         jefe_inmediato_telefono: tieneEmpresa ? (jefeTelefono || undefined) : undefined,
         jefe_inmediato_email: tieneEmpresa ? (jefeEmail || undefined) : undefined,
+        otro_contacto_nombre: tieneEmpresa ? (otroNombre || undefined) : undefined,
+        otro_contacto_telefono: tieneEmpresa ? (otroTelefono || undefined) : undefined,
+        asiste_nombre: asisteNombre || undefined,
+        asiste_tipo: asisteTipo || undefined,
+        asiste_telefono: asisteTelefono || undefined,
         estado,
         resultado_final: resultado || undefined,
       })
       setEditing(false); onSaved()
-    } catch (e: any) {
-      setErr(e?.response?.data?.message ?? 'No se pudo guardar.')
+    } catch (e) {
+      const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message
+      setErr(Array.isArray(m) ? m.join(' · ') : m ?? 'No se pudo guardar.')
     } finally { setBusy(false) }
   }
 
-  if (!editing) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Card style={{ padding: 16 }}>
-          <MetaRow label="Aprendiz" value={etapa.aprendiz_nombre}/>
-          <MetaRow label="Instructor de seguimiento" value={etapa.instructor_nombre}/>
-          <MetaRow label="Alternativa / modalidad" value={MODALIDAD_LABEL[etapa.modalidad]}/>
-          <MetaRow label="Fecha inicio" value={fd(etapa.fecha_inicio)}/>
-          <MetaRow label="Fecha fin estimada" value={fd(etapa.fecha_fin_estimada)}/>
-          <MetaRow label="Estado del proceso" value={<Bdg tone="neutral">{etapa.estado}</Bdg>}/>
-        </Card>
-        {tieneEmpresa && (
-          <Card style={{ padding: 16 }}>
-            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600, marginBottom: 10 }}>Ente co-formador</div>
-            <MetaRow label="Empresa" value={etapa.empresa_nombre || '—'}/>
-            <MetaRow label="NIT" value={etapa.empresa_nit || '—'}/>
-            <MetaRow label="Dirección" value={etapa.empresa_direccion || '—'}/>
-            <MetaRow label="Jefe inmediato" value={etapa.jefe_inmediato_nombre || '—'}/>
-            <MetaRow label="Cargo" value={etapa.jefe_inmediato_cargo || '—'}/>
-            <MetaRow label="Contacto" value={etapa.jefe_inmediato_telefono || etapa.jefe_inmediato_email || '—'}/>
-          </Card>
-        )}
-        <div><Btn variant="secondary" icon="edit" onClick={() => setEditing(true)}>Editar información</Btn></div>
-      </div>
-    )
-  }
+  // Avance sobre lo que el formato pide para esta etapa. Sirve igual en
+  // lectura: dice de un vistazo cuánto le falta al documento para estar
+  // completo, sin entrar a editar.
+  const requeridos = [
+    fechaInicio, fechaFin,
+    ...(tieneEmpresa
+      ? [empresaNombre, empresaNit, empresaDireccion, empresaEmail, jefeNombre, jefeCargo, jefeTelefono, jefeEmail]
+      : []),
+  ]
+  const pct = Math.round((requeridos.filter(v => v.trim() !== '').length / requeridos.length) * 100)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Card style={{ padding: 20 }}>
-        <SectionIntro title="Datos de la formación"/>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <Field label="Fecha inicio"><input type="date" className="nx-input" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)}/></Field>
-          <Field label="Fecha fin estimada"><input type="date" className="nx-input" value={fechaFin} onChange={e => setFechaFin(e.target.value)}/></Field>
-        </div>
-      </Card>
+    <div className="g23">
+      <Gfpi023Head
+        nombre={etapa.aprendiz_nombre ?? '—'}
+        tipoDocumento={etapa.aprendiz_tipo_documento}
+        documento={etapa.aprendiz_documento}
+        ficha={etapa.numero_ficha}
+        pct={pct}
+      />
+
+      <Bloque n={1} titulo="Identificación" origen="del sistema" medio>
+        <Campo label="Aprendiz" ancho><Dato valor={etapa.aprendiz_nombre}/></Campo>
+        <Campo label="Documento"><Dato valor={etapa.aprendiz_documento} mono/></Campo>
+        <Campo label="Instructor de seguimiento"><Dato valor={etapa.instructor_nombre}/></Campo>
+        <Campo label="Alternativa / modalidad" ancho><Dato valor={MODALIDAD_LABEL[etapa.modalidad]}/></Campo>
+      </Bloque>
+
+      <Bloque n={2} titulo="Fechas de la etapa" medio>
+        <Campo label="Fecha de inicio" required>{campo(fechaInicio, setFechaInicio, { tipo: 'date' })}</Campo>
+        <Campo label="Fecha fin estimada" required>{campo(fechaFin, setFechaFin, { tipo: 'date' })}</Campo>
+        <Campo label="Fin real"><Dato valor={etapa.fecha_fin_real ? fd(etapa.fecha_fin_real) : null}/></Campo>
+      </Bloque>
 
       {tieneEmpresa && (
-        <Card style={{ padding: 20 }}>
-          <SectionIntro title="Ente co-formador"/>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <Field label="Nombre empresa"><input className="nx-input" value={empresaNombre} onChange={e => setEmpresaNombre(e.target.value)}/></Field>
-            <Field label="NIT"><input className="nx-input" value={empresaNit} onChange={e => setEmpresaNit(e.target.value)}/></Field>
-            <Field label="Dirección" style={{ gridColumn: '1 / -1' }}><input className="nx-input" value={empresaDireccion} onChange={e => setEmpresaDireccion(e.target.value)}/></Field>
-            <Field label="Latitud" hint="Referencia para validar cercanía en los seguimientos"><input className="nx-input" value={empresaLat} onChange={e => setEmpresaLat(e.target.value)}/></Field>
-            <Field label="Longitud"><input className="nx-input" value={empresaLng} onChange={e => setEmpresaLng(e.target.value)}/></Field>
-          </div>
-          <button onClick={usarUbicacionActual} style={{ fontSize: 11.5, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, marginTop: 8 }}>
-            Usar mi ubicación actual
-          </button>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
-            <Field label="Nombre del jefe inmediato"><input className="nx-input" value={jefeNombre} onChange={e => setJefeNombre(e.target.value)}/></Field>
-            <Field label="Cargo"><input className="nx-input" value={jefeCargo} onChange={e => setJefeCargo(e.target.value)}/></Field>
-            <Field label="Contacto telefónico"><input className="nx-input" value={jefeTelefono} onChange={e => setJefeTelefono(e.target.value)}/></Field>
-            <Field label="Correo electrónico"><input className="nx-input" value={jefeEmail} onChange={e => setJefeEmail(e.target.value)}/></Field>
-          </div>
-        </Card>
+        <Bloque n={3} titulo="Datos del ente co-formador">
+          <Campo label="Nombre empresa o entidad" ancho>{campo(empresaNombre, setEmpresaNombre)}</Campo>
+          <Campo label="NIT">{campo(empresaNit, setEmpresaNit, { soloNum: true })}</Campo>
+          <Campo label="Correo electrónico">{campo(empresaEmail, setEmpresaEmail)}</Campo>
+          <Campo label="Dirección" ancho>{campo(empresaDireccion, setEmpresaDireccion)}</Campo>
+          <Campo label="Jefe inmediato / tutor">{campo(jefeNombre, setJefeNombre)}</Campo>
+          <Campo label="Cargo">{campo(jefeCargo, setJefeCargo)}</Campo>
+          <Campo label="Contacto telefónico">{campo(jefeTelefono, setJefeTelefono, { soloNum: true })}</Campo>
+          <Campo label="Correo electrónico del jefe">{campo(jefeEmail, setJefeEmail)}</Campo>
+          <Campo label="Nombre otro contacto">{campo(otroNombre, setOtroNombre)}</Campo>
+          <Campo label="Teléfono institucional">{campo(otroTelefono, setOtroTelefono, { soloNum: true })}</Campo>
+          {editing && (
+            <>
+              <Campo label="Latitud">{campo(empresaLat, setEmpresaLat)}</Campo>
+              <Campo label="Longitud">{campo(empresaLng, setEmpresaLng)}</Campo>
+              <button
+                type="button"
+                onClick={usarUbicacionActual}
+                className="g23-col2"
+                style={{ fontSize: 11.5, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textAlign: 'left' }}
+              >
+                Usar mi ubicación actual — se usa para validar que los seguimientos se hagan en sitio
+              </button>
+            </>
+          )}
+        </Bloque>
       )}
 
-      <Card style={{ padding: 20 }}>
-        <SectionIntro title="Estado del proceso" sub="Normalmente cambia solo al registrar la Evaluación final. Ajusta manualmente solo para suspensiones, aplazamientos o correcciones."/>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <Field label="Estado">
+      <Bloque n={tieneEmpresa ? 4 : 3} titulo="Persona en situación de discapacidad" cols={3} medio>
+        <Campo label="Nombre de quien lo asiste">{campo(asisteNombre, setAsisteNombre)}</Campo>
+        <Campo label="Tipo de asistencia">{campo(asisteTipo, setAsisteTipo, { placeholder: 'Lenguaje de señas, apoyo visual…' })}</Campo>
+        <Campo label="Contacto telefónico">{campo(asisteTelefono, setAsisteTelefono, { soloNum: true })}</Campo>
+      </Bloque>
+
+      <Bloque n={tieneEmpresa ? 5 : 4} titulo="Estado del proceso" medio>
+        <Campo label="Estado">
+          {editing ? (
             <select className="nx-input" value={estado} onChange={e => setEstado(e.target.value as EstadoEtapaProductiva)}>
               <option value={etapa.estado}>{etapa.estado} (actual)</option>
-              {ESTADOS_MANUALES.filter(s => s !== etapa.estado).map(s => <option key={s} value={s}>{s}</option>)}
+              {ESTADOS_MANUALES.filter(s2 => s2 !== etapa.estado).map(s2 => <option key={s2} value={s2}>{s2}</option>)}
             </select>
-          </Field>
-          <Field label="Resultado final" hint="Solo si necesitas corregirlo">
+          ) : <Dato valor={etapa.estado} mono/>}
+        </Campo>
+        <Campo label="Resultado final">
+          {editing ? (
             <select className="nx-input" value={resultado} onChange={e => setResultado(e.target.value as ResultadoFinal | '')}>
               <option value="">Sin definir</option>
               <option value="APROBADO">Aprobado</option>
               <option value="NO_APROBADO">No aprobado</option>
             </select>
-          </Field>
-        </div>
-      </Card>
+          ) : <Dato valor={etapa.resultado_final}/>}
+        </Campo>
+        {editing && (
+          <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a' }}>
+            El estado normalmente cambia solo al registrar la Evaluación final. Ajústalo a
+            mano únicamente para suspensiones, aplazamientos o correcciones.
+          </span>
+        )}
+      </Bloque>
 
       {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-        <Btn variant="secondary" onClick={() => setEditing(false)} disabled={busy}>Cancelar</Btn>
-        <Btn variant="accent" icon="check" disabled={busy} onClick={guardar}>{busy ? 'Guardando…' : 'Guardar'}</Btn>
+
+      <div style={{ display: 'flex', justifyContent: editing ? 'flex-end' : 'flex-start', gap: 10 }}>
+        {editing ? (
+          <>
+            <Btn variant="secondary" onClick={() => setEditing(false)} disabled={busy}>Cancelar</Btn>
+            <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>{busy ? 'Guardando…' : 'Guardar'}</Btn>
+          </>
+        ) : (
+          <Btn variant="secondary" icon="edit" onClick={() => setEditing(true)}>Editar información</Btn>
+        )}
       </div>
     </div>
   )
 }
 
+
 // ─── Tab: Planeación (única vez) ────────────────────────────────────────────────
 
-function PlaneacionTab({ etapaId, requiereJefe, planeacion, onChanged }: {
-  etapaId: number; requiereJefe: boolean; planeacion: SeguimientoProductivo | null; onChanged: () => void
+function PlaneacionTab({ etapa, etapaId, requiereJefe, planeacion, firmaFuente, onChanged }: {
+  etapa: EtapaConSeguimientos; etapaId: number; requiereJefe: boolean
+  planeacion: SeguimientoProductivo | null
+  firmaFuente: FirmaFuente | null; onChanged: () => void
 }) {
   "use no memo"
   const [editing, setEditing] = useState(!planeacion)
 
   if (!editing && planeacion) {
+    const plan = planeacion.plan_trabajo
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="g23">
         <InlineAlert tone="ok" icon="checkCircle" title="Planeación registrada">
           El plan de trabajo de la etapa productiva quedó concertado.
         </InlineAlert>
-        <Card style={{ padding: 16 }}>
-          <MetaRow label="Fecha de diligenciamiento" value={fd(planeacion.fecha_realizada)}/>
-          <MetaRow label="Fecha afiliación ARL" value={fd(planeacion.fecha_afiliacion_arl)}/>
-          <MetaRow label="N.º póliza ARL" value={planeacion.numero_poliza_arl || '—'}/>
-          <MetaRow label="Horario" value={planeacion.horario || '—'}/>
-          <MetaRow label="Modalidad" value={planeacion.tipo_seguimiento}/>
-        </Card>
-        <Card style={{ padding: 16 }}>
-          {([
-            ['Competencias a desarrollar', lineasATexto(planeacion.plan_trabajo?.competencias)],
-            ['Resultados de aprendizaje', lineasATexto(planeacion.plan_trabajo?.resultados_aprendizaje)],
-            ['Actividades a desarrollar', lineasATexto(planeacion.plan_trabajo?.actividades)],
-            ['Evidencias de aprendizaje', lineasATexto(planeacion.plan_trabajo?.evidencias)],
-            ['Observaciones adicionales', planeacion.observaciones_instructor ?? ''],
-          ] as [string, string][]).map(([label, value]) => (
-            <div key={label} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600, marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 12.5, color: value ? '#18181b' : '#a1a1aa', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{value || 'Sin diligenciar'}</div>
-            </div>
-          ))}
-        </Card>
+
+        <Bloque n={1} titulo="Fechas y afiliación" cols={3}>
+          <Campo label="Inicio etapa productiva"><Dato valor={fd(etapa.fecha_inicio)} mono/></Campo>
+          <Campo label="Fin etapa productiva"><Dato valor={fd(etapa.fecha_fin_estimada)} mono/></Campo>
+          <Campo label="Afiliación a la ARL"><Dato valor={planeacion.fecha_afiliacion_arl ? fd(planeacion.fecha_afiliacion_arl) : null} mono/></Campo>
+          <Campo label="N.º de póliza ARL"><Dato valor={planeacion.numero_poliza_arl} mono/></Campo>
+          <Campo label="Horario" ancho><Dato valor={planeacion.horario}/></Campo>
+        </Bloque>
+
+        <Bloque n={2} titulo="Concertación del plan de trabajo">
+          <PlanTrabajoVista plan={plan}/>
+          {planeacion.observaciones_instructor?.trim() && (
+            <Campo label="Observaciones adicionales" ancho><DatoLargo valor={planeacion.observaciones_instructor}/></Campo>
+          )}
+        </Bloque>
+
+        <Bloque n={3} titulo="Diligenciamiento" cols={3}>
+          <Campo label="Fecha"><Dato valor={fd(planeacion.fecha_realizada)} mono/></Campo>
+          <Campo label="Modalidad"><Dato valor={planeacion.tipo_seguimiento}/></Campo>
+          <Campo label="Grabación">
+            <Dato valor={planeacion.enlace_grabacion ? 'Registrada' : null}/>
+          </Campo>
+        </Bloque>
+
         <FirmasYUbicacion seguimiento={planeacion} requiereJefe={requiereJefe} onChanged={onChanged}/>
         <div><Btn variant="secondary" icon="edit" onClick={() => setEditing(true)}>Editar planeación</Btn></div>
       </div>
     )
   }
 
-  return <PlaneacionForm etapaId={etapaId} requiereJefe={requiereJefe} planeacion={planeacion} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged() }}/>
+  return (
+    <PlaneacionForm
+      etapa={etapa}
+      etapaId={etapaId}
+      requiereJefe={requiereJefe}
+      planeacion={planeacion}
+      firmaFuente={firmaFuente}
+      onCancel={() => setEditing(false)}
+      onSaved={() => { setEditing(false); onChanged() }}
+    />
+  )
 }
 
-function PlaneacionForm({ etapaId, requiereJefe, planeacion, onCancel, onSaved }: {
-  etapaId: number; requiereJefe: boolean; planeacion: SeguimientoProductivo | null; onCancel: () => void; onSaved: () => void
+function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente, onCancel, onSaved }: {
+  etapa: EtapaConSeguimientos; etapaId: number; requiereJefe: boolean
+  planeacion: SeguimientoProductivo | null
+  firmaFuente: FirmaFuente | null; onCancel: () => void; onSaved: () => void
 }) {
   "use no memo"
   const [modalidad, setModalidad] = useState<TipoSeguimiento>(planeacion?.tipo_seguimiento ?? 'PRESENCIAL')
@@ -341,107 +499,133 @@ function PlaneacionForm({ etapaId, requiereJefe, planeacion, onCancel, onSaved }
   const [polizaArl, setPolizaArl] = useState(planeacion?.numero_poliza_arl ?? '')
   const [horario, setHorario] = useState(planeacion?.horario ?? '')
   const [enlace, setEnlace] = useState(planeacion?.enlace_grabacion ?? '')
-  const [competencias, setCompetencias] = useState(lineasATexto(planeacion?.plan_trabajo?.competencias))
-  const [resultados, setResultados] = useState(lineasATexto(planeacion?.plan_trabajo?.resultados_aprendizaje))
-  const [actividades, setActividades] = useState(lineasATexto(planeacion?.plan_trabajo?.actividades))
-  const [evidencias, setEvidencias] = useState(lineasATexto(planeacion?.plan_trabajo?.evidencias))
+  const [plan, setPlan] = useState<PlanEstado>(() => planDesdeGuardado(planeacion?.plan_trabajo))
   const [obs, setObs] = useState(planeacion?.observaciones_instructor ?? '')
   const [firmas, setFirmas] = useState<FirmasEstado>(firmasVacias())
   const [busy, setBusy] = useState(false)
+  const [intentado, setIntentado] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  // Al crear (no al editar): sin firmas no hay planeación concertada.
-  const puedeGuardar = !!competencias.trim() && (!!planeacion || firmasCompletas(firmas, requiereJefe))
+  const esVirtual = modalidad === 'VIRTUAL'
+
+  // Lo que el formato exige para dar por concertado el plan de trabajo.
+  // Cada actividad debe generar al menos una evidencia (lo valida el editor).
+  const errores: Record<string, string> = { ...erroresPlan(plan) }
+  if (esVirtual && !enlace.trim()) errores.enlace = 'Si el momento fue virtual, el formato pide el enlace de la grabación.'
+  const hayErrores = Object.keys(errores).length > 0
+  const ver = (k: string) => (intentado ? errores[k] : undefined)
+
+  const area = (v: string, set: (x: string) => void, filas = 3) => (
+    <textarea className="nx-input" rows={filas} style={{ resize: 'vertical', lineHeight: 1.5 }} value={v} onChange={e => set(e.target.value)}/>
+  )
 
   async function guardar() {
+    setIntentado(true)
+    if (hayErrores) {
+      setErr('Faltan datos obligatorios del Momento 1. Revisa lo marcado en rojo.')
+      return
+    }
     setBusy(true); setErr(null)
-    const planTrabajo = {
-      competencias: textoALineas(competencias),
-      resultados_aprendizaje: textoALineas(resultados),
-      actividades: textoALineas(actividades),
-      evidencias: textoALineas(evidencias),
+    const planTrabajo = planAGuardar(plan)
+    const payload = {
+      tipo_seguimiento: modalidad,
+      fecha_afiliacion_arl: fechaArl || undefined,
+      numero_poliza_arl: polizaArl || undefined,
+      horario: horario || undefined,
+      enlace_grabacion: enlace || undefined,
+      plan_trabajo: planTrabajo,
+      observaciones_instructor: obs || undefined,
     }
     try {
       if (planeacion) {
-        await api.patch(`/seguimientos-productivos/${planeacion.id}`, {
-          tipo_seguimiento: modalidad,
-          fecha_afiliacion_arl: fechaArl || undefined, numero_poliza_arl: polizaArl || undefined,
-          horario: horario || undefined, enlace_grabacion: enlace || undefined,
-          plan_trabajo: planTrabajo, observaciones_instructor: obs || undefined,
-        })
+        await api.patch(`/seguimientos-productivos/${planeacion.id}`, payload)
       } else {
         const res = await api.post<SeguimientoProductivo>('/seguimientos-productivos', {
-          etapa_productiva_id: etapaId, tipo_momento: 'PLANEACION',
-          tipo_seguimiento: modalidad,
-          fecha_afiliacion_arl: fechaArl || undefined, numero_poliza_arl: polizaArl || undefined,
-          horario: horario || undefined, enlace_grabacion: enlace || undefined,
-          plan_trabajo: planTrabajo, observaciones_instructor: obs || undefined,
+          etapa_productiva_id: etapaId, tipo_momento: 'PLANEACION', ...payload,
         })
         await subirFirmas(res.data.id, firmas, requiereJefe)
       }
       onSaved()
-    } catch (e: any) {
-      setErr(e?.response?.data?.message ?? 'No se pudo guardar la planeación.')
+    } catch (e) {
+      const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message
+      setErr(Array.isArray(m) ? m.join(' · ') : m ?? 'No se pudo guardar la planeación.')
     } finally { setBusy(false) }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <SectionIntro title="Planeación de la etapa productiva" sub="Se realiza por una única vez, al inicio de la etapa productiva. La fecha de diligenciamiento queda fijada automáticamente al guardar."/>
-
-      <Card style={{ padding: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <Field label="Fecha de afiliación a la ARL"><input type="date" className="nx-input" value={fechaArl} onChange={e => setFechaArl(e.target.value)}/></Field>
-          <Field label="N.º póliza ARL" hint="Si aplica"><input className="nx-input" value={polizaArl} onChange={e => setPolizaArl(e.target.value)}/></Field>
-          <Field label="Horario" hint="Diurno/nocturno, días y hora"><input className="nx-input" value={horario} onChange={e => setHorario(e.target.value)}/></Field>
+    <div className="g23">
+      <div className="g23-head">
+        <div style={{ minWidth: 0 }}>
+          <div className="g23-head__codigo">GFPI-F-023 V6 · MOMENTO 1</div>
+          <div className="g23-head__t">Planeación de la etapa productiva</div>
+          <div className="g23-head__sub">
+            Se realiza una única vez, al inicio. La fecha de diligenciamiento queda fijada al guardar.
+          </div>
         </div>
-        <Field label="Modalidad" style={{ marginTop: 14 }}>
+      </div>
+
+      <Bloque n={1} titulo="Fechas y afiliación" cols={3}>
+        <Campo label="Inicio etapa productiva"><Dato valor={fd(etapa.fecha_inicio)} mono/></Campo>
+        <Campo label="Fin etapa productiva"><Dato valor={fd(etapa.fecha_fin_estimada)} mono/></Campo>
+        <Campo label="Afiliación a la ARL">
+          <input type="date" className="nx-input" value={fechaArl} onChange={e => setFechaArl(e.target.value)}/>
+        </Campo>
+        <Campo label="N.º de póliza ARL">
+          <input className="nx-input" inputMode="numeric" value={polizaArl} onChange={e => setPolizaArl(soloDigitos(e.target.value, 50))}/>
+        </Campo>
+        <Campo label="Horario" ancho>
+          <input className="nx-input" value={horario} onChange={e => setHorario(e.target.value)} placeholder="Diurno, lunes a viernes, 8:00 a 17:00"/>
+        </Campo>
+      </Bloque>
+
+      <Bloque n={2} titulo="Concertación del plan de trabajo">
+        <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a', marginBottom: -4 }}>
+          Marca los resultados de aprendizaje que el aprendiz desarrollará en la empresa: su competencia,
+          actividades y evidencias salen del diseño curricular. Todo queda editable.
+        </span>
+        <div className="g23-col2">
+          <PlanTrabajoEditor
+            codigo={etapa.programa_codigo}
+            version={etapa.programa_version}
+            value={plan}
+            onChange={setPlan}
+            errores={intentado ? errores : {}}
+          />
+        </div>
+        <Campo label="Observaciones adicionales" ancho>{area(obs, setObs, 2)}</Campo>
+      </Bloque>
+
+      <Bloque n={3} titulo="Diligenciamiento">
+        <Campo label="Modalidad" ancho>
           <Seg name="modPlaneacion" value={modalidad} onChange={v => setModalidad(v as TipoSeguimiento)} options={MODALIDAD_SEG_OPTS}/>
-        </Field>
-        <Field label="Enlace de grabación" hint="Si se realiza de forma virtual" style={{ marginTop: 14 }}>
-          <input className="nx-input" placeholder="https://…" value={enlace} onChange={e => setEnlace(e.target.value)}/>
-        </Field>
-      </Card>
-
-      <Card style={{ padding: 20 }}>
-        <SectionIntro title="Concertación del plan de trabajo" sub="Una idea por línea."/>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="Competencias a desarrollar" required hint="Competencias del programa relacionadas">
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={competencias} onChange={e => setCompetencias(e.target.value)}/>
-          </Field>
-          <Field label="Resultados de aprendizaje">
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={resultados} onChange={e => setResultados(e.target.value)}/>
-          </Field>
-          <Field label="Actividades a desarrollar" hint="Durante los meses de etapa productiva">
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={actividades} onChange={e => setActividades(e.target.value)}/>
-          </Field>
-          <Field label="Evidencias de aprendizaje" hint="Que generará el aprendiz de acuerdo con cada actividad">
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={evidencias} onChange={e => setEvidencias(e.target.value)}/>
-          </Field>
-          <Field label="Observaciones adicionales" hint="Opcional">
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={obs} onChange={e => setObs(e.target.value)}/>
-          </Field>
-        </div>
-      </Card>
+        </Campo>
+        <Campo label="Enlace de grabación" ancho error={ver('enlace')}>
+          <input className="nx-input" placeholder={esVirtual ? 'https://…' : 'Solo si el momento se realiza de forma virtual'} value={enlace} onChange={e => setEnlace(e.target.value)}/>
+        </Campo>
+      </Bloque>
 
       {!planeacion && (
-        <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas}/>
+        <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas} fuente={firmaFuente}/>
       )}
 
       {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <Btn variant="secondary" onClick={onCancel} disabled={busy}>Cancelar</Btn>
-        <Btn variant="accent" icon="check" disabled={!puedeGuardar || busy} onClick={guardar}>{busy ? 'Guardando…' : 'Guardar planeación'}</Btn>
+        <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>
+          {busy ? 'Guardando…' : 'Guardar planeación'}
+        </Btn>
       </div>
     </div>
   )
 }
 
+
 // ─── Tab: Seguimientos (se repite; incluye extraordinarios) ────────────────────
 
-function SeguimientosTab({ etapaId, requiereJefe, planeacion, seguimientos, onChanged }: {
+function SeguimientosTab({ etapa, etapaId, requiereJefe, planeacion, seguimientos, firmaFuente, onChanged }: {
+  etapa: EtapaConSeguimientos
   etapaId: number; requiereJefe: boolean; planeacion: SeguimientoProductivo | null
-  seguimientos: SeguimientoProductivo[]; onChanged: () => void
+  seguimientos: SeguimientoProductivo[]; firmaFuente: FirmaFuente | null; onChanged: () => void
 }) {
   "use no memo"
   const [creando, setCreando] = useState(false)
@@ -461,7 +645,7 @@ function SeguimientosTab({ etapaId, requiereJefe, planeacion, seguimientos, onCh
       </div>
 
       {creando && (
-        <SeguimientoForm etapaId={etapaId} requiereJefe={requiereJefe} onCancel={() => setCreando(false)} onSaved={() => { setCreando(false); onChanged() }}/>
+        <SeguimientoForm etapa={etapa} etapaId={etapaId} requiereJefe={requiereJefe} firmaFuente={firmaFuente} onCancel={() => setCreando(false)} onSaved={() => { setCreando(false); onChanged() }}/>
       )}
 
       {items.length === 0 && !creando ? (
@@ -536,8 +720,9 @@ function SeguimientoItem({ s, requiereJefe, open, onToggle, onChanged }: {
   )
 }
 
-function SeguimientoForm({ etapaId, requiereJefe, onCancel, onSaved }: {
-  etapaId: number; requiereJefe: boolean; onCancel: () => void; onSaved: () => void
+function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, onCancel, onSaved }: {
+  etapa: EtapaConSeguimientos; etapaId: number; requiereJefe: boolean
+  firmaFuente: FirmaFuente | null; onCancel: () => void; onSaved: () => void
 }) {
   "use no memo"
   const [modalidad, setModalidad] = useState<TipoSeguimiento>('PRESENCIAL')
@@ -551,11 +736,36 @@ function SeguimientoForm({ etapaId, requiereJefe, onCancel, onSaved }: {
   const [obsEnte, setObsEnte] = useState('')
   const [firmas, setFirmas] = useState<FirmasEstado>(firmasVacias())
   const [busy, setBusy] = useState(false)
+  const [intentado, setIntentado] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  const puedeGuardar = (!esExtraordinario || !!motivo.trim()) && firmasCompletas(firmas, requiereJefe)
+  const esVirtual = modalidad === 'VIRTUAL'
+  const sinValorar = [...tecnicos, ...actitudinales].filter(f => f.valor === null).length
+
+  const errores: Record<string, string> = {}
+  if (esExtraordinario && !motivo.trim()) errores.motivo = 'Obligatorio: explica por qué se sale del momento 2 regular.'
+  if (esVirtual && !enlace.trim()) errores.enlace = 'Si el seguimiento fue virtual, el formato pide el enlace de la grabación.'
+  const hayErrores = Object.keys(errores).length > 0 || sinValorar > 0 || !firmasCompletas(firmas, requiereJefe)
+  const ver = (k: string) => (intentado ? errores[k] : undefined)
+
+  const area = (v: string, set: (x: string) => void, filas = 2) => (
+    <textarea className="nx-input" rows={filas} style={{ resize: 'vertical', lineHeight: 1.5 }} value={v} onChange={e => set(e.target.value)}/>
+  )
 
   async function guardar() {
+    setIntentado(true)
+    if (sinValorar > 0) {
+      setErr(`Faltan ${sinValorar} variable${sinValorar === 1 ? '' : 's'} por valorar. El formato pide marcar las 13.`)
+      return
+    }
+    if (!firmasCompletas(firmas, requiereJefe)) {
+      setErr('Faltan firmas. El seguimiento no tiene validez sin ellas.')
+      return
+    }
+    if (Object.keys(errores).length > 0) {
+      setErr('Faltan datos obligatorios. Revisa lo marcado en rojo.')
+      return
+    }
     setBusy(true); setErr(null)
     try {
       const res = await api.post<SeguimientoProductivo>('/seguimientos-productivos', {
@@ -569,66 +779,87 @@ function SeguimientoForm({ etapaId, requiereJefe, onCancel, onSaved }: {
       })
       await subirFirmas(res.data.id, firmas, requiereJefe)
       onSaved()
-    } catch (e: any) {
-      setErr(e?.response?.data?.message ?? 'No se pudo guardar el seguimiento.')
+    } catch (e) {
+      const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message
+      setErr(Array.isArray(m) ? m.join(' · ') : m ?? 'No se pudo guardar el seguimiento.')
     } finally { setBusy(false) }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Card style={{ padding: 20, border: esExtraordinario ? '1px solid #fed7aa' : '1px solid #c7d2fe' }}>
-        <SectionIntro title="Nuevo seguimiento" sub="La fecha queda fijada automáticamente al guardar."/>
-        <Field label="Enlace de grabación" hint="Si se hace de forma virtual" style={{ marginBottom: 14 }}>
-          <input className="nx-input" placeholder="https://…" value={enlace} onChange={e => setEnlace(e.target.value)}/>
-        </Field>
-        <Field label="Modalidad del seguimiento" style={{ marginBottom: 14 }}>
-          <Seg name="modSeg" value={modalidad} onChange={v => setModalidad(v as TipoSeguimiento)} options={MODALIDAD_SEG_OPTS}/>
-        </Field>
+    <div className="g23">
+      <div className="g23-head">
+        <div style={{ minWidth: 0 }}>
+          <div className="g23-head__codigo">GFPI-F-023 V6 · MOMENTO 2</div>
+          <div className="g23-head__t">Seguimiento de la etapa productiva</div>
+          <div className="g23-head__sub">
+            {esExtraordinario
+              ? 'Seguimiento extraordinario: se registra igual, pero queda marcado con su motivo.'
+              : 'La fecha del momento queda fijada al guardar.'}
+          </div>
+        </div>
+        <div className="g23-prog">
+          <div style={{ textAlign: 'right' }}>
+            <div className="g23-prog__n">{13 - sinValorar}/13</div>
+            <div className="g23-prog__l">variables</div>
+          </div>
+        </div>
+      </div>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#3f3f46', cursor: 'pointer', marginBottom: esExtraordinario ? 10 : 16 }}>
+      <Bloque n={1} titulo="Fechas y modalidad">
+        <Campo label="Inicio etapa productiva"><Dato valor={fd(etapa.fecha_inicio)} mono/></Campo>
+        <Campo label="Fecha del seguimiento"><Dato valor={null}/></Campo>
+        <Campo label="Modalidad del seguimiento" ancho>
+          <Seg name="modSeg" value={modalidad} onChange={v => setModalidad(v as TipoSeguimiento)} options={MODALIDAD_SEG_OPTS}/>
+        </Campo>
+        <Campo label="Enlace de grabación" ancho error={ver('enlace')}>
+          <input className="nx-input" placeholder={esVirtual ? 'https://…' : 'Solo si el seguimiento se hace de forma virtual'} value={enlace} onChange={e => setEnlace(e.target.value)}/>
+        </Campo>
+        <label className="g23-col2" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#3f3f46', cursor: 'pointer' }}>
           <input type="checkbox" className="nx-check" checked={esExtraordinario} onChange={e => setEsExtraordinario(e.target.checked)}/>
           Es un seguimiento extraordinario (fuera del momento 2 regular)
         </label>
         {esExtraordinario && (
-          <Field label="Motivo del seguimiento extraordinario" required style={{ marginBottom: 16 }}>
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={motivo} onChange={e => setMotivo(e.target.value)}/>
-          </Field>
+          <Campo label="Motivo del seguimiento extraordinario" required ancho error={ver('motivo')}>
+            {area(motivo, setMotivo)}
+          </Campo>
         )}
+      </Bloque>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-          <FactoresBlock titulo="Factores técnicos" items={tecnicos} onChange={setTecnicos}/>
-          <FactoresBlock titulo="Factores actitudinales y comportamentales" items={actitudinales} onChange={setActitudinales}/>
-        </div>
+      <FactoresBlock titulo="2 · Factores técnicos" items={tecnicos} onChange={setTecnicos}/>
+      <FactoresBlock titulo="3 · Factores actitudinales y comportamentales" items={actitudinales} onChange={setActitudinales}/>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Field label="Observaciones complementarias del instructor de seguimiento">
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={obsInstructor} onChange={e => setObsInstructor(e.target.value)}/>
-          </Field>
-          <Field label="Observaciones del aprendiz">
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={obsAprendiz} onChange={e => setObsAprendiz(e.target.value)}/>
-          </Field>
-          <Field label="Observaciones del responsable del ente co-formador">
-            <textarea className="nx-input" rows={2} style={{ resize: 'vertical' }} value={obsEnte} onChange={e => setObsEnte(e.target.value)}/>
-          </Field>
-        </div>
-      </Card>
+      <Bloque n={4} titulo="Observaciones">
+        <Campo label="Complementarias del instructor de seguimiento" ancho>{area(obsInstructor, setObsInstructor)}</Campo>
+        <Campo label="Del aprendiz" ancho>{area(obsAprendiz, setObsAprendiz)}</Campo>
+        <Campo label="Del responsable del ente co-formador" ancho>{area(obsEnte, setObsEnte)}</Campo>
+      </Bloque>
 
-      <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas}/>
+      <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas} fuente={firmaFuente}/>
 
       {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <Btn variant="secondary" onClick={onCancel} disabled={busy}>Cancelar</Btn>
-        <Btn variant="accent" icon="check" disabled={!puedeGuardar || busy} onClick={guardar}>{busy ? 'Guardando…' : 'Guardar seguimiento'}</Btn>
+        <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>
+          {busy ? 'Guardando…' : 'Guardar seguimiento'}
+        </Btn>
       </div>
+      {hayErrores && intentado && (
+        <div style={{ fontSize: 11.5, color: '#a1a1aa', textAlign: 'right' }}>
+          {sinValorar > 0 && `${sinValorar} variables sin valorar. `}
+          {!firmasCompletas(firmas, requiereJefe) && 'Faltan firmas.'}
+        </div>
+      )}
     </div>
   )
 }
 
+
 // ─── Tab: Evaluación final (única vez) ──────────────────────────────────────────
 
-function EvaluacionTab({ etapaId, requiereJefe, planeacion, evaluacion, onChanged }: {
+function EvaluacionTab({ etapa, etapaId, visitas, requiereJefe, planeacion, evaluacion, firmaFuente, onChanged }: {
+  etapa: EtapaConSeguimientos; visitas: number
   etapaId: number; requiereJefe: boolean; planeacion: SeguimientoProductivo | null
-  evaluacion: SeguimientoProductivo | null; onChanged: () => void
+  evaluacion: SeguimientoProductivo | null; firmaFuente: FirmaFuente | null; onChanged: () => void
 }) {
   "use no memo"
   const [editing, setEditing] = useState(!evaluacion)
@@ -670,11 +901,13 @@ function EvaluacionTab({ etapaId, requiereJefe, planeacion, evaluacion, onChange
     )
   }
 
-  return <EvaluacionForm etapaId={etapaId} requiereJefe={requiereJefe} evaluacion={evaluacion} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged() }}/>
+  return <EvaluacionForm etapa={etapa} etapaId={etapaId} visitas={visitas} requiereJefe={requiereJefe} evaluacion={evaluacion} firmaFuente={firmaFuente} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged() }}/>
 }
 
-function EvaluacionForm({ etapaId, requiereJefe, evaluacion, onCancel, onSaved }: {
-  etapaId: number; requiereJefe: boolean; evaluacion: SeguimientoProductivo | null; onCancel: () => void; onSaved: () => void
+function EvaluacionForm({ etapa, etapaId, visitas, requiereJefe, evaluacion, firmaFuente, onCancel, onSaved }: {
+  etapa: EtapaConSeguimientos; etapaId: number; visitas: number; requiereJefe: boolean
+  evaluacion: SeguimientoProductivo | null
+  firmaFuente: FirmaFuente | null; onCancel: () => void; onSaved: () => void
 }) {
   "use no memo"
   const [modalidad, setModalidad] = useState<TipoSeguimiento>(evaluacion?.tipo_seguimiento ?? 'PRESENCIAL')
@@ -687,11 +920,41 @@ function EvaluacionForm({ etapaId, requiereJefe, evaluacion, onCancel, onSaved }
   const [juicio, setJuicio] = useState<ResultadoFinal | null>(null)
   const [firmas, setFirmas] = useState<FirmasEstado>(firmasVacias())
   const [busy, setBusy] = useState(false)
+  const [intentado, setIntentado] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  const puedeGuardar = !!evaluacion || (!!juicio && firmasCompletas(firmas, requiereJefe))
+  const esVirtual = modalidad === 'VIRTUAL'
+  const sinValorar = [...tecnicos, ...actitudinales].filter(f => f.valor === null).length
+  const errores: Record<string, string> = {}
+  if (esVirtual && !enlace.trim()) errores.enlace = 'Si la evaluación fue virtual, el formato pide el enlace de la grabación.'
+  const ver = (k: string) => (intentado ? errores[k] : undefined)
+
+  // El formato pide dos cosas en cada retroalimentación: el proceso de
+  // formación y el desempeño de las competencias. El modelo guarda un solo
+  // campo por parte, así que el placeholder lo recuerda en vez de perderlo.
+  const AYUDA_RETRO = 'Proceso de formación del aprendiz y desempeño de las competencias técnicas y actitudinales.'
+  const area = (v: string, set: (x: string) => void) => (
+    <textarea className="nx-input" rows={3} style={{ resize: 'vertical', lineHeight: 1.5 }} value={v} onChange={e => set(e.target.value)} placeholder={AYUDA_RETRO}/>
+  )
 
   async function guardar() {
+    setIntentado(true)
+    if (sinValorar > 0) {
+      setErr(`Faltan ${sinValorar} variable${sinValorar === 1 ? '' : 's'} por valorar. El formato pide marcar las 13.`)
+      return
+    }
+    if (!evaluacion && !juicio) {
+      setErr('Falta el juicio de evaluación: es lo que define si el aprendiz aprueba la etapa.')
+      return
+    }
+    if (!evaluacion && !firmasCompletas(firmas, requiereJefe)) {
+      setErr('Faltan firmas. La evaluación no tiene validez sin ellas.')
+      return
+    }
+    if (Object.keys(errores).length > 0) {
+      setErr('Faltan datos obligatorios. Revisa lo marcado en rojo.')
+      return
+    }
     setBusy(true); setErr(null)
     const valoracion = { tecnicos: factoresAJson(tecnicos), actitudinales: factoresAJson(actitudinales) }
     try {
@@ -712,40 +975,61 @@ function EvaluacionForm({ etapaId, requiereJefe, evaluacion, onCancel, onSaved }
         await subirFirmas(res.data.id, firmas, requiereJefe)
       }
       onSaved()
-    } catch (e: any) {
-      setErr(e?.response?.data?.message ?? 'No se pudo guardar la evaluación.')
+    } catch (e) {
+      const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message
+      setErr(Array.isArray(m) ? m.join(' · ') : m ?? 'No se pudo guardar la evaluación.')
     } finally { setBusy(false) }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <SectionIntro title="Evaluación de la etapa productiva" sub="Se diligencia una única vez, al finalizar la etapa productiva. La fecha queda fijada automáticamente al guardar."/>
-
-      <Card style={{ padding: 20 }}>
-        <Field label="Enlace de grabación" hint="Si se hace de forma virtual">
-          <input className="nx-input" placeholder="https://…" value={enlace} onChange={e => setEnlace(e.target.value)}/>
-        </Field>
-        <Field label="La evaluación se realizó de forma" style={{ marginTop: 14 }}>
-          <Seg name="modEval" value={modalidad} onChange={v => setModalidad(v as TipoSeguimiento)} options={MODALIDAD_SEG_OPTS}/>
-        </Field>
-      </Card>
-
-      <FactoresBlock titulo="Factores técnicos" items={tecnicos} onChange={setTecnicos}/>
-      <FactoresBlock titulo="Factores actitudinales y comportamentales" items={actitudinales} onChange={setActitudinales}/>
-
-      <Card style={{ padding: 20 }}>
-        <SectionIntro title="Retroalimentación" sub="Una voz por cada parte, o reconocimientos especiales."/>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Field label="Ente co-formador"><textarea className="nx-input" rows={3} style={{ resize: 'vertical' }} value={retroCoformador} onChange={e => setRetroCoformador(e.target.value)}/></Field>
-          <Field label="Instructor de seguimiento"><textarea className="nx-input" rows={3} style={{ resize: 'vertical' }} value={retroInstructor} onChange={e => setRetroInstructor(e.target.value)}/></Field>
-          <Field label="Aprendiz"><textarea className="nx-input" rows={3} style={{ resize: 'vertical' }} value={retroAprendiz} onChange={e => setRetroAprendiz(e.target.value)}/></Field>
+    <div className="g23">
+      <div className="g23-head">
+        <div style={{ minWidth: 0 }}>
+          <div className="g23-head__codigo">GFPI-F-023 V6 · MOMENTO 3</div>
+          <div className="g23-head__t">Evaluación de la etapa productiva</div>
+          <div className="g23-head__sub">
+            Se diligencia una única vez, al finalizar. La fecha queda fijada al guardar.
+          </div>
         </div>
-      </Card>
+        <div className="g23-prog">
+          <div style={{ textAlign: 'right' }}>
+            <div className="g23-prog__n">{13 - sinValorar}/13</div>
+            <div className="g23-prog__l">variables</div>
+          </div>
+        </div>
+      </div>
+
+      <Bloque n={1} titulo="Fechas y visitas" cols={3}>
+        <Campo label="Inicio etapa productiva"><Dato valor={fd(etapa.fecha_inicio)} mono/></Campo>
+        <Campo label="Fin de la ejecución">
+          <Dato valor={fd(etapa.fecha_fin_real ?? etapa.fecha_fin_estimada)} mono/>
+        </Campo>
+        {/* El formato pide contar las visitas; se cuentan solas a partir de los
+            momentos ya registrados, en vez de pedirle al instructor que recuerde. */}
+        <Campo label="Visitas realizadas"><Dato valor={String(visitas)} mono/></Campo>
+        <Campo label="La evaluación se realizó en forma" ancho>
+          <Seg name="modEval" value={modalidad} onChange={v => setModalidad(v as TipoSeguimiento)} options={MODALIDAD_SEG_OPTS}/>
+        </Campo>
+        <Campo label="Enlace de grabación" ancho error={ver('enlace')}>
+          <input className="nx-input" placeholder={esVirtual ? 'https://…' : 'Solo si la evaluación se hace de forma virtual'} value={enlace} onChange={e => setEnlace(e.target.value)}/>
+        </Campo>
+      </Bloque>
+
+      <FactoresBlock titulo="2 · Factores técnicos" items={tecnicos} onChange={setTecnicos}/>
+      <FactoresBlock titulo="3 · Factores actitudinales y comportamentales" items={actitudinales} onChange={setActitudinales}/>
+
+      <Bloque n={4} titulo="Retroalimentación">
+        <Campo label="Del ente co-formador" ancho>{area(retroCoformador, setRetroCoformador)}</Campo>
+        <Campo label="Del instructor de seguimiento" ancho>{area(retroInstructor, setRetroInstructor)}</Campo>
+        <Campo label="Del aprendiz" ancho>{area(retroAprendiz, setRetroAprendiz)}</Campo>
+      </Bloque>
 
       {!evaluacion && (
-        <Card style={{ padding: 20 }}>
-          <SectionIntro title="Juicio de evaluación de la etapa productiva" sub="Selecciona uno de los dos para poder guardar la evaluación."/>
-          <div style={{ display: 'flex', gap: 10 }}>
+        <Bloque n={5} titulo="Juicio de evaluación de la etapa productiva">
+          <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a', marginBottom: -2 }}>
+            Define si el aprendiz aprueba la etapa. No se puede guardar sin elegir uno.
+          </span>
+          <div className="g23-col2" style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setJuicio('APROBADO')} style={{
               flex: 1, padding: '14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
               border: `2px solid ${juicio === 'APROBADO' ? '#86efac' : '#e4e4e7'}`,
@@ -761,22 +1045,19 @@ function EvaluacionForm({ etapaId, requiereJefe, evaluacion, onCancel, onSaved }
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}><Ic n="x" s={15}/>No aprobado</button>
           </div>
-        </Card>
-      )}
-      {evaluacion && (
-        <InlineAlert tone="neutral" icon="info">
-          El juicio ya quedó registrado. Si necesitas corregirlo, ajusta el "Resultado final" desde la pestaña Información general.
-        </InlineAlert>
+        </Bloque>
       )}
 
       {!evaluacion && (
-        <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas}/>
+        <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas} fuente={firmaFuente}/>
       )}
 
       {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <Btn variant="secondary" onClick={onCancel} disabled={busy}>Cancelar</Btn>
-        <Btn variant="accent" icon="check" disabled={!puedeGuardar || busy} onClick={guardar}>{busy ? 'Guardando…' : 'Guardar evaluación'}</Btn>
+        <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>
+          {busy ? 'Guardando…' : 'Guardar evaluación'}
+        </Btn>
       </div>
     </div>
   )

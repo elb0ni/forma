@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Ic, Card, Bdg, Ava, Pager } from '../../components/ui'
 import type { IcName } from '../../components/ui'
 import api from '../../lib/api'
 import { FichasAdmin } from '../shared/FichasAdmin'
-import { InstructorDetalle } from '../shared/InstructorDetalle'
+import { InstructorDetalleRoute } from '../shared/InstructorDetalle'
 import type { InstructorBasico } from '../shared/InstructorDetalle'
+import { AlertasInstructorButton } from '../shared/AlertasInstructor'
 import { diasHasta } from '../shared/parts'
 import type { CoordDetalle } from '../shared/types'
 
@@ -35,21 +37,68 @@ interface FichaMin {
   fecha_fin_productiva: string | null
 }
 
+const INST_PAGE = 10
+
+function InstructoresTable({ items, page, onPage, onOpen }: {
+  items: InstructorBasico[]; page: number; onPage: (p: number) => void; onOpen: (id: string) => void
+}) {
+  "use no memo"
+  if (items.length === 0) return <EmptyBox text="Esta coordinación aún no tiene instructores asignados."/>
+
+  const pageCount = Math.ceil(items.length / INST_PAGE)
+  const cur       = Math.min(page, Math.max(0, pageCount - 1))
+  const rows      = items.slice(cur * INST_PAGE, (cur + 1) * INST_PAGE)
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <Card style={{ overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>
+              {['Instructor', 'Estado'].map(h => (
+                <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(u => (
+              <tr key={u.id} className="nx-row" onClick={() => onOpen(String(u.id))} style={{ borderBottom: '1px solid #f1f1f3', opacity: u.activo ? 1 : 0.6, cursor: 'pointer' }}>
+                <td style={{ padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Ava name={u.nombre_completo} size={30}/>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.nombre_completo}</div>
+                      <div style={{ fontSize: 11, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style={{ padding: '12px 14px' }}><Bdg tone={u.activo ? 'ok' : 'neutral'}>{u.activo ? 'Activo' : 'Inactivo'}</Bdg></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+      <Pager page={cur} pageCount={pageCount} total={items.length} pageSize={INST_PAGE} onPage={onPage} noun="instructores"/>
+    </div>
+  )
+}
+
 // ─── Componente ──────────────────────────────────────────────────────────────────
 
-type CoordView =
-  | { mode: 'main' }
-  | { mode: 'instructor'; u: InstructorBasico }
-
-export function CoordinacionDetalle({ coordId, onBack }: { coordId: number; onBack: () => void }) {
+export function CoordinacionDetalle() {
   "use no memo"
+  const params = useParams()
+  const coordId = Number(params.coordId)
+  const splat = params['*'] ?? ''
+  const navigate = useNavigate()
+
+  const tab: 'fichas' | 'instructores' = splat.startsWith('instructores') ? 'instructores' : 'fichas'
+  const listLevel = splat === 'fichas' || splat === 'instructores'
+
   const [data, setData] = useState<CoordDetalle | null>(null)
   const [instructores, setInstructores] = useState<InstructorBasico[] | null>(null)
   const [fichas, setFichas] = useState<FichaMin[] | null>(null)
   const [error, setError] = useState(false)
-  const [view, setView] = useState<CoordView>({ mode: 'main' })
-  const [tab, setTab] = useState<'instructores' | 'fichas'>('fichas')
-  const [fichaFocused, setFichaFocused] = useState(false)
   const [instPage, setInstPage] = useState(0)
 
   useEffect(() => {
@@ -64,7 +113,7 @@ export function CoordinacionDetalle({ coordId, onBack }: { coordId: number; onBa
   }, [coordId])
 
   const back = (
-    <button onClick={onBack} className="back-btn" style={{
+    <button onClick={() => navigate('../..', { relative: 'path' })} className="back-btn" style={{
       fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none',
       cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'Inter, sans-serif',
     }}>
@@ -90,6 +139,7 @@ export function CoordinacionDetalle({ coordId, onBack }: { coordId: number; onBa
   )
 
   const { coordinacion: c, coordinador, kpi } = data
+  const scope = { coordinacionId: c.id, centroId: c.centro.id }
 
   const cierranPronto = fichas.filter(f => {
     if (f.estado !== 'EN_EJECUCION' || f.etapa_actual_teorica !== 'PRACTICA') return false
@@ -97,25 +147,15 @@ export function CoordinacionDetalle({ coordId, onBack }: { coordId: number; onBa
     return d != null && d <= 30
   }).length
 
-  // Drill-down: detalle de un instructor de práctica (reutiliza la vista de detalle del Super Admin)
-  if (view.mode === 'instructor') {
-    return <InstructorDetalle instructor={view.u} onBack={() => setView({ mode: 'main' })}/>
-  }
-
-  const INST_PAGE = 10
-  const instPageCount = Math.ceil(instructores.length / INST_PAGE)
-  const instCur       = Math.min(instPage, Math.max(0, instPageCount - 1))
-  const instItems     = instructores.slice(instCur * INST_PAGE, (instCur + 1) * INST_PAGE)
-
   const kpis: { label: string; value: string | number; icon: IcName; color?: string; sub?: string }[] = [
     { label: 'Fichas activas', value: kpi.fichas_activas, icon: 'briefcase', color: '#4f46e5', sub: `${kpi.fichas_total} en total` },
-    { label: 'Instructores', value: kpi.instructores, icon: 'users', color: '#4f46e5', sub: `${kpi.instructores_activos_semana} activos esta semana` },
+    { label: 'Instructores', value: kpi.instructores, icon: 'users', color: '#4f46e5', sub: `${kpi.instructores_con_practica} con práctica activa` },
     { label: 'Cierran en ≤30 días', value: cierranPronto, icon: 'clock', color: cierranPronto > 0 ? '#c2410c' : '#4f46e5', sub: 'etapa productiva' },
   ]
 
   return (
     <div>
-      {!fichaFocused && (
+      {listLevel && (
       <>
       {back}
 
@@ -132,35 +172,37 @@ export function CoordinacionDetalle({ coordId, onBack }: { coordId: number; onBa
             <Bdg tone={c.activa ? 'ok' : 'neutral'}>{c.activa ? 'Activa' : 'Inactiva'}</Bdg>
           </div>
         </div>
+        <AlertasInstructorButton coordId={c.id}/>
       </div>
 
-      {/* Coordinador académico */}
-      <Card style={{ padding: 18, marginBottom: 16 }}>
-        <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 12 }}>
-          Coordinador académico
-        </div>
+      {/* Coordinador académico -- tira compacta (antes ocupaba una tarjeta entera) */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        padding: '9px 13px', border: '1px solid #e4e4e7', borderRadius: 10,
+        background: '#fff', marginBottom: 16,
+      }}>
+        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#a1a1aa', flexShrink: 0 }}>
+          Coordinador
+        </span>
         {coordinador ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <Ava name={coordinador.nombre_completo} size={44}/>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 15, fontWeight: 600, color: '#0a0a0b' }}>{coordinador.nombre_completo}</span>
-                <Bdg tone={coordinador.activo ? 'ok' : 'neutral'}>{coordinador.activo ? 'Activo' : 'Inactivo'}</Bdg>
-              </div>
-              <div style={{ fontSize: 12.5, color: '#52525b', marginTop: 2 }}>{coordinador.email}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 28 }}>
-              <MetaInline label="Documento" value={coordinador.numero_documento} mono/>
-              <MetaInline label="Último acceso" value={fmtAcceso(coordinador.ultimo_acceso)}/>
-            </div>
-          </div>
+          <>
+            <Ava name={coordinador.nombre_completo} size={24}/>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>{coordinador.nombre_completo}</span>
+            <Bdg tone={coordinador.activo ? 'ok' : 'neutral'}>{coordinador.activo ? 'Activo' : 'Inactivo'}</Bdg>
+            <span style={{ fontSize: 12, color: '#71717a' }}>{coordinador.email}</span>
+            <span style={{ flex: 1 }}/>
+            <span style={{ fontSize: 11, color: '#a1a1aa', whiteSpace: 'nowrap' }}>
+              Doc <span style={{ fontFamily: '"JetBrains Mono", monospace', color: '#52525b' }}>{coordinador.numero_documento}</span>
+              {'  ·  Último acceso '}{fmtAcceso(coordinador.ultimo_acceso)}
+            </span>
+          </>
         ) : (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0' }}>
-            <Ic n="alert" s={15} style={{ color: '#d97706' }}/>
-            <span style={{ fontSize: 13, color: '#a16207' }}>Esta coordinación no tiene un coordinador académico asignado.</span>
-          </div>
+          <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#a16207' }}>
+            <Ic n="alert" s={14} style={{ color: '#d97706' }}/>
+            Sin coordinador académico asignado
+          </span>
         )}
-      </Card>
+      </div>
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
@@ -184,7 +226,7 @@ export function CoordinacionDetalle({ coordId, onBack }: { coordId: number; onBa
         ] as const).map(t => {
           const active = tab === t.key
           return (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
+            <button key={t.key} onClick={() => navigate(`../${t.key}`, { relative: 'path' })} style={{
               height: 30, padding: '0 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
               background: active ? '#fff' : 'transparent', color: active ? '#0a0a0b' : '#52525b',
               fontSize: 12.5, fontWeight: 500, fontFamily: 'Inter, sans-serif',
@@ -201,63 +243,25 @@ export function CoordinacionDetalle({ coordId, onBack }: { coordId: number; onBa
       </>
       )}
 
-      {tab === 'instructores' && (
-      <>
-      {instructores.length === 0 ? (
-        <EmptyBox text="Esta coordinación aún no tiene instructores asignados."/>
-      ) : (
-        <div style={{ marginBottom: 24 }}>
-        <Card style={{ overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>
-                {['Instructor', 'Estado'].map(h => (
-                  <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {instItems.map(u => (
-                <tr key={u.id} className="nx-row" onClick={() => setView({ mode: 'instructor', u })} style={{ borderBottom: '1px solid #f1f1f3', opacity: u.activo ? 1 : 0.6, cursor: 'pointer' }}>
-                  <td style={{ padding: '12px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Ava name={u.nombre_completo} size={30}/>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.nombre_completo}</div>
-                        <div style={{ fontSize: 11, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 14px' }}><Bdg tone={u.activo ? 'ok' : 'neutral'}>{u.activo ? 'Activo' : 'Inactivo'}</Bdg></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-        <Pager page={instCur} pageCount={instPageCount} total={instructores.length} pageSize={INST_PAGE} onPage={setInstPage} noun="instructores"/>
-        </div>
-      )}
-      </>
-      )}
-
-      {/* Fichas — misma tabla, toolbar, paginación y gestión que la pantalla de Fichas, acotada a esta coordinación */}
-      {tab === 'fichas' && (
-        <FichasAdmin onDetailChange={setFichaFocused} scope={{ coordinacionId: c.id, centroId: c.centro.id }}/>
-      )}
+      <Routes>
+        <Route index element={<Navigate to="fichas" replace/>}/>
+        <Route path="fichas/*" element={<FichasAdmin scope={scope}/>}/>
+        <Route path="instructores" element={
+          <InstructoresTable
+            items={instructores}
+            page={instPage}
+            onPage={setInstPage}
+            onOpen={id => navigate(id, { relative: 'path' })}
+          />
+        }/>
+        <Route path="instructores/:instructorId/*" element={<InstructorDetalleRoute/>}/>
+        <Route path="*" element={<Navigate to="fichas" replace/>}/>
+      </Routes>
     </div>
   )
 }
 
 // ─── Subcomponentes ──────────────────────────────────────────────────────────────
-
-function MetaInline({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a1a1aa' }}>{label}</div>
-      <div style={{ fontSize: 12.5, color: '#27272a', marginTop: 2, fontFamily: mono ? '"JetBrains Mono", monospace' : 'inherit' }}>{value}</div>
-    </div>
-  )
-}
 
 function EmptyBox({ text }: { text: string }) {
   return (

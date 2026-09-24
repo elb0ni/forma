@@ -125,7 +125,13 @@ html, body {
    y cualquier elemento marcado con [data-keep-color] para que conserven su color. */
 html[data-theme='dark'] { background: #0b0b0d; color-scheme: dark; }
 html[data-theme='dark'] body { background: #0b0b0d; }
-html[data-theme='dark'] body > #root {
+/* `#root` es el árbol de la app; `.modal-overlay` son los modales y
+   `.portal-flotante` los popovers/listas flotantes, que se montan con portal en
+   <body> (fuera de `#root`) para escapar del `transform` del shell -- sin esto
+   quedarían sin invertir en oscuro. */
+html[data-theme='dark'] body > #root,
+html[data-theme='dark'] body > .modal-overlay,
+html[data-theme='dark'] body > .portal-flotante {
   filter: invert(0.92) hue-rotate(180deg);
 }
 /* Re-invertir lo que NO debe quedar en negativo */

@@ -31,18 +31,22 @@ const NAV: Record<UserRole, NavItem[]> = {
   SUPER_ADMIN: [
     { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
     { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
+    { id: 'admin-disenos',   label: 'Diseños',     icon: 'fileText'  },
     { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
     { id: 'admin-centros',   label: 'Centros',     icon: 'shield'    },
     { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
     { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
+    { id: 'admin-sofia',     label: 'SofiaPlus',   icon: 'refresh'   },
   ],
   SUBDIRECTOR:     COORD_NAV,
   COORD_MISIONAL:  COORD_NAV,
   COORD_ACADEMICO: COORD_NAV,
   INSTRUCTOR: [
     { id: 'inst-home', label: 'Inicio', icon: 'home' },
+    { id: 'inst-agenda', label: 'Agenda', icon: 'calendar' },
     { id: 'inst-fichas', label: 'Mis fichas', icon: 'folder' },
     { id: 'inst-etapa-productiva', label: 'Etapa productiva', icon: 'briefcase' },
+    { id: 'inst-historial', label: 'Historial', icon: 'clock' },
     { id: 'inst-reportes', label: 'Reportes', icon: 'trend' },
   ],
 }

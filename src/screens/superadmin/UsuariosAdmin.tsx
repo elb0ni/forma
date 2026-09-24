@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom'
 import axios from 'axios'
 import { Ic, Card, Ava, Btn, Pager, Modal } from '../../components/ui'
 import api from '../../lib/api'
 import { UsuarioForm } from './UsuarioForm'
 import type { UsuarioEdit } from './UsuarioForm'
 import { FirmaModal } from '../../components/FirmaModal'
-import { InstructorDetalle } from '../shared/InstructorDetalle'
+import { InstructorDetalleRoute } from '../shared/InstructorDetalle'
+import { LoadingBlock, CenterState, centroLabel } from '../shared/parts'
 
 interface UsuarioRow {
   id:                        string
@@ -18,6 +20,12 @@ interface UsuarioRow {
   ultimo_acceso:             string | null
   centro_formacion_id:       number | null
   coordinacion_academica_id: number | null
+  centro_nombre:             string | null
+  coordinacion_nombre:       string | null
+  // Solo instructores (null en el resto): carga de seguimiento a práctica.
+  fichas_practica:           number | null   // asignaciones de práctica activas (fichas)
+  etapas_activas:            number | null   // aprendices con etapa productiva en ejecución
+  seguimientos:              number | null   // seguimientos registrados en total
 }
 
 type ListState =
@@ -78,11 +86,6 @@ function isActivo(u: UsuarioRow): boolean {
   return u.activo === true || u.activo === 1
 }
 
-type UsuarioView =
-  | { mode: 'list' }
-  | { mode: 'form'; usuario: UsuarioEdit | null }
-  | { mode: 'progreso'; u: UsuarioRow }
-
 type UsuarioModal =
   | null
   | { kind: 'desactivar'; u: UsuarioRow }
@@ -136,18 +139,22 @@ function toUsuarioEdit(u: UsuarioRow): UsuarioEdit {
 }
 
 const THEAD: { label: string; right?: boolean }[] = [
-  { label: 'Persona' }, { label: 'Documento' }, { label: 'Rol' },
+  { label: 'Persona' }, { label: 'Centro · coordinación' }, { label: 'Rol' },
   { label: 'Estado' }, { label: 'Último acceso' }, { label: 'Acciones', right: true },
 ]
 const TH_S = { padding: '10px 16px', fontWeight: 600 }
 const TD_S = { padding: '12px 16px' }
 
-export function UsuariosAdmin() {
+// ─── Lista ───────────────────────────────────────────────────────────────────────
+
+function UsuariosList() {
   "use no memo"
+  const navigate = useNavigate()
   const [grupo, setGrupo] = useState<Grupo>('todos')
+  const [search, setSearch] = useState('')
+  const [centroFilt, setCentroFilt] = useState('')
   const [state, setState] = useState<ListState>({ status: 'loading' })
   const [page,  setPage]  = useState(0)
-  const [view,  setView]  = useState<UsuarioView>({ mode: 'list' })
   const [reloadKey, setReloadKey] = useState(0)
   const [modal, setModal] = useState<UsuarioModal>(null)
   const [firmaUser, setFirmaUser] = useState<UsuarioRow | null>(null)
@@ -194,25 +201,17 @@ export function UsuariosAdmin() {
     })
   }
 
-  useEffect(() => { setPage(0) }, [grupo])
-
-  if (view.mode === 'form') {
-    return (
-      <UsuarioForm
-        usuario={view.usuario}
-        onCancel={() => setView({ mode: 'list' })}
-        onSaved={() => { setView({ mode: 'list' }); setReloadKey(k => k + 1) }}
-      />
-    )
-  }
-
-  if (view.mode === 'progreso') {
-    return <InstructorDetalle instructor={view.u} onBack={() => setView({ mode: 'list' })}/>
-  }
+  useEffect(() => { setPage(0) }, [grupo, search, centroFilt])
 
   const all       = state.status === 'ok' ? state.data : []
   const activos   = all.filter(isActivo).length
   const inactivos = all.length - activos
+  const instrConPractica = all.filter(u => (u.fichas_practica ?? 0) > 0).length
+  const [corte30d] = useState(() => Date.now() - 30 * 86400000)
+  const sinAcceso = all.filter(u => isActivo(u) && (!u.ultimo_acceso || new Date(u.ultimo_acceso).getTime() < corte30d)).length
+
+  const centrosDisponibles = [...new Set(all.map(u => u.centro_nombre).filter((n): n is string => !!n))]
+    .sort((a, b) => a.localeCompare(b, 'es'))
 
   const TABS: { key: Grupo; label: string; count: number }[] = [
     { key: 'todos',       label: 'Todos',         count: all.length },
@@ -221,7 +220,16 @@ export function UsuariosAdmin() {
     { key: 'admin',       label: 'Admins',        count: all.filter(u => rolGrupo(u.rol) === 'admin').length },
   ]
 
-  const filtered  = grupo === 'todos' ? all : all.filter(u => rolGrupo(u.rol) === grupo)
+  const q = search.trim().toLowerCase()
+  const filtered = all.filter(u => {
+    if (grupo !== 'todos' && rolGrupo(u.rol) !== grupo) return false
+    if (centroFilt && u.centro_nombre !== centroFilt) return false
+    if (q
+      && !u.nombre_completo.toLowerCase().includes(q)
+      && !u.email.toLowerCase().includes(q)
+      && !u.numero_documento.toLowerCase().includes(q)) return false
+    return true
+  })
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE)
   const curPage   = Math.min(page, Math.max(0, pageCount - 1))
   const pageItems = filtered.slice(curPage * PAGE_SIZE, (curPage + 1) * PAGE_SIZE)
@@ -288,19 +296,38 @@ export function UsuariosAdmin() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>Usuarios</h2>
           <div style={{ fontSize: 13, color: '#52525b', marginTop: 4 }}>
-            {state.status === 'ok' ? `${activos} activos · ${inactivos} inactivos` : ' '}
+            {state.status === 'ok' ? `${activos} activos · ${inactivos} inactivos` : ' '}
           </div>
         </div>
-        <Btn variant="accent" icon="plus" onClick={() => setView({ mode: 'form', usuario: null })}>Crear usuario</Btn>
+        <Btn variant="accent" icon="plus" onClick={() => navigate('nuevo', { relative: 'path' })}>Crear usuario</Btn>
       </div>
 
-      {/* Tabs por rol (segmented control) */}
+      {/* KPIs */}
       {state.status === 'ok' && (
-        <div style={{ display: 'inline-flex', background: '#f1f1f3', borderRadius: 8, padding: 2, border: '1px solid #e4e4e7', marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 18 }}>
+          {([
+            ['Activos', activos, '#15803d', 'usuarios que pueden iniciar sesión'],
+            ['Inactivos', inactivos, '#71717a', 'sin acceso a la plataforma'],
+            ['Instructores con práctica', instrConPractica, '#4f46e5', 'con ficha de seguimiento asignada'],
+            ['Sin acceso ≥30 días', sinAcceso, sinAcceso > 0 ? '#c2410c' : '#71717a', 'activos que no entran hace un mes'],
+          ] as const).map(([label, value, color, sub]) => (
+            <Card key={label} style={{ padding: 13 }}>
+              <div style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#71717a', fontWeight: 600 }}>{label}</div>
+              <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 22, fontWeight: 600, color, marginTop: 5 }}>{value}</div>
+              <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 2 }}>{sub}</div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Tabs por rol + búsqueda + centro */}
+      {state.status === 'ok' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <div style={{ display: 'inline-flex', background: '#f1f1f3', borderRadius: 8, padding: 2, border: '1px solid #e4e4e7' }}>
           {TABS.map(t => {
             const active = grupo === t.key
             return (
@@ -321,6 +348,29 @@ export function UsuariosAdmin() {
               </button>
             )
           })}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Ic n="search" s={14} style={{ position: 'absolute', left: 10, color: '#a1a1aa', pointerEvents: 'none' }}/>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar nombre, correo o documento…"
+              style={{ width: 240, maxWidth: '100%', height: 32, padding: '0 10px 0 30px', border: '1px solid #e4e4e7', borderRadius: 8, fontSize: 12.5, color: '#18181b', fontFamily: 'Inter, sans-serif', outline: 'none', background: '#fff' }}
+            />
+          </div>
+          {centrosDisponibles.length > 1 && (
+            <select
+              value={centroFilt}
+              onChange={e => setCentroFilt(e.target.value)}
+              style={{ height: 32, padding: '0 10px', borderRadius: 8, fontSize: 12.5, background: '#fff', color: centroFilt ? '#4f46e5' : '#3f3f46', fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none', border: centroFilt ? '1.5px solid #4f46e5' : '1px solid #e4e4e7' }}
+            >
+              <option value="">Todos los centros</option>
+              {centrosDisponibles.map(c => <option key={c} value={c}>{centroLabel(c)}</option>)}
+            </select>
+          )}
+        </div>
         </div>
       )}
 
@@ -382,7 +432,7 @@ export function UsuariosAdmin() {
                   <tr
                     key={u.id}
                     className="nx-row"
-                    onClick={esInstructor ? () => setView({ mode: 'progreso', u }) : undefined}
+                    onClick={esInstructor ? () => navigate(String(u.id), { relative: 'path' }) : undefined}
                     style={{ borderBottom: '1px solid #f1f1f3', cursor: esInstructor ? 'pointer' : 'default' }}
                   >
                     <td style={TD_S}>
@@ -390,12 +440,34 @@ export function UsuariosAdmin() {
                         <Ava name={u.nombre_completo} size={30}/>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontWeight: 500, color: '#0a0a0b' }}>{u.nombre_completo}</div>
-                          <div style={{ fontSize: 11, color: '#52525b', marginTop: 2 }}>{u.email}</div>
+                          <div style={{ fontSize: 11, color: '#52525b', marginTop: 2 }}>
+                            {u.email}
+                            <span style={{ color: '#c4c4c8' }}> · </span>
+                            <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{fmtDoc(u.numero_documento)}</span>
+                          </div>
+                          {esInstructor && (u.fichas_practica != null) && (
+                            <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 2, fontFamily: '"JetBrains Mono", monospace' }}>
+                              {u.fichas_practica} ficha{u.fichas_practica === 1 ? '' : 's'} · {u.etapas_activas ?? 0} en curso · {u.seguimientos ?? 0} seguimiento{(u.seguimientos ?? 0) === 1 ? '' : 's'}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
-                    <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', color: '#27272a' }}>
-                      {fmtDoc(u.numero_documento)}
+                    <td style={TD_S}>
+                      {u.centro_nombre || u.coordinacion_nombre ? (
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12, color: '#27272a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                            {u.centro_nombre ? centroLabel(u.centro_nombre) : '—'}
+                          </div>
+                          {u.coordinacion_nombre && (
+                            <div style={{ fontSize: 10.5, color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                              {u.coordinacion_nombre}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12, color: '#c4c4c8' }}>—</span>
+                      )}
                     </td>
                     <td style={TD_S}>
                       <span style={{
@@ -421,10 +493,10 @@ export function UsuariosAdmin() {
                     </td>
                     <td style={{ ...TD_S, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'inline-flex', gap: 4 }}>
-                        {esInstructor && <IconBtn icon="eye" title="Ver progreso" color="#4f46e5" onClick={() => setView({ mode: 'progreso', u })}/>}
+                        {esInstructor && <IconBtn icon="eye" title="Ver progreso" color="#4f46e5" onClick={() => navigate(String(u.id), { relative: 'path' })}/>}
                         {(u.rol === 'INSTRUCTOR' || u.rol === 'COORD_ACADEMICO') &&
                           <IconBtn icon="fileText" title="Firma" color="#7c3aed" onClick={() => setFirmaUser(u)}/>}
-                        <IconBtn icon="edit" title="Editar" onClick={() => setView({ mode: 'form', usuario: toUsuarioEdit(u) })}/>
+                        <IconBtn icon="edit" title="Editar" onClick={() => navigate(`${u.id}/editar`, { relative: 'path' })}/>
                         <IconBtn icon="key" title="Restablecer contraseña" onClick={() => { setActionError(null); setModal({ kind: 'reset', u }) }}/>
                         {activo
                           ? <IconBtn icon="x" title="Desactivar" color="#b91c1c" onClick={() => { setActionError(null); setModal({ kind: 'desactivar', u }) }}/>
@@ -449,5 +521,57 @@ export function UsuariosAdmin() {
         </>
       )}
     </div>
+  )
+}
+
+// ─── Wrappers de ruta ────────────────────────────────────────────────────────────
+
+function UsuarioCrearRoute() {
+  "use no memo"
+  const navigate = useNavigate()
+  return (
+    <UsuarioForm
+      usuario={null}
+      onCancel={() => navigate('..', { relative: 'path' })}
+      onSaved={() => navigate('..', { relative: 'path' })}
+    />
+  )
+}
+
+function UsuarioEditarRoute() {
+  "use no memo"
+  const { usuarioId } = useParams()
+  const navigate = useNavigate()
+  const [usuario, setUsuario] = useState<UsuarioEdit | null | undefined>(undefined)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let live = true
+    api.get<UsuarioRow>(`/usuarios/${usuarioId}`)
+      .then(r => { if (live) setUsuario(toUsuarioEdit(r.data)) })
+      .catch(() => { if (live) setError(true) })
+    return () => { live = false }
+  }, [usuarioId])
+
+  if (error) return <Card style={{ padding: 24 }}><CenterState icon="alert" title="No se pudo cargar el usuario"/></Card>
+  if (usuario === undefined) return <LoadingBlock/>
+  return (
+    <UsuarioForm
+      usuario={usuario}
+      onCancel={() => navigate('../..', { relative: 'path' })}
+      onSaved={() => navigate('../..', { relative: 'path' })}
+    />
+  )
+}
+
+export function UsuariosAdmin() {
+  "use no memo"
+  return (
+    <Routes>
+      <Route index element={<UsuariosList/>}/>
+      <Route path="nuevo" element={<UsuarioCrearRoute/>}/>
+      <Route path=":usuarioId/editar" element={<UsuarioEditarRoute/>}/>
+      <Route path=":usuarioId/*" element={<InstructorDetalleRoute/>}/>
+    </Routes>
   )
 }

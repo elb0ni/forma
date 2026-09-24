@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom'
-import { Ic, Card, Ava, Btn, Tag, Pager } from '../../components/ui'
-import type { IcName } from '../../components/ui'
+import { Ic, Card, Ava, Btn, Tag, Pager, Tip } from '../../components/ui'
 import api from '../../lib/api'
 import { FichaForm } from './FichaForm'
 import type { FichaEdit } from './FichaForm'
 import { jornadaLabel, centroLabel } from './parts'
+import { FiltroGrupo, FiltrosBar, FiltrosResumen, SortCaret } from './filtros'
+import type { FiltroOpcion, SortDir } from './filtros'
 import { AprendicesPracticaTable, EstadoAprendicesResumen } from './AprendicesPractica'
 import type { AprendizPractica, InstructorPracticaInfo, KpiAprendicesPractica } from './AprendicesPractica'
 import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
+import { faseFicha, FASE_META } from './fichaFase'
+import type { FaseFicha } from './fichaFase'
+import './filtros.css'
 
 export interface FichaRow {
   id:                        number
@@ -47,9 +51,16 @@ function Sk({ w, h, r = 5 }: { w: string | number; h: number; r?: number }) {
   return <div className="skeleton" style={{ width: w, height: h, borderRadius: r }}/>
 }
 
+const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+// "25 jul 2025" -- compacto y sin "de X de Y", tomando el día del string ISO
+// para no correrlo por la conversión de timezone (igual que fdISO).
 function fd(s: string | null): string {
   if (!s) return '—'
-  return new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
+  if (m) return `${Number(m[3])} ${MES_CORTO[Number(m[2]) - 1]} ${m[1]}`
+  const d = new Date(s)
+  return isNaN(d.getTime()) ? '—' : `${d.getDate()} ${MES_CORTO[d.getMonth()]} ${d.getFullYear()}`
 }
 
 // Fecha en formato aaaa-mm-dd, tomada directo del ISO string (sin pasar por Date, que
@@ -57,6 +68,27 @@ function fd(s: string | null): string {
 function fdISO(s: string | null): string {
   if (!s) return '—'
   return s.slice(0, 10)
+}
+
+// Contenido del tooltip de la columna "Fin productiva": las 3 fechas clave de
+// la ficha. `fecha_inicio_productiva` = misma columna que `fecha_fin_lectiva`
+// en el backend (la lectiva termina donde arranca la productiva).
+function FechasFicha({ f }: { f: FichaRow }) {
+  const rows: [string, string | null][] = [
+    ['Inicio de la ficha', f.fecha_inicio],
+    ['Inicio etapa productiva', f.fecha_inicio_productiva],
+    ['Fin etapa productiva', f.fecha_fin_productiva],
+  ]
+  return (
+    <div style={{ display: 'grid', gap: 4 }}>
+      {rows.map(([label, iso]) => (
+        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 20 }}>
+          <span style={{ color: '#a1a1aa' }}>{label}</span>
+          <span style={{ fontFamily: '"JetBrains Mono", monospace', color: '#f4f4f5' }}>{fd(iso)}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // Sigla derivada del nombre para el recuadro del programa (p. ej. "ADS")
@@ -72,41 +104,9 @@ function programaShort(nombre: string): string {
 }
 
 // ─── Fase operativa de la ficha ─────────────────────────────────────────────────
-// FORMA no razona por "estado" (En ejecución / Finalizada de Sofía) ni por
-// "etapa lectiva/práctica" -- razona por en qué punto del proceso productivo
-// está la ficha. Se deriva de las fechas de etapa productiva + el estado:
-//   PRÓXIMA      la etapa productiva todavía no arranca -> preparar (instructor)
-//   EN PRÁCTICA  arrancó, la fecha de fin no llegó -> seguimiento en curso
-//   EN CIERRE    la fecha de fin ya pasó pero la ficha sigue abierta ->
-//                seguimientos y evaluación final pendientes. NO es un error:
-//                la práctica dura hasta 6 meses y Sofía marca "Terminada por
-//                fecha" mientras los aprendices siguen en la empresa.
-//   FINALIZADA   cerrada de verdad -> solo historial
-export type FaseFicha = 'PROXIMA' | 'EN_PRACTICA' | 'EN_CIERRE' | 'FINALIZADA'
-
-export function faseFicha(f: {
-  estado: string
-  fecha_inicio_productiva: string | null
-  fecha_fin_productiva: string | null
-}): FaseFicha {
-  const hoy = new Date().toISOString().slice(0, 10)
-  const ini = f.fecha_inicio_productiva ? f.fecha_inicio_productiva.slice(0, 10) : null
-  const fin = f.fecha_fin_productiva ? f.fecha_fin_productiva.slice(0, 10) : null
-  if (ini && ini > hoy) return 'PROXIMA'
-  if (!fin || fin >= hoy) return 'EN_PRACTICA'
-  return f.estado === 'FINALIZADA' ? 'FINALIZADA' : 'EN_CIERRE'
-}
-
-const FASE_META: Record<FaseFicha, {
-  label: string; icon: IcName; fg: string; bg: string; bd: string; dot: string
-}> = {
-  PROXIMA:     { label: 'Próxima a práctica', icon: 'calendar',    fg: '#3730a3', bg: '#eef2ff', bd: '#c7d2fe', dot: '#6366f1' },
-  EN_PRACTICA: { label: 'En práctica',        icon: 'briefcase',   fg: '#4338ca', bg: '#e0e7ff', bd: '#a5b4fc', dot: '#4f46e5' },
-  EN_CIERRE:   { label: 'En cierre',          icon: 'clock',       fg: '#a16207', bg: '#fef9c3', bd: '#fde68a', dot: '#ca8a04' },
-  FINALIZADA:  { label: 'Finalizada',         icon: 'checkCircle', fg: '#52525b', bg: '#f1f1f3', bd: '#e4e4e7', dot: '#a1a1aa' },
-}
-
-function FasePill({ fase }: { fase: FaseFicha }) {
+// El modelo (faseFicha / FASE_META / FaseFicha) vive en ./fichaFase -- aquí solo
+// la píldora visual.
+export function FasePill({ fase }: { fase: FaseFicha }) {
   const m = FASE_META[fase]
   return (
     <span style={{
@@ -124,30 +124,30 @@ function FasePill({ fase }: { fase: FaseFicha }) {
 // '' = todas · 'ACTIVAS' = en práctica + en cierre (lo que FORMA gestiona a diario)
 type FaseFilt   = '' | 'ACTIVAS' | FaseFicha
 type FechaCampo = 'fecha_inicio' | 'fecha_inicio_productiva' | 'fecha_fin_productiva'
-type FichaSort  = 'inicio_reciente' | 'cierre_proximo' | 'mas_aprendices' | 'sin_instructor' | 'numero' | 'programa'
 
-const FASE_CHIPS: { key: FaseFilt; label: string }[] = [
-  { key: 'ACTIVAS',     label: 'Activas'      },
-  { key: 'EN_PRACTICA', label: 'En práctica' },
-  { key: 'EN_CIERRE',   label: 'En cierre'   },
-  { key: 'PROXIMA',     label: 'Próximas'    },
-  { key: 'FINALIZADA',  label: 'Finalizadas' },
-  { key: '',            label: 'Todas'       },
+// Orden en que aparecen las fases dentro del panel de filtros.
+const FASE_FILT_OPTS: { key: FaseFilt; label: string }[] = [
+  { key: 'ACTIVAS',     label: 'Activas'             },
+  { key: 'EN_PRACTICA', label: 'En práctica'         },
+  { key: 'EN_CIERRE',   label: 'En cierre'           },
+  { key: 'PROXIMA',     label: 'Próximas a práctica' },
+  { key: 'FINALIZADA',  label: 'Finalizadas'         },
+  { key: '',            label: 'Todas las fichas'    },
 ]
 
-const FECHA_CAMPO_LABEL: Record<FechaCampo, string> = {
-  fecha_inicio:            'Inicio',
-  fecha_inicio_productiva: 'Inicio productiva',
-  fecha_fin_productiva:    'Fin productiva',
+const FASE_FILT_LABEL: Record<FaseFilt, string> = {
+  '':           'Todas',
+  ACTIVAS:      'Activas',
+  PROXIMA:      'Próximas a práctica',
+  EN_PRACTICA:  'En práctica',
+  EN_CIERRE:    'En cierre',
+  FINALIZADA:   'Finalizadas',
 }
 
-const FICHA_SORT_LABEL: Record<FichaSort, string> = {
-  inicio_reciente: 'Inicio más reciente',
-  cierre_proximo:  'Cierre más próximo',
-  mas_aprendices:  'Más aprendices en práctica',
-  sin_instructor:  'Sin instructor primero',
-  numero:          'Número de ficha',
-  programa:        'Programa (A–Z)',
+const FECHA_CAMPO_LABEL: Record<FechaCampo, string> = {
+  fecha_inicio:            'Inicio lectiva',
+  fecha_inicio_productiva: 'Inicio productiva',
+  fecha_fin_productiva:    'Fin productiva',
 }
 
 const SEL = {
@@ -156,7 +156,45 @@ const SEL = {
   fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none',
 }
 
-const THEAD = ['Número', 'Programa', 'Coordinador', 'Instructor de práctica', 'Aprendices', 'Fin productiva', 'Fase', '']
+// ─── Orden de la tabla ─────────────────────────────────────────────────────────
+// Se controla haciendo clic en el encabezado de cada columna: el primer clic
+// ordena con la dirección natural de la columna, el segundo la invierte.
+type FichaSortCol = 'numero' | 'programa' | 'coordinador' | 'instructor' | 'aprendices' | 'cierre' | 'fase'
+
+const FICHA_COLS: { key: FichaSortCol; label: string; defDir: SortDir }[] = [
+  { key: 'numero',      label: 'Número',                 defDir: 'asc'  },
+  { key: 'programa',    label: 'Programa',               defDir: 'asc'  },
+  { key: 'coordinador', label: 'Coordinador',            defDir: 'asc'  },
+  { key: 'instructor',  label: 'Instructor de práctica', defDir: 'asc'  },
+  { key: 'aprendices',  label: 'Aprendices',             defDir: 'desc' },
+  { key: 'cierre',      label: 'Fin productiva',         defDir: 'asc'  },
+  { key: 'fase',        label: 'Fase',                   defDir: 'asc'  },
+]
+
+const FASE_ORDEN: Record<FaseFicha, number> = { PROXIMA: 0, EN_PRACTICA: 1, EN_CIERRE: 2, FINALIZADA: 3 }
+
+// Compara dos fichas por una columna en su dirección ascendente. Los valores
+// vacíos (ver VACIO_AL_FINAL) se resuelven antes de llamar aquí para que siempre
+// queden al final, ordene como ordene.
+function cmpFichaAsc(a: FichaRow, b: FichaRow, col: FichaSortCol): number {
+  const tie = a.numero_ficha.localeCompare(b.numero_ficha, 'es', { numeric: true })
+  switch (col) {
+    case 'programa':    return a.programa_nombre.localeCompare(b.programa_nombre, 'es') || tie
+    case 'coordinador': return (a.coordinador_nombre ?? '').localeCompare(b.coordinador_nombre ?? '', 'es') || tie
+    case 'instructor':  return (a.instructor_practica ?? '').localeCompare(b.instructor_practica ?? '', 'es') || tie
+    case 'aprendices':  return (a.aprendices_en_practica - b.aprendices_en_practica) || (a.aprendices - b.aprendices) || tie
+    case 'cierre':      return (a.fecha_fin_productiva ?? '').localeCompare(b.fecha_fin_productiva ?? '') || tie
+    case 'fase':        return (FASE_ORDEN[faseFicha(a)] - FASE_ORDEN[faseFicha(b)]) || tie
+    default:            return tie   // 'numero'
+  }
+}
+
+// Columnas cuyo valor vacío debe hundirse siempre (no invertirse con la dirección).
+const VACIO_AL_FINAL: Partial<Record<FichaSortCol, (f: FichaRow) => boolean>> = {
+  instructor: f => !f.instructor_practica,
+  cierre:     f => !f.fecha_fin_productiva,
+}
+
 const TH_S = { padding: '10px 14px', textAlign: 'left' as const, fontWeight: 600 }
 const TD_S = { padding: '12px 14px' }
 
@@ -237,17 +275,21 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
   )
 
   const { ficha, kpi, aprendices, instructor_practica } = state.data
+  // `fecha_fin_lectiva` que devuelve el backend es, de hecho,
+  // `fecha_inicio_productiva` (misma columna: la lectiva termina donde empieza
+  // la productiva). Ver ficha.service.ts en forma_server.
   const meta: [string, string][] = [
     ['Coordinador', ficha.coordinador_nombre],
     ['Coordinación', ficha.coordinacion_nombre],
-    ['Inicio', fd(ficha.fecha_inicio)],
+    ['Inicio de la ficha', fd(ficha.fecha_inicio)],
+    ['Inicio etapa productiva', fd(ficha.fecha_fin_lectiva)],
     ['Fin etapa productiva', fd(ficha.fecha_fin_productiva)],
     ['Sede', ficha.sede ?? '—'],
     ['Jornada', jornadaLabel(ficha.jornada)],
   ]
 
   return (
-    <div style={{ maxWidth: 1200 }}>
+    <div style={{ maxWidth: 1360 }}>
       {back}
 
       {/* Encabezado */}
@@ -285,8 +327,9 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
       {/* Distribución de los aprendices entre los 5 estados de práctica */}
       <EstadoAprendicesResumen kpi={kpi}/>
 
-      {/* Contenido: roster de aprendices en práctica + lateral con la meta de la ficha */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
+      {/* Contenido: roster de aprendices (prioridad, ocupa el espacio libre) +
+          lateral fijo con la meta de la ficha */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 248px', gap: 24, alignItems: 'start' }}>
         <AprendicesPracticaTable
           aprendices={aprendices}
           soloConEtapa
@@ -297,9 +340,9 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
           <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', marginBottom: 14 }}>Coordinación</div>
           <Card style={{ padding: 16 }}>
             {meta.map(([l, v], i) => (
-              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < meta.length - 1 ? '1px solid #f1f1f3' : 'none', gap: 12 }}>
-                <span style={{ fontSize: 12, color: '#52525b', flexShrink: 0 }}>{l}</span>
-                <span style={{ fontSize: 12.5, color: '#18181b', fontWeight: 500, textAlign: 'right' }}>{v}</span>
+              <div key={l} style={{ padding: '7px 0', borderBottom: i < meta.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
+                <div style={{ fontSize: 10.5, color: '#71717a', marginBottom: 2 }}>{l}</div>
+                <div style={{ fontSize: 12.5, color: '#18181b', fontWeight: 500 }}>{v || '—'}</div>
               </div>
             ))}
           </Card>
@@ -316,18 +359,21 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
   "use no memo"
   const navigate = useNavigate()
   // Por defecto se ven las fichas "activas" (en práctica + en cierre) -- lo que
-  // FORMA gestiona a diario. Próximas y finalizadas quedan a un chip de distancia.
-  const [faseFilt, setFaseFilt] = useState<FaseFilt>('ACTIVAS')
-  const [centroFilt, setCentroFilt] = useState('')
+  // FORMA gestiona a diario. Próximas y finalizadas quedan a un clic dentro del
+  // panel de filtros.
+  const [faseFilt,     setFaseFilt]     = useState<FaseFilt>('ACTIVAS')
+  const [centroFilt,   setCentroFilt]   = useState('')                // centro_nombre
+  const [coordFilt,    setCoordFilt]    = useState<number | ''>('')   // coordinacion_academica_id
   const [soloSinInstr, setSoloSinInstr] = useState(false)
-  const [fechaCampo, setFechaCampo] = useState<FechaCampo>('fecha_inicio')
-  const [fechaDesde, setFechaDesde] = useState('')
-  const [fechaHasta, setFechaHasta] = useState('')
-  const [filtrosOpen, setFiltrosOpen] = useState(false)
-  const [search,     setSearch]     = useState('')
-  const [sort,       setSort]       = useState<FichaSort>('inicio_reciente')
-  const [state,      setState]      = useState<ListState>({ status: 'loading' })
-  const [page,       setPage]       = useState(0)
+  const [fechaCampo,   setFechaCampo]   = useState<FechaCampo>('fecha_inicio')
+  const [fechaDesde,   setFechaDesde]   = useState('')
+  const [fechaHasta,   setFechaHasta]   = useState('')
+  const [sortCol,      setSortCol]      = useState<FichaSortCol>('aprendices')
+  const [sortDir,      setSortDir]      = useState<SortDir>('desc')
+  const [search,       setSearch]       = useState('')
+  const [panelOpen,    setPanelOpen]    = useState(false)
+  const [state,        setState]        = useState<ListState>({ status: 'loading' })
+  const [page,         setPage]         = useState(0)
 
   const coordScope = scope?.coordinacionId ?? null
 
@@ -338,16 +384,16 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
       .catch(() => setState({ status: 'error' }))
   }, [coordScope])
 
-  useEffect(() => { setPage(0) }, [faseFilt, centroFilt, soloSinInstr, fechaCampo, fechaDesde, fechaHasta, search, sort])
+  useEffect(() => { setPage(0) }, [faseFilt, centroFilt, coordFilt, soloSinInstr, fechaCampo, fechaDesde, fechaHasta, search, sortCol, sortDir])
+
+  const onSort = (col: FichaSortCol, defDir: SortDir) => {
+    if (col === sortCol) { setSortDir(d => (d === 'asc' ? 'desc' : 'asc')); return }
+    setSortCol(col); setSortDir(defDir)
+  }
 
   const all = state.status === 'ok' ? state.data : []
   const q   = search.trim().toLowerCase()
   const fechaActiva = !!(fechaDesde || fechaHasta)
-  // Solo la fecha queda dentro del dropdown "Filtros" -- la fase ahora son chips
-  // visibles en la propia pantalla (ver debajo).
-  const filtrosExtraCount = fechaActiva ? 1 : 0
-
-  const fasesAll = all.map(f => faseFicha(f))
 
   // "Sin instructor" = ficha que ya debería tenerlo (en práctica o en cierre) y
   // no lo tiene -- la alerta de cobertura de toda la app.
@@ -356,51 +402,123 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
     return (fs === 'EN_PRACTICA' || fs === 'EN_CIERRE') && !f.instructor_practica
   }
 
+  // ─── Predicados de filtro (cada dimensión es independiente) ─────────────────
+  const mFase = (f: FichaRow): boolean => {
+    if (!faseFilt) return true
+    const fs = faseFicha(f)
+    if (faseFilt === 'ACTIVAS') return fs === 'EN_PRACTICA' || fs === 'EN_CIERRE'
+    return fs === faseFilt
+  }
+  const mCentro = (f: FichaRow) => !centroFilt || f.centro_nombre === centroFilt
+  const mCoord  = (f: FichaRow) => coordFilt === '' || f.coordinacion_academica_id === coordFilt
+  const mInstr  = (f: FichaRow) => !soloSinInstr || esSinInstructor(f)
+  const mFecha  = (f: FichaRow): boolean => {
+    if (!fechaActiva) return true
+    const raw = f[fechaCampo]
+    if (!raw) return false
+    const val = raw.slice(0, 10)
+    if (fechaDesde && val < fechaDesde) return false
+    if (fechaHasta && val > fechaHasta) return false
+    return true
+  }
+  const mSearch = (f: FichaRow): boolean => !q || [
+    f.numero_ficha, f.programa_nombre, f.programa_codigo,
+    f.coordinador_nombre, f.instructor_practica, f.centro_nombre, f.coordinacion_nombre,
+  ].some(s => (s ?? '').toLowerCase().includes(q))
+
+  // Conteo "faceteado": para cada dimensión, cuántas fichas quedarían al elegir
+  // cada opción dejando el resto de filtros como están.
+  type Dim = 'fase' | 'centro' | 'coord' | 'instr' | 'fecha'
+  const passExcept = (f: FichaRow, except: Dim) =>
+    (except === 'fase'   || mFase(f))   &&
+    (except === 'centro' || mCentro(f)) &&
+    (except === 'coord'  || mCoord(f))  &&
+    (except === 'instr'  || mInstr(f))  &&
+    (except === 'fecha'  || mFecha(f))  &&
+    mSearch(f)
+
+  const countFase = (list: FichaRow[], k: FaseFilt): number => {
+    if (k === '') return list.length
+    if (k === 'ACTIVAS') return list.filter(f => { const x = faseFicha(f); return x === 'EN_PRACTICA' || x === 'EN_CIERRE' }).length
+    return list.filter(f => faseFicha(f) === k).length
+  }
+
+  // Overview del encabezado -- siempre sobre el total, sin filtros aplicados.
+  const enPracticaCount = countFase(all, 'EN_PRACTICA')
+  const enCierreCount   = countFase(all, 'EN_CIERRE')
+  const proximasCount   = countFase(all, 'PROXIMA')
+  const activasCount    = countFase(all, 'ACTIVAS')
+  const sinInstrCount   = all.filter(esSinInstructor).length
+
+  // ─── Opciones del panel (con conteo faceteado) ─────────────────────────────
+  const faseBase   = all.filter(f => passExcept(f, 'fase'))
+  const centroBase = all.filter(f => passExcept(f, 'centro'))
+  const coordBase  = all.filter(f => passExcept(f, 'coord'))
+  const sinInstrDisponibles = all.filter(f => passExcept(f, 'instr') && esSinInstructor(f)).length
+
   const centrosDisponibles = [...new Set(all.map(f => f.centro_nombre).filter((n): n is string => !!n))]
     .sort((a, b) => a.localeCompare(b, 'es'))
 
-  const faseCount = (k: FaseFilt): number => {
-    if (k === '') return all.length
-    if (k === 'ACTIVAS') return fasesAll.filter(x => x === 'EN_PRACTICA' || x === 'EN_CIERRE').length
-    return fasesAll.filter(x => x === k).length
-  }
-  const enPracticaCount = faseCount('EN_PRACTICA')
-  const enCierreCount   = faseCount('EN_CIERRE')
-  const proximasCount   = faseCount('PROXIMA')
-  const activasCount    = faseCount('ACTIVAS')
-  const sinInstrCount   = all.filter(esSinInstructor).length
+  const coordsDisponibles = [...new Map(
+    all
+      .filter(f => f.coordinacion_academica_id != null && (!centroFilt || f.centro_nombre === centroFilt))
+      .map(f => [f.coordinacion_academica_id as number, {
+        id: f.coordinacion_academica_id as number,
+        nombre: f.coordinacion_nombre ?? '—',
+        centro: f.centro_nombre,
+      }]),
+  ).values()].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 
+  const coordSel = coordFilt === ''
+    ? null
+    : coordsDisponibles.find(c => c.id === coordFilt)
+      ?? { id: coordFilt, nombre: all.find(f => f.coordinacion_academica_id === coordFilt)?.coordinacion_nombre ?? 'Coordinación', centro: null as string | null }
+
+  const faseOpts: FiltroOpcion[] = FASE_FILT_OPTS.map(o => ({ ...o, count: countFase(faseBase, o.key) }))
+  const centroOpts: FiltroOpcion[] = [
+    { key: '', label: 'Todos los centros', count: centroBase.length },
+    ...centrosDisponibles.map(c => ({ key: c, label: centroLabel(c), count: centroBase.filter(f => f.centro_nombre === c).length })),
+  ]
+  const coordOpts: FiltroOpcion[] = [
+    { key: '', label: 'Todas las coordinaciones', count: coordBase.length },
+    ...coordsDisponibles.map(c => ({
+      key: String(c.id),
+      label: c.nombre,
+      hint: !centroFilt && c.centro ? centroLabel(c.centro) : undefined,
+      count: coordBase.filter(f => f.coordinacion_academica_id === c.id).length,
+    })),
+  ]
+  const filtrosActivos =
+    (faseFilt !== 'ACTIVAS' ? 1 : 0) +
+    (centroFilt ? 1 : 0) +
+    (coordFilt !== '' ? 1 : 0) +
+    (soloSinInstr ? 1 : 0) +
+    (fechaActiva ? 1 : 0)
+  const algoQueLimpiar = filtrosActivos > 0 || sortCol !== 'aprendices' || sortDir !== 'desc'
+
+  const resumen: string[] = []
+  if (faseFilt !== 'ACTIVAS') resumen.push(FASE_FILT_LABEL[faseFilt])
+  if (!scope && centroFilt) resumen.push(centroLabel(centroFilt))
+  if (!scope && coordSel) resumen.push(coordSel.nombre)
+  if (soloSinInstr) resumen.push('Sin instructor')
+  if (fechaActiva) resumen.push(`${FECHA_CAMPO_LABEL[fechaCampo]} ${fechaDesde || '…'}–${fechaHasta || '…'}`)
+
+  const limpiarFiltros = () => {
+    setFaseFilt('ACTIVAS'); setCentroFilt(''); setCoordFilt(''); setSoloSinInstr(false)
+    setFechaCampo('fecha_inicio'); setFechaDesde(''); setFechaHasta('')
+    setSortCol('aprendices'); setSortDir('desc')
+  }
+
+  const vacio = VACIO_AL_FINAL[sortCol]
   const filtered = all
-    .filter(f => {
-      const fs = faseFicha(f)
-      if (faseFilt === 'ACTIVAS' && fs !== 'EN_PRACTICA' && fs !== 'EN_CIERRE') return false
-      if (faseFilt && faseFilt !== 'ACTIVAS' && fs !== faseFilt) return false
-      if (centroFilt && f.centro_nombre !== centroFilt) return false
-      if (soloSinInstr && !esSinInstructor(f)) return false
-      if (fechaActiva) {
-        const raw = f[fechaCampo]
-        if (!raw) return false
-        const val = raw.slice(0, 10)
-        if (fechaDesde && val < fechaDesde) return false
-        if (fechaHasta && val > fechaHasta) return false
-      }
-      if (q
-        && !f.numero_ficha.toLowerCase().includes(q)
-        && !f.programa_nombre.toLowerCase().includes(q)
-        && !f.programa_codigo.toLowerCase().includes(q)
-        && !(f.coordinador_nombre ?? '').toLowerCase().includes(q)
-        && !(f.instructor_practica ?? '').toLowerCase().includes(q)) return false
-      return true
-    })
+    .filter(f => mFase(f) && mCentro(f) && mCoord(f) && mInstr(f) && mFecha(f) && mSearch(f))
     .sort((a, b) => {
-      switch (sort) {
-        case 'numero':         return a.numero_ficha.localeCompare(b.numero_ficha, 'es')
-        case 'programa':       return a.programa_nombre.localeCompare(b.programa_nombre, 'es')
-        case 'cierre_proximo': return (a.fecha_fin_productiva || a.fecha_fin_lectiva || '').localeCompare(b.fecha_fin_productiva || b.fecha_fin_lectiva || '')
-        case 'mas_aprendices': return (b.aprendices_en_practica - a.aprendices_en_practica) || (b.aprendices - a.aprendices) || a.numero_ficha.localeCompare(b.numero_ficha, 'es')
-        case 'sin_instructor': return (esSinInstructor(b) ? 1 : 0) - (esSinInstructor(a) ? 1 : 0) || (a.fecha_fin_productiva || '').localeCompare(b.fecha_fin_productiva || '')
-        default:               return (b.fecha_inicio || '').localeCompare(a.fecha_inicio || '')
+      if (vacio) {
+        const va = vacio(a), vb = vacio(b)
+        if (va !== vb) return va ? 1 : -1   // los vacíos siempre al final
       }
+      const r = cmpFichaAsc(a, b, sortCol)
+      return sortDir === 'asc' ? r : -r
     })
 
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE)
@@ -409,7 +527,22 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
 
   const theadRow = (
     <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
-      {THEAD.map((h, i) => <th key={i} style={TH_S}>{h}</th>)}
+      {FICHA_COLS.map(c => {
+        const on = sortCol === c.key
+        return (
+          <th
+            key={c.key}
+            className={`ff-sort-th${on ? ' ff-sort-th--on' : ''}`}
+            onClick={() => onSort(c.key, c.defDir)}
+            title={`Ordenar por ${c.label.toLowerCase()}`}
+            style={TH_S}
+          >
+            {c.label}
+            <SortCaret active={on} dir={sortDir}/>
+          </th>
+        )
+      })}
+      <th style={TH_S}/>
     </tr>
   )
 
@@ -436,170 +569,93 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
         <Btn variant="accent" icon="plus" onClick={() => navigate('nueva', { relative: 'path' })}>Crear ficha</Btn>
       </div>
 
-      {/* Chips de fase -- filtro principal, siempre visible */}
+      {/* Barra: búsqueda siempre visible + botón que despliega el panel de filtros */}
       {state.status === 'ok' && all.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
-          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-            {FASE_CHIPS.map(c => {
-              const active = faseFilt === c.key
-              return (
-                <button
-                  key={c.key || 'todas-fase'}
-                  onClick={() => setFaseFilt(c.key)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 7,
-                    padding: '6px 12px', borderRadius: 20, cursor: 'pointer',
-                    border: active ? '1.5px solid #4f46e5' : '1.5px solid #e4e4e7',
-                    background: active ? '#eef2ff' : '#fff',
-                    color: active ? '#4f46e5' : '#3f3f46',
-                    fontSize: 12.5, fontWeight: active ? 600 : 500, fontFamily: 'Inter, sans-serif',
-                    transition: 'all 120ms',
-                  }}
-                >
-                  {c.label}
-                  <span style={{
-                    fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
-                    background: active ? '#c7d2fe' : '#f1f1f3', color: active ? '#4338ca' : '#71717a',
-                    padding: '1px 6px', borderRadius: 10,
-                  }}>{faseCount(c.key)}</span>
-                </button>
-              )
-            })}
-          </div>
-          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-            {sinInstrCount > 0 && (
-              <button
-                onClick={() => setSoloSinInstr(v => !v)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7,
-                  padding: '5px 11px', borderRadius: 8, cursor: 'pointer',
-                  border: soloSinInstr ? '1.5px solid #c2410c' : '1px solid #fed7aa',
-                  background: soloSinInstr ? '#c2410c' : '#fff7ed',
-                  color: soloSinInstr ? '#fff' : '#c2410c',
-                  fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', transition: 'all 120ms',
-                }}
-              >
-                <Ic n="user" s={12}/>
-                Sin instructor
-                <span style={{ fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', color: soloSinInstr ? 'rgba(255,255,255,.85)' : '#c2410c' }}>{sinInstrCount}</span>
-              </button>
-            )}
-
-            {!scope && centrosDisponibles.length > 1 && (
-              <select
-                value={centroFilt}
-                onChange={e => setCentroFilt(e.target.value)}
-                style={{ ...SEL, height: 30, border: centroFilt ? '1.5px solid #4f46e5' : '1px solid #e4e4e7', color: centroFilt ? '#4f46e5' : '#3f3f46' }}
-              >
-                <option value="">Todos los centros</option>
-                {centrosDisponibles.map(c => <option key={c} value={c}>{centroLabel(c)}</option>)}
-              </select>
-            )}
-          </div>
-        </div>
+        <FiltrosBar
+          search={search}
+          onSearch={setSearch}
+          placeholder="Buscar ficha, programa, coordinador, instructor…"
+          activeCount={filtrosActivos}
+          open={panelOpen}
+          onToggle={() => setPanelOpen(o => !o)}
+        />
       )}
 
-      {/* Toolbar: búsqueda + orden + filtro de fecha */}
-      {state.status === 'ok' && all.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Ic n="search" s={14} style={{ position: 'absolute', left: 10, color: '#a1a1aa', pointerEvents: 'none' }}/>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar ficha, programa, coordinador o instructor…"
-              style={{
-                width: 260, maxWidth: '100%', height: 34, padding: '0 30px 0 32px',
-                border: '1px solid #e4e4e7', borderRadius: 8, fontSize: 12.5, color: '#18181b',
-                fontFamily: 'Inter, sans-serif', outline: 'none', background: '#fff',
-              }}
+      {/* Resumen de lo que está filtrando (con el panel cerrado) */}
+      {state.status === 'ok' && all.length > 0 && !panelOpen && (
+        <FiltrosResumen items={resumen} onClear={limpiarFiltros}/>
+      )}
+
+      {/* Panel de filtros desplegable */}
+      {state.status === 'ok' && all.length > 0 && panelOpen && (
+        <div className="ff-panel pop-in">
+          <div className="ff-panel__grid">
+            <FiltroGrupo
+              title="Estado" icon="briefcase"
+              options={faseOpts} value={faseFilt}
+              onPick={k => setFaseFilt(k as FaseFilt)}
             />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                aria-label="Limpiar búsqueda"
-                style={{ position: 'absolute', right: 8, display: 'grid', placeItems: 'center', width: 18, height: 18, border: 'none', borderRadius: '50%', background: '#f1f1f3', color: '#71717a', cursor: 'pointer' }}
-              >
-                <Ic n="x" s={12}/>
-              </button>
+            {!scope && centrosDisponibles.length > 1 && (
+              <FiltroGrupo
+                title="Centro de formación" icon="home"
+                options={centroOpts} value={centroFilt}
+                onPick={k => { setCentroFilt(k); setCoordFilt('') }}
+              />
+            )}
+            {!scope && coordsDisponibles.length > 1 && (
+              <FiltroGrupo
+                title="Coordinación" icon="users"
+                options={coordOpts} value={coordFilt === '' ? '' : String(coordFilt)}
+                onPick={k => setCoordFilt(k === '' ? '' : Number(k))}
+              />
             )}
           </div>
-          <select value={sort} onChange={e => setSort(e.target.value as FichaSort)} style={SEL}>
-            {(Object.keys(FICHA_SORT_LABEL) as FichaSort[]).map(k => (
-              <option key={k} value={k}>Ordenar: {FICHA_SORT_LABEL[k]}</option>
-            ))}
-          </select>
 
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setFiltrosOpen(o => !o)}
-              style={{
-                ...SEL, display: 'inline-flex', alignItems: 'center', gap: 7,
-                border: filtrosExtraCount ? '1.5px solid #4f46e5' : SEL.border as string,
-                color: filtrosExtraCount ? '#4f46e5' : '#3f3f46',
-                fontWeight: filtrosExtraCount ? 600 : 400,
-              }}
-            >
-              <Ic n="calendar" s={13}/>
-              Fecha
-              {filtrosExtraCount > 0 && (
-                <span style={{
-                  fontSize: 11, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
-                  background: '#c7d2fe', color: '#4338ca', padding: '1px 6px', borderRadius: 10,
-                }}>{filtrosExtraCount}</span>
-              )}
-              <Ic n="chevronDown" s={12} style={{ color: '#a1a1aa' }}/>
-            </button>
+          <div className="ff-panel__foot">
+            <div className="ff-field">
+              <span className="ff-field__label">Rango de fechas</span>
+              <div className="ff-dates">
+                <select
+                  value={fechaCampo}
+                  onChange={e => setFechaCampo(e.target.value as FechaCampo)}
+                  style={{ ...SEL, height: 34 }}
+                >
+                  {(Object.keys(FECHA_CAMPO_LABEL) as FechaCampo[]).map(k => (
+                    <option key={k} value={k}>{FECHA_CAMPO_LABEL[k]}</option>
+                  ))}
+                </select>
+                <input type="date" className="nx-input" value={fechaDesde} max={fechaHasta || undefined} onChange={e => setFechaDesde(e.target.value)} style={{ width: 150, padding: '7px 8px' }}/>
+                <span className="ff-dates__sep">→</span>
+                <input type="date" className="nx-input" value={fechaHasta} min={fechaDesde || undefined} onChange={e => setFechaHasta(e.target.value)} style={{ width: 150, padding: '7px 8px' }}/>
+                {fechaActiva && (
+                  <button className="ff-summary__clear" onClick={() => { setFechaDesde(''); setFechaHasta('') }} aria-label="Limpiar fechas">
+                    <Ic n="x" s={12}/>
+                  </button>
+                )}
+              </div>
+            </div>
 
-            {filtrosOpen && (
-              <>
-                <div onClick={() => setFiltrosOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }}/>
-                <div className="pop-in" style={{
-                  position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
-                  width: 280, maxWidth: 'calc(100vw - 32px)', background: '#fff', border: '1px solid #e4e4e7', borderRadius: 12,
-                  boxShadow: '0 8px 24px -8px rgba(0,0,0,.18)', padding: 16,
-                  display: 'flex', flexDirection: 'column', gap: 16, boxSizing: 'border-box',
-                }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 8 }}>
-                      Filtrar por fecha
-                    </div>
-                    <select
-                      value={fechaCampo}
-                      onChange={e => setFechaCampo(e.target.value as FechaCampo)}
-                      style={{ ...SEL, width: '100%', marginBottom: 8, boxSizing: 'border-box' }}
-                    >
-                      {(Object.keys(FECHA_CAMPO_LABEL) as FechaCampo[]).map(k => (
-                        <option key={k} value={k}>{FECHA_CAMPO_LABEL[k]}</option>
-                      ))}
-                    </select>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <label style={{ display: 'block', fontSize: 10.5, color: '#a1a1aa', marginBottom: 3 }}>Desde</label>
-                        <input type="date" className="nx-input" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 8px' }}/>
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <label style={{ display: 'block', fontSize: 10.5, color: '#a1a1aa', marginBottom: 3 }}>Hasta</label>
-                        <input type="date" className="nx-input" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 8px' }}/>
-                      </div>
-                    </div>
-                  </div>
+            <div className="ff-field">
+              <span className="ff-field__label">Cobertura</span>
+              <button
+                type="button"
+                onClick={() => setSoloSinInstr(v => !v)}
+                className={`ff-instr${soloSinInstr ? ' ff-instr--on' : ''}`}
+              >
+                <Ic n="alert" s={12}/>
+                Solo fichas sin instructor
+                <span className="ff-instr__count">{sinInstrDisponibles}</span>
+              </button>
+            </div>
 
-                  {filtrosExtraCount > 0 && (
-                    <button
-                      onClick={() => { setFechaDesde(''); setFechaHasta('') }}
-                      style={{
-                        alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 5,
-                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                        fontSize: 12, color: '#4f46e5', fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                      }}
-                    >
-                      <Ic n="x" s={11}/> Limpiar fecha
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
+            <div className="ff-foot__spacer"/>
+
+            <div className="ff-foot__actions">
+              <button className="ff-clear" onClick={limpiarFiltros} disabled={!algoQueLimpiar}>
+                <Ic n="refresh" s={12}/> Limpiar todo
+              </button>
+              <Btn variant="secondary" size="sm" onClick={() => setPanelOpen(false)}>Listo</Btn>
+            </div>
           </div>
         </div>
       )}
@@ -729,8 +785,13 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
                       <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#a1a1aa' }}>{f.aprendices || '—'}</span>
                     )}
                   </td>
-                  <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#27272a', whiteSpace: 'nowrap' }}>
-                    {fdISO(f.fecha_fin_productiva)}
+                  <td style={{ ...TD_S, fontSize: 12, color: '#27272a', whiteSpace: 'nowrap' }}>
+                    <Tip
+                      style={{ fontFamily: '"JetBrains Mono", monospace' }}
+                      content={<FechasFicha f={f}/>}
+                    >
+                      {fdISO(f.fecha_fin_productiva)}
+                    </Tip>
                   </td>
                   <td style={TD_S}><FasePill fase={faseFicha(f)}/></td>
                   <td style={{ ...TD_S, textAlign: 'right' }} onClick={e => e.stopPropagation()}>

@@ -1146,6 +1146,240 @@
   margin-top: 2px;
 }
 
+/* ─── Gráfico: calendario de cierres / entradas a práctica ────────────────── */
+.mini-toggle {
+  display: inline-flex;
+  padding: 2px;
+  background: #f1f1f3;
+  border-radius: 8px;
+  border: 1px solid #e4e4e7;
+  flex-shrink: 0;
+}
+
+.mini-toggle button {
+  border: none;
+  background: transparent;
+  padding: 5px 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #71717a;
+  cursor: pointer;
+  font-family: Inter, sans-serif;
+  transition: all 120ms;
+}
+
+.mini-toggle button.on {
+  background: #fff;
+  color: #18181b;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(9, 9, 11, 0.08);
+}
+
+.cierres-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.cierres-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cierres-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #52525b;
+  height: 15px;
+  line-height: 15px;
+}
+
+.cierres-bar-wrap {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.cierres-bar {
+  width: 100%;
+  max-width: 40px;
+  border-radius: 4px 4px 2px 2px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* separación de superficie entre "con" y "sin instructor" */
+  transition: height 320ms ease;
+}
+
+.cierres-lbl {
+  font-size: 10px;
+  color: #71717a;
+  margin-top: 7px;
+  text-align: center;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.cierres-lbl.venc {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* ─── Panorama: dona (fichas por fase) + barra (calendario) en una tarjeta ─── */
+.panorama {
+  display: grid;
+  grid-template-columns: 208px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.panorama__pie { min-width: 0; }
+
+.panorama__donut-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.panorama__donut {
+  position: relative;
+  width: 104px;
+  height: 104px;
+}
+
+.panorama__donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.panorama__donut-total {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 19px;
+  font-weight: 700;
+  color: #0a0a0b;
+  line-height: 1;
+}
+
+.panorama__donut-cap {
+  font-size: 9.5px;
+  color: #a1a1aa;
+  margin-top: 2px;
+}
+
+.panorama__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.panorama__legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panorama__legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.panorama__legend-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: #3f3f46;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panorama__legend-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.panorama__legend-pct {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  color: #a1a1aa;
+  width: 30px;
+  text-align: right;
+}
+
+.panorama__bar {
+  min-width: 0;
+  border-left: 1px solid #f1f1f3;
+  padding-left: 28px;
+}
+
+.panorama__bar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.panorama__bar-hint {
+  font-size: 11.5px;
+  color: #71717a;
+}
+
+.panorama__bar-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 132px;
+  font-size: 12.5px;
+  color: #71717a;
+  text-align: center;
+}
+
+.panorama__bar-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.panorama__bar-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #52525b;
+}
+
+@media (max-width: 860px) {
+  .panorama {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .panorama__bar {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid #f1f1f3;
+    padding-top: 18px;
+    margin-top: 6px;
+  }
+}
+
 /* ─── Responsivo ──────────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .kpi-grid {

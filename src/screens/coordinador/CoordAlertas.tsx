@@ -3,6 +3,7 @@ import { Ic, Card, Tag } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
 import { diasHasta } from '../shared/parts'
+import { AlertasInstructorButton } from '../shared/AlertasInstructor'
 import type { FichaRow } from '../shared/FichasAdmin'
 
 // Alertas de la coordinación centradas en etapa productiva: fichas cuya
@@ -37,14 +38,17 @@ export function CoordAlertas({ onOpenFicha }: { onOpenFicha?: (id: number) => vo
 
   return (
     <div style={{ maxWidth: 1000 }}>
-      <div style={{ fontSize: 13.5, color: '#52525b', marginBottom: 18 }}>
-        Fichas de tu coordinación cuya etapa productiva requiere seguimiento.
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
+        <div style={{ fontSize: 13.5, color: '#52525b', maxWidth: 620 }}>
+          Lo que requiere seguimiento en tu coordinación: novedades que reportan los instructores sobre un aprendiz y fichas cuya etapa productiva cierra pronto.
+        </div>
+        <AlertasInstructorButton coordId={coordId}/>
       </div>
 
       {vacio ? (
         <Card style={{ padding: 40, textAlign: 'center' }}>
           <Ic n="checkCircle" s={28} style={{ color: '#16a34a' }}/>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0b', marginTop: 10 }}>Sin alertas</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0b', marginTop: 10 }}>Sin cierres próximos</div>
           <div style={{ fontSize: 12.5, color: '#71717a', marginTop: 4 }}>Ninguna ficha en etapa productiva cierra en los próximos 30 días.</div>
         </Card>
       ) : (

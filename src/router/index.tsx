@@ -31,13 +31,13 @@ export const router = createBrowserRouter([
           {
             element: <RequireRole roles={['SUPER_ADMIN']}/>,
             children: [
-              { path: '/dashboard/superadmin', element: <Suspense fallback={<Spinner/>}><SuperAdminDashboard/></Suspense> },
+              { path: '/dashboard/superadmin/*', element: <Suspense fallback={<Spinner/>}><SuperAdminDashboard/></Suspense> },
             ],
           },
           {
             element: <RequireRole roles={['SUBDIRECTOR', 'COORD_MISIONAL', 'COORD_ACADEMICO']}/>,
             children: [
-              { path: '/dashboard/coordinador', element: <Suspense fallback={<Spinner/>}><CoordinadorDashboard/></Suspense> },
+              { path: '/dashboard/coordinador/*', element: <Suspense fallback={<Spinner/>}><CoordinadorDashboard/></Suspense> },
             ],
           },
           {

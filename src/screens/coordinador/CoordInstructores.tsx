@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, useNavigate } from 'react-router-dom'
 import { Ic, Card, Ava, Bdg } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
-import { InstructorDetalle } from '../shared/InstructorDetalle'
+import { InstructorDetalleRoute } from '../shared/InstructorDetalle'
 import type { InstructorBasico } from '../shared/InstructorDetalle'
 
 type ListState =
@@ -13,12 +14,12 @@ type ListState =
 // Instructores de práctica de la coordinación del usuario -- reutiliza el
 // mismo endpoint que ya usan FichaForm.tsx y productiva/EtapaProductivaList.tsx
 // (PasoInstructorPractica) para elegir instructor al asignar una ficha.
-export function CoordInstructores() {
+function InstructoresList() {
   "use no memo"
+  const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const coordId = user?.coordinacion_academica_id ?? null
   const [state, setState] = useState<ListState>({ status: 'loading' })
-  const [sel, setSel] = useState<InstructorBasico | null>(null)
   const [q, setQ] = useState('')
 
   useEffect(() => {
@@ -27,10 +28,6 @@ export function CoordInstructores() {
       .then(r => setState({ status: 'ok', data: r.data }))
       .catch(() => setState({ status: 'error' }))
   }, [coordId])
-
-  if (sel) {
-    return <InstructorDetalle instructor={sel} onBack={() => setSel(null)}/>
-  }
 
   if (coordId == null) return <Center title="Sin coordinación asignada" sub="Pide a un administrador que te asigne una coordinación académica."/>
   if (state.status === 'error') return <Center title="No se pudieron cargar los instructores" sub="Verifica la conexión con el servidor."/>
@@ -70,7 +67,7 @@ export function CoordInstructores() {
             </thead>
             <tbody>
               {items.map(u => (
-                <tr key={u.id} className="nx-row" onClick={() => setSel(u)} style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer', opacity: u.activo ? 1 : 0.6 }}>
+                <tr key={u.id} className="nx-row" onClick={() => navigate(String(u.id), { relative: 'path' })} style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer', opacity: u.activo ? 1 : 0.6 }}>
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <Ava name={u.nombre_completo} size={30}/>
@@ -88,6 +85,16 @@ export function CoordInstructores() {
         </Card>
       )}
     </div>
+  )
+}
+
+export function CoordInstructores() {
+  "use no memo"
+  return (
+    <Routes>
+      <Route index element={<InstructoresList/>}/>
+      <Route path=":instructorId/*" element={<InstructorDetalleRoute/>}/>
+    </Routes>
   )
 }
 
