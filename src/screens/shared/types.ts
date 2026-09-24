@@ -1,41 +1,44 @@
-// Tipos compartidos entre las vistas de SuperAdmin y Coordinador (detalle de
-// una coordinación académica: sus fichas, instructores y programas).
+// Tipo compartido entre SuperAdmin y Coordinador: metadata estructural de una
+// coordinación académica (usada solo para la cabecera de su detalle -- las
+// fichas se listan con FichasAdmin/`GET /fichas?coordinacion_id=` y los
+// instructores con `GET /usuarios?rol=INSTRUCTOR&coordinacion_id=`, ambos ya
+// scoped a etapa productiva).
 
-export interface InstructorRow {
-  id:                     string
-  nombre_completo:        string
-  email:                  string
-  numero_documento:       string
-  activo:                 number
-  ultimo_acceso:          string | null
-  competencias_asignadas: number
-  fichas:                 number
-  sesiones:               number
-  avance:                 number
+// GET /centros/resumen -> rollup de práctica por centro, con sus coordinaciones.
+// Lo consumen la pantalla de Centros y el Dashboard del super admin.
+export interface CoordResumen {
+  id: number
+  nombre: string
+  activa: number
+  coordinador_nombre: string | null
+  fichas_activas: number
+  fichas_en_practica: number
+  fichas_sin_instructor: number
+  aprendices_en_practica: number
+  instructores: number
 }
 
-export interface FichaRow {
-  id:                number
-  numero_ficha:      string
-  estado:            string
-  jornada:           string | null
-  fecha_fin_lectiva: string
-  programa_nombre:   string
-  programa_codigo:   string
-  tiene_disenio_curricular: number
-  dias_restantes:    number
-  instructores:      number
-  competencias:      number
-  avance:            number
-}
-
-export interface ProgramaRow {
-  id:              number
-  nombre:          string
-  codigo:          string
-  nivel_formacion: string
-  tiene_disenio_curricular: number
-  fichas_activas:  number
+export interface CentroResumen {
+  id: number
+  nombre: string
+  codigo: string
+  ciudad: string
+  regional: string
+  activo: number
+  coordinaciones: number
+  coordinaciones_total: number
+  instructores_total: number
+  instructores_practica: number
+  fichas_total: number
+  fichas_activas: number
+  fichas_en_practica: number
+  fichas_sin_instructor: number
+  programas_en_practica: number
+  aprendices_en_practica: number
+  etapas_por_cerrar: number
+  conceptos_por_resolver: number
+  proxima_a_practica: string | null
+  coordinaciones_detalle: CoordResumen[]
 }
 
 export interface CoordDetalle {
@@ -48,11 +51,8 @@ export interface CoordDetalle {
     numero_documento: string; activo: number; ultimo_acceso: string | null
   } | null
   kpi: {
-    fichas_activas: number; fichas_total: number; instructores: number
-    instructores_activos_semana: number; programas: number
-    avance_promedio: number; sesiones_semana: number; ras_cerrados: number
+    fichas_activas: number; fichas_total: number
+    instructores: number; instructores_con_practica: number
+    programas: number; seguimientos_total: number
   }
-  instructores: InstructorRow[]
-  fichas:       FichaRow[]
-  programas:    ProgramaRow[]
 }

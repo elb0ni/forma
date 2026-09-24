@@ -41,6 +41,58 @@ export function jornadaLabel(j: string | null): string {
   return map[j.toUpperCase()] ?? j
 }
 
+// Días de calendario hasta una fecha ISO (redondeado hacia arriba; negativo
+// si ya pasó). Usado por las alertas/KPIs de cierre de etapa productiva
+// (fecha_fin_productiva) en superadmin/coordinador -- reemplaza el antiguo
+// `dias_restantes` que calculaba el backend sobre la etapa lectiva.
+export function diasHasta(fechaISO: string | null): number | null {
+  if (!fechaISO) return null
+  const d = new Date(fechaISO)
+  if (isNaN(d.getTime())) return null
+  return Math.ceil((d.getTime() - Date.now()) / 86400000)
+}
+
+// ─── Centros de formación ────────────────────────────────────────────────────────
+// Nombre corto para mostrar. El centro de desarrollo agroempresarial se muestra
+// como "Cedagro"; el resto pierde el prefijo "Centro de".
+export function centroLabel(nombre: string): string {
+  if (/agro/i.test(nombre)) return 'Cedagro'
+  return nombre.replace(/^Centro\s+(de\s+|para\s+)?/i, '').trim() || nombre
+}
+
+// Paleta estable para los (siempre pocos) centros de formación. El color se
+// asigna por posición ordenando los centros por id, para que sea consistente
+// entre la pantalla de Programas y la de Centros.
+export const CENTRO_TONES = ['#4f46e5', '#0d9488', '#c2410c', '#7c3aed', '#be123c', '#0369a1']
+export function centroTone(idx: number): string {
+  return CENTRO_TONES[((idx % CENTRO_TONES.length) + CENTRO_TONES.length) % CENTRO_TONES.length]
+}
+
+// Píldora de "próxima entrada a práctica". Espera una fecha futura (o null);
+// muestra los días que faltan, o el mes/año si falta bastante.
+export function ProxPill({ iso }: { iso: string | null }) {
+  const d = diasHasta(iso)
+  if (d == null || !iso) return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
+
+  const tone = d <= 7 ? { fg: '#b91c1c', bg: '#fee2e2' }
+    : d <= 30 ? { fg: '#c2410c', bg: '#ffedd5' }
+    : { fg: '#52525b', bg: '#f4f4f5' }
+
+  const text = d > 60
+    ? new Date(iso).toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })
+    : d === 1 ? '1 día' : `${d} días`
+
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 7px',
+      borderRadius: 20, background: tone.bg, color: tone.fg, fontSize: 11.5, fontWeight: 600,
+      whiteSpace: 'nowrap',
+    }}>
+      <Ic n="calendar" s={12}/>{text}
+    </span>
+  )
+}
+
 // ─── Pill ────────────────────────────────────────────────────────────────────────
 
 export function Pill({ status = 'ok', size = 'md', label }: {

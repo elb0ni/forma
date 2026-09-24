@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth'
 import { getTheme, applyTheme } from '../lib/theme'
 import type { Theme } from '../lib/theme'
 import api from '../lib/api'
+import { soloDigitos } from '../lib/input'
 
 type Tab = 'perfil' | 'firma' | 'apariencia' | 'seguridad'
 
@@ -63,16 +64,38 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ─── Perfil (solo lectura) ───────────────────────────────────────────────────────
+// ─── Perfil ──────────────────────────────────────────────────────────────────────
+// Casi todo es de solo lectura (lo administra super admin). La excepción es el
+// teléfono: el GFPI-F-023 lo pide en "Datos del instructor de seguimiento", y
+// es un dato de la persona -- se escribe una vez aquí y sale en cada formato,
+// en vez de retipearlo por aprendiz.
 
 function PerfilTab({ user }: { user: ReturnType<typeof useAuthStore.getState>['user'] }) {
+  const setUser = useAuthStore(s => s.setUser)
+  const [tel, setTel] = useState(user?.telefono ?? '')
+  const [busy, setBusy] = useState(false)
+  const [ok, setOk] = useState(false)
+
   if (!user) return null
+
   const rows: [string, string][] = [
     ['Correo', user.email],
     ['Rol', ROL_LABEL[user.rol] ?? user.rol],
     ['Centro', user.centro_formacion || '—'],
     ['Último acceso', user.ultimo_acceso ? new Date(user.ultimo_acceso).toLocaleString('es-CO') : '—'],
   ]
+
+  const cambiado = tel.trim() !== (user.telefono ?? '')
+
+  async function guardar() {
+    setBusy(true); setOk(false)
+    try {
+      await api.patch('/usuarios/me/perfil', { telefono: tel.trim() })
+      setUser({ ...user!, telefono: tel.trim() || null })
+      setOk(true)
+    } finally { setBusy(false) }
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -88,8 +111,29 @@ function PerfilTab({ user }: { user: ReturnType<typeof useAuthStore.getState>['u
           <span style={{ fontSize: 12.5, color: '#18181b', fontWeight: 500, textAlign: 'right' }}>{v}</span>
         </div>
       ))}
+
+      <div style={{ padding: '14px 0 0' }}>
+        <div style={{ fontSize: 12.5, color: '#52525b', marginBottom: 6 }}>Contacto telefónico</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="nx-input"
+            value={tel}
+            inputMode="numeric"
+            onChange={e => { setTel(soloDigitos(e.target.value)); setOk(false) }}
+            placeholder="Para el formato GFPI-F-023"
+            style={{ flex: 1 }}
+          />
+          <Btn size="sm" variant="accent" disabled={!cambiado || busy} onClick={() => void guardar()}>
+            {busy ? 'Guardando…' : 'Guardar'}
+          </Btn>
+        </div>
+        <div style={{ fontSize: 11, color: ok ? '#16a34a' : '#a1a1aa', marginTop: 6 }}>
+          {ok ? 'Guardado.' : 'Aparece en el formato de seguimiento de tus aprendices.'}
+        </div>
+      </div>
+
       <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 14 }}>
-        Para cambiar tus datos personales, contacta a un administrador.
+        Para cambiar el resto de tus datos, contacta a un administrador.
       </div>
     </div>
   )

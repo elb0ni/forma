@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrandMark, Btn, Card, Ic } from '../../components/ui'
 import api from '../../lib/api'
-import { LoadingBlock, CenterState } from './parts'
+import { LoadingBlock, CenterState, centroLabel } from './parts'
 import './ReportesAdmin.css'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────────
@@ -20,21 +20,18 @@ interface ReporteData {
 }
 
 interface CentroOpt { id: number; nombre: string }
+interface CoordOpt  { id: number; nombre: string; centro_formacion_id: number | null }
 
-// Qué filtros aplica cada reporte (para mostrar solo los relevantes).
-const USA_CENTRO = new Set(['avance-fichas', 'riesgo', 'instructores'])
-const USA_ESTADO = new Set(['avance-fichas'])
-const USA_FECHAS = new Set(['cumplimiento', 'evidencias'])
+// Solo estos reportes aceptan rango de fechas (seguimientos / etapas por fecha).
+const USA_FECHAS = new Set(['etapas-por-cerrar', 'conceptos-por-resolver'])
 
-const ESTADOS = ['AL DÍA', 'REVISAR', 'EN RIESGO', 'CRÍTICO', 'SIN DIGITALIZAR']
-
-// Estados que se pintan como "chip" de color en la tabla.
-const ESTADO_COLOR: Record<string, { bg: string; fg: string }> = {
-  'AL DÍA':          { bg: '#dcfce7', fg: '#15803d' },
-  'REVISAR':         { bg: '#fef9c3', fg: '#a16207' },
-  'EN RIESGO':       { bg: '#ffedd5', fg: '#c2410c' },
-  'CRÍTICO':         { bg: '#fee2e2', fg: '#b91c1c' },
-  'SIN DIGITALIZAR': { bg: '#f1f1f3', fg: '#52525b' },
+// Color de la celda "Plan"/"Estado" de la tabla del documento.
+function chipTone(v: string): { bg: string; fg: string } {
+  const s = v.toLowerCase()
+  if (s.includes('vencida') || s.includes('sin plan') || s.includes('no aprob')) return { bg: '#fee2e2', fg: '#b91c1c' }
+  if (s.includes('hoy') || s.includes('con plan')) return { bg: '#fef9c3', fg: '#a16207' }
+  if (s.includes('faltan') || s.includes('aprob')) return { bg: '#dcfce7', fg: '#15803d' }
+  return { bg: '#f1f1f3', fg: '#52525b' }
 }
 
 function hoyISO() {
@@ -52,53 +49,72 @@ function fd(s: string) {
 }
 
 // ─── Pantalla ──────────────────────────────────────────────────────────────────
+// `coordinacionId`: cuando lo usa un coordinador, todos los reportes van acotados
+// a su coordinación (y no puede cambiar el filtro). Super admin: sin scope fijo.
 
-export function ReportesAdmin({ base = '/dashboard/super-admin', allowCentro = true }: {
-  base?: string; allowCentro?: boolean
+export function ReportesAdmin({ coordinacionId, allowCentro = true }: {
+  coordinacionId?: number
+  allowCentro?: boolean
 } = {}) {
   "use no memo"
   const [metas, setMetas]     = useState<ReporteMeta[]>([])
   const [centros, setCentros] = useState<CentroOpt[]>([])
+  const [coords, setCoords]   = useState<CoordOpt[]>([])
   const [tipo, setTipo]       = useState('')
   const [centroId, setCentroId] = useState('')
-  const [estado, setEstado]   = useState('')
+  const [coordId, setCoordId]   = useState('')
   const [desde, setDesde]     = useState(hace3MesesISO())
   const [hasta, setHasta]     = useState(hoyISO())
   const [data, setData]       = useState<ReporteData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState(false)
+  const [error, setError]     = useState<string | null>(null)
 
   useEffect(() => {
-    api.get<ReporteMeta[]>(`${base}/reportes`)
+    api.get<ReporteMeta[]>('/reportes')
       .then(r => { setMetas(r.data); setTipo(t => t || (r.data[0]?.tipo ?? '')) })
       .catch(() => {})
-    if (allowCentro) api.get<CentroOpt[]>('/dashboard/super-admin/centros').then(r => setCentros(r.data)).catch(() => {})
-  }, [base, allowCentro])
+    if (allowCentro) {
+      api.get<CentroOpt[]>('/centros').then(r => setCentros(r.data)).catch(() => {})
+      api.get<CoordOpt[]>('/coordinaciones').then(r => setCoords(r.data)).catch(() => {})
+    }
+  }, [allowCentro])
 
   useEffect(() => {
     if (!tipo) return
-    setLoading(true); setError(false)
+    setLoading(true); setError(null)
     const p = new URLSearchParams()
-    if (allowCentro && USA_CENTRO.has(tipo) && centroId) p.set('centro_id', centroId)
-    if (USA_ESTADO.has(tipo) && estado) p.set('estado', estado)
+    if (coordinacionId != null) p.set('coordinacion_id', String(coordinacionId))
+    else if (allowCentro) {
+      if (centroId) p.set('centro_id', centroId)
+      if (coordId) p.set('coordinacion_id', coordId)
+    }
     if (USA_FECHAS.has(tipo)) { if (desde) p.set('desde', desde); if (hasta) p.set('hasta', hasta) }
     const qs = p.toString()
-    api.get<ReporteData>(`${base}/reportes/${tipo}${qs ? '?' + qs : ''}`)
+    api.get<ReporteData>(`/reportes/${tipo}${qs ? '?' + qs : ''}`)
       .then(r => setData(r.data))
-      .catch(() => { setData(null); setError(true) })
+      .catch((e: unknown) => {
+        setData(null)
+        const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+        setError(typeof msg === 'string' ? msg : 'No se pudo generar el reporte.')
+      })
       .finally(() => setLoading(false))
-  }, [base, allowCentro, tipo, centroId, estado, desde, hasta])
+  }, [allowCentro, coordinacionId, tipo, centroId, coordId, desde, hasta])
 
-  // Reportes agrupados para el selector
   const grupos = metas.reduce<Record<string, ReporteMeta[]>>((acc, m) => {
     (acc[m.grupo] = acc[m.grupo] ?? []).push(m); return acc
   }, {})
 
+  const coordsVisibles = centroId
+    ? coords.filter(c => String(c.centro_formacion_id) === centroId)
+    : coords
+  const usaFechas = USA_FECHAS.has(tipo)
+  const hayFiltros = allowCentro && coordinacionId == null
+
   return (
     <div className="rep-wrap">
-      <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>Reportes ejecutivos</h2>
+      <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>Reportes de práctica</h2>
       <div style={{ fontSize: 13, color: '#52525b', marginBottom: 24 }}>
-        Resultados, alertas y cumplimiento de la Regional Atlántico.
+        Cobertura de instructor, estado de los aprendices y seguimiento — {coordinacionId != null ? 'tu coordinación' : 'Regional Atlántico'}.
       </div>
 
       <div className="rep-grid">
@@ -123,26 +139,26 @@ export function ReportesAdmin({ base = '/dashboard/super-admin', allowCentro = t
             ))}
           </div>
 
-          {((allowCentro && USA_CENTRO.has(tipo)) || USA_ESTADO.has(tipo) || USA_FECHAS.has(tipo)) && (
+          {(hayFiltros || usaFechas) && (
             <div style={{ borderTop: '1px solid #e4e4e7', paddingTop: 14 }}>
               <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 12 }}>Filtros</div>
-              {allowCentro && USA_CENTRO.has(tipo) && (
-                <Lbl text="Centro">
-                  <select className="nx-input" value={centroId} onChange={e => setCentroId(e.target.value)}>
-                    <option value="">Todos los centros</option>
-                    {centros.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
-                </Lbl>
+              {hayFiltros && (
+                <>
+                  <Lbl text="Centro">
+                    <select className="nx-input" value={centroId} onChange={e => { setCentroId(e.target.value); setCoordId('') }}>
+                      <option value="">Todos los centros</option>
+                      {centros.map(c => <option key={c.id} value={c.id}>{centroLabel(c.nombre)}</option>)}
+                    </select>
+                  </Lbl>
+                  <Lbl text="Coordinación" style={{ marginTop: 12 }}>
+                    <select className="nx-input" value={coordId} onChange={e => setCoordId(e.target.value)}>
+                      <option value="">Todas las coordinaciones</option>
+                      {coordsVisibles.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    </select>
+                  </Lbl>
+                </>
               )}
-              {USA_ESTADO.has(tipo) && (
-                <Lbl text="Estado" style={{ marginTop: 12 }}>
-                  <select className="nx-input" value={estado} onChange={e => setEstado(e.target.value)}>
-                    <option value="">Todos</option>
-                    {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </Lbl>
-              )}
-              {USA_FECHAS.has(tipo) && (
+              {usaFechas && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                   <Lbl text="Desde"><input type="date" className="nx-input" value={desde} onChange={e => setDesde(e.target.value)}/></Lbl>
                   <Lbl text="Hasta"><input type="date" className="nx-input" value={hasta} onChange={e => setHasta(e.target.value)}/></Lbl>
@@ -162,7 +178,7 @@ export function ReportesAdmin({ base = '/dashboard/super-admin', allowCentro = t
           <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>Vista previa</div>
           <div style={{ fontSize: 11.5, color: '#52525b', marginBottom: 12 }}>El reporte se imprime tal cual lo ves.</div>
           {loading ? <Card style={{ padding: 40 }}><LoadingBlock minHeight={320}/></Card>
-            : error || !data ? <Card style={{ padding: 40 }}><CenterState icon="alert" title="No se pudo generar el reporte"/></Card>
+            : error || !data ? <Card style={{ padding: 40 }}><CenterState icon="alert" title="No se pudo generar el reporte" sub={error ?? undefined}/></Card>
             : <ReportePreview data={data}/>}
         </div>
       </div>
@@ -176,13 +192,12 @@ function ReportePreview({ data }: { data: ReporteData }) {
   return (
     <Card style={{ padding: 40 }} >
       <div className="rep-doc">
-        {/* Cabecera */}
         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #4f46e5', paddingBottom: 16, marginBottom: 18 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <BrandMark size={22}/>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.5px', color: '#4f46e5' }}>FORMA</div>
-              <div style={{ fontSize: 9, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Plataforma de seguimiento curricular</div>
+              <div style={{ fontSize: 9, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Plataforma de seguimiento de etapa productiva</div>
             </div>
           </div>
           <div style={{ textAlign: 'right', fontSize: 10, color: '#71717a' }}>
@@ -191,11 +206,9 @@ function ReportePreview({ data }: { data: ReporteData }) {
           </div>
         </div>
 
-        {/* Título */}
         <h1 style={{ fontSize: 19, fontWeight: 700, color: '#0a0a0b', margin: '0 0 2px' }}>{data.titulo}</h1>
         <div style={{ fontSize: 11.5, color: '#52525b', marginBottom: 18 }}>{data.subtitulo}</div>
 
-        {/* KPIs resumen */}
         {data.resumen.length > 0 && (
           <div className="rep-kpis">
             {data.resumen.map(k => (
@@ -207,7 +220,6 @@ function ReportePreview({ data }: { data: ReporteData }) {
           </div>
         )}
 
-        {/* Tabla */}
         {data.filas.length === 0 ? (
           <div style={{ fontSize: 12.5, color: '#71717a', padding: '24px 0', textAlign: 'center', border: '1px dashed #e4e4e7', borderRadius: 8 }}>
             Sin datos para los parámetros seleccionados.
@@ -226,11 +238,12 @@ function ReportePreview({ data }: { data: ReporteData }) {
                 <tr key={i}>
                   {data.columnas.map(c => {
                     const v = row[c.key]
-                    const isEstado = c.key === 'estado' && typeof v === 'string' && ESTADO_COLOR[v]
+                    const isChip = c.key === 'estado' && typeof v === 'string'
+                    const tone = isChip ? chipTone(v) : null
                     return (
                       <td key={c.key} style={{ textAlign: c.align ?? 'left', fontFamily: c.mono ? '"JetBrains Mono", monospace' : undefined }}>
-                        {isEstado
-                          ? <span className="rep-chip" style={{ background: ESTADO_COLOR[v as string].bg, color: ESTADO_COLOR[v as string].fg }}>{v}</span>
+                        {tone
+                          ? <span className="rep-chip" style={{ background: tone.bg, color: tone.fg }}>{v}</span>
                           : (v ?? '—')}
                       </td>
                     )
@@ -241,7 +254,6 @@ function ReportePreview({ data }: { data: ReporteData }) {
           </table>
         )}
 
-        {/* Pie */}
         <div style={{ marginTop: 22, paddingTop: 10, borderTop: '1px solid #e4e4e7', display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#a1a1aa' }}>
           <span>FORMA · {data.titulo}</span>
           <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{data.filas.length} registros</span>

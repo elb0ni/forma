@@ -161,3 +161,594 @@
 .inst-search__input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px #eef2ff; }
 
 .inst-row:hover { background: #fafafa; }
+
+/* ─── Carpetas de fichas (Home del instructor) ────────────────────────────
+   La tarjeta ES una carpeta: los aprendices (folder-item) viven dentro,
+   apilados y desfasados apenas lo necesario para leer el nombre del que va
+   detrás, y la mitad inferior (folder-curtain) es una cortina con
+   backdrop-filter.
+
+   Para que el blur se note, cada capa es bastante más alta que su contenido:
+   la parte de abajo (tintada con el color de su caso) queda detrás del vidrio
+   y se ve difuminada. Si las capas fueran blancas y cortas no habría nada
+   que difuminar.
+
+   En hover las tres se separan EN PARALELO (misma duración y curva): una
+   abre a la izquierda, otra a la derecha y la del frente baja un poco. */
+.folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 18px;
+}
+
+.folder-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 14px;
+  padding-top: 140px;   /* zona nítida de la pila; debajo empieza la cortina */
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.folder-card:hover {
+  border-color: #d4d4d8;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  transform: translateY(-2px);
+}
+
+/* ─── La pila de aprendices ───────────────────────────────────────────── */
+.folder-stack {
+  position: absolute;
+  top: 56px;
+  left: 26px;    /* margen lateral: el aire que necesitan para abrirse */
+  right: 26px;
+  height: 138px; /* más alta que su contenido: el resto se va tras el vidrio */
+  z-index: 1;
+  pointer-events: none;   /* el click es de la carpeta, no de las capas */
+}
+
+.folder-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid #ebebed;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.07);
+  transition: transform 420ms cubic-bezier(.2, .8, .3, 1.2);
+}
+
+/* Reposo: juntas, cada una deja ver el nombre de la de atrás. */
+.folder-item--3 { z-index: 1; transform: translate(0, -50px) scale(0.94); }
+.folder-item--2 { z-index: 2; transform: translate(0, -25px) scale(0.97); }
+.folder-item--1 { z-index: 3; transform: translate(0, 0); }
+
+/* Hover: se abren en abanico, a la vez, cada una para su lado. */
+.folder-card:hover .folder-item--3 { transform: translate(-22px, -62px) rotate(-4deg) scale(0.94); }
+.folder-card:hover .folder-item--2 { transform: translate(22px, -34px) rotate(3.5deg) scale(0.97); }
+.folder-card:hover .folder-item--1 { transform: translate(0, 5px); }
+
+.folder-item__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.folder-item__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.folder-item__name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #18181b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-item__estado {
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 5px;
+  margin-left: 14px;   /* alineado con el nombre, no con el punto */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-item--mas {
+  background: #fafafa;
+  border-color: #ebebed;
+}
+
+.folder-item--mas .folder-item__name {
+  color: #71717a;
+  font-weight: 500;
+}
+
+/* ─── La cortina (mitad inferior, vidrio esmerilado) ──────────────────── */
+.folder-curtain {
+  position: relative;
+  z-index: 2;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.66);
+  -webkit-backdrop-filter: blur(14px) saturate(170%);
+  backdrop-filter: blur(14px) saturate(170%);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 -1px 0 rgba(228, 228, 231, 0.6);
+}
+
+.folder-card__kind {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a1a1aa;
+  margin-bottom: 6px;
+}
+
+.folder-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0a0a0b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-card__sub {
+  font-size: 11.5px;
+  color: #71717a;
+  margin-top: 3px;
+}
+
+.folder-card__stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+  color: #52525b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folder-card,
+  .folder-item { transition: none; }
+}
+
+/* ─── Calendario / proyección de momentos ──────────────────────────────────
+   Dos columnas: la grilla del mes y, al lado, el detalle del día o del mes.
+   Un momento PROYECTADO (estimado por el backend a partir de las fechas de la
+   etapa) se dibuja con borde punteado y relleno vacío; uno con fecha real va
+   en sólido. Nunca se ven iguales: uno es un compromiso, el otro una
+   estimación para planear. */
+.cal-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .cal-wrap { grid-template-columns: 1fr; }
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+}
+
+.cal-head__titulo {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.cal-head__anio {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 500;
+  color: #a1a1aa;
+  margin-left: 4px;
+}
+
+.cal-head__nav { display: flex; align-items: center; gap: 6px; }
+
+.cal-nav {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid #e4e4e7;
+  background: #fff;
+  color: #52525b;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+
+.cal-nav:hover { background: #fafafa; border-color: #d4d4d8; }
+
+.cal-hoy {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #e4e4e7;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3f3f46;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms;
+}
+
+.cal-hoy:hover { background: #fafafa; }
+
+.cal-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 14px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #a1a1aa;
+  text-align: center;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  padding: 0 14px 14px;
+}
+
+.cal-dia {
+  position: relative;
+  aspect-ratio: 1 / 0.92;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  padding: 7px 4px 4px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms, border-color 120ms;
+}
+
+.cal-dia:hover { background: #fafafa; }
+
+.cal-dia__num {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3f3f46;
+  line-height: 1;
+}
+
+.cal-dia--fuera .cal-dia__num { color: #d4d4d8; }
+
+.cal-dia--hoy {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.cal-dia--hoy .cal-dia__num { color: #4338ca; font-weight: 700; }
+
+.cal-dia--sel {
+  border-color: #0a0a0b;
+  background: #fff;
+}
+
+.cal-dia__puntos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.cal-punto {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  display: block;
+  flex-shrink: 0;
+}
+
+.cal-punto--proy { background: transparent !important; border-style: dashed; }
+
+.cal-punto--hecho { opacity: 0.4; }
+
+.cal-dia__mas {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8.5px;
+  color: #a1a1aa;
+}
+
+.cal-dia__alerta {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #dc2626;
+}
+
+.cal-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid #f1f1f3;
+  font-size: 11px;
+  color: #71717a;
+}
+
+.cal-leyenda__item { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ─── Panel lateral ──────────────────────────────────────────────────────── */
+.cal-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+.cal-kpi {
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  padding: 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cal-kpi--alerta { border-color: #fecaca; background: #fff5f5; }
+
+.cal-kpi__valor {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 21px;
+  font-weight: 600;
+  color: #0a0a0b;
+  line-height: 1;
+}
+
+.cal-kpi--alerta .cal-kpi__valor { color: #dc2626; }
+
+.cal-kpi__label {
+  font-size: 10.5px;
+  color: #71717a;
+  line-height: 1.25;
+}
+
+.cal-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.cal-item__tag {
+  width: 30px;
+  height: 24px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  border-width: 1px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.cal-item__body { flex: 1; min-width: 0; }
+
+.cal-item__nombre {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #18181b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-item__meta {
+  display: block;
+  font-size: 11px;
+  color: #71717a;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-item__estado {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cal-item__estado--hecho   { color: #16a34a; }
+.cal-item__estado--vencido { color: #dc2626; }
+.cal-item__estado--futuro  { color: #a1a1aa; }
+
+/* ─── Calendario mínimo del Home ──────────────────────────────────────────
+   Los próximos 14 días en una tira, no un mes navegable: en el Home lo que
+   importa es ver de un vistazo si hay algo vencido y qué viene. Todo el
+   bloque es un botón que lleva a la Agenda. */
+.mini-cal {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  width: 100%;
+  padding: 13px 15px 14px;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 130ms ease, box-shadow 130ms ease, transform 130ms ease;
+}
+
+.mini-cal:hover {
+  border-color: #d4d4d8;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.mini-cal__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mini-cal__t {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0a0a0b;
+}
+
+.mini-cal__cifras {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+}
+
+.mini-cal__venc {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.mini-cal__sem { color: #71717a; }
+
+/* ─── La tira de días ─────────────────────────────────────────────────── */
+.mini-cal__strip {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.mini-dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 0 4px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+}
+
+.mini-dia--finde { background: #fafafa; }
+
+.mini-dia--hoy {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.mini-dia__dow {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #c4c4cc;
+  line-height: 1;
+}
+
+.mini-dia--hoy .mini-dia__dow { color: #818cf8; }
+
+.mini-dia__num {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  color: #52525b;
+  line-height: 1;
+}
+
+.mini-dia--hoy .mini-dia__num { color: #4338ca; font-weight: 700; }
+
+.mini-dia__puntos {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  min-height: 5px;
+}
+
+.mini-punto {
+  width: 4.5px;
+  height: 4.5px;
+  border-radius: 50%;
+  border: 1.2px solid transparent;
+  display: block;
+}
+
+.mini-punto--proy { background: transparent !important; border-style: dashed; }
+
+/* ─── Lo destacado ────────────────────────────────────────────────────── */
+.mini-cal__pie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f1f3;
+  min-width: 0;
+}
+
+.mini-cal__pill {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.mini-cal__pie-txt {
+  font-size: 11.5px;
+  color: #71717a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.mini-cal__pie-txt strong { color: #18181b; font-weight: 600; }
+
+@media (max-width: 720px) {
+  .mini-cal__strip { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .mini-dia:nth-child(n + 8) { display: none; }
+}

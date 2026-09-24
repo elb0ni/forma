@@ -102,7 +102,7 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
   const [error,  setError]  = useState<string | null>(null)
 
   useEffect(() => {
-    api.get<CentroOpt[]>('/dashboard/super-admin/centros').then(r => setCentros(r.data)).catch(() => {})
+    api.get<CentroOpt[]>('/centros').then(r => setCentros(r.data)).catch(() => {})
     api.get<CoordOpt[]>('/coordinaciones').then(r => setCoords(r.data)).catch(() => {})
   }, [])
 

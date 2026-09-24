@@ -1,0 +1,450 @@
+/* ─── EtapaProductivaDetalle: layout de 2 columnas (preview izq · editor der) ─── */
+.ep-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.ep-layout__editor { min-width: 0; }
+
+/* ─── Sin vista previa: el formulario toma toda la pantalla ────────────────
+   Con el ancho libre se aprovecha para ver más a la vez, no para estirar:
+   - los bloques pasan de 2 a 4 columnas (un campo "ancho" ocupa media fila,
+     así el plan de trabajo queda en pares: competencias | RA,
+     actividades | evidencias, con sus A1, A2… uno frente al otro);
+   - los bloques cortos (`medio`) se acomodan de a dos por fila. */
+.ep-layout--solo { grid-template-columns: minmax(0, 1fr); }
+
+@media (min-width: 1000px) {
+  .ep-layout--solo .g23 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+  .ep-layout--solo .g23 > * { grid-column: 1 / -1; }
+  .ep-layout--solo .g23 > .g23-bloque--medio { grid-column: auto; align-self: stretch; }
+
+  .ep-layout--solo .g23-bloque:not(.g23-bloque--medio) > .g23-bloque__body {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 18px;
+    padding: 16px 18px 18px;
+  }
+  .ep-layout--solo .g23-bloque:not(.g23-bloque--medio) > .g23-bloque__body--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  /* Avisos, ayudas y botones del bloque siguen ocupando la fila completa. */
+  .ep-layout--solo .g23-bloque:not(.g23-bloque--medio) > .g23-bloque__body > .g23-col2:not(.g23-campo) {
+    grid-column: 1 / -1;
+  }
+  .ep-layout--solo .g23-bloque__head { padding: 12px 18px; }
+}
+
+.ep-layout__preview {
+  min-width: 0;
+  position: sticky;
+  top: 8px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 1160px) {
+  .ep-layout { grid-template-columns: 1fr; }
+  .ep-layout__preview {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* ─── Documento: vista previa del GFPI-F-023 (mismo lenguaje que ReportesAdmin) ── */
+/* Va dentro de un <Card padding:40> igual que el documento de Reportes. */
+.rp {
+  font-size: 12px;
+  color: #27272a;
+  line-height: 1.55;
+}
+
+/* Membrete idéntico al de ReportesAdmin: marca izq · meta der · borde índigo */
+.rp__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid #4f46e5;
+}
+
+.rp__head-brand { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.rp__brand-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #4f46e5;
+}
+.rp__brand-tag {
+  font-size: 9px;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 1px;
+}
+
+.rp__head-meta {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 10px;
+  color: #71717a;
+  line-height: 1.6;
+}
+
+.rp__title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #0a0a0b;
+  margin: 0 0 2px;
+}
+.rp__subtitle {
+  font-size: 11.5px;
+  color: #52525b;
+  margin-bottom: 18px;
+}
+
+/* KPIs del documento (como .rep-kpis / .rep-kpi de ReportesAdmin) */
+.rp__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.rp__kpi {
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.rp__kpi-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #71717a;
+}
+.rp__kpi-value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0a0a0b;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rp__progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 22px;
+}
+
+.rp__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 11px;
+  border: 1px solid #e4e4e7;
+  color: #52525b;
+  background: #fff;
+}
+.rp__chip--ok   { color: #15803d; border-color: #bbf7d0; background: #f0fdf4; }
+.rp__chip--pend { color: #a16207; border-color: #fde68a; background: #fffbeb; }
+
+/* Secciones: encabezado con regla inferior, sin barras grises */
+.rp__section { margin-top: 26px; }
+.rp__section:first-of-type { margin-top: 0; }
+
+.rp__section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e4e4e7;
+}
+
+.rp__section-n {
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.rp__section-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.rp__section-tag {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: 9px;
+}
+.rp__section-tag--ok    { color: #15803d; background: #dcfce7; }
+.rp__section-tag--pend  { color: #a16207; background: #fef9c3; }
+.rp__section-tag--count { color: #4338ca; background: #e0e7ff; font-family: "JetBrains Mono", monospace; }
+
+.rp__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+
+.rp__field {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid #f4f4f5;
+  min-width: 0;
+}
+.rp__field--wide { grid-column: 1 / -1; }
+
+.rp__field-label {
+  flex-shrink: 0;
+  width: 116px;
+  font-size: 11px;
+  color: #71717a;
+}
+
+.rp__field-value {
+  min-width: 0;
+  font-size: 12px;
+  color: #18181b;
+  word-break: break-word;
+}
+.rp__field-value--mono { font-family: "JetBrains Mono", monospace; }
+
+.rp__empty { color: #a1a1aa; font-style: italic; }
+
+.rp__block { margin-top: 12px; }
+.rp__block-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #71717a;
+  margin-bottom: 3px;
+}
+.rp__block-value {
+  font-size: 12px;
+  color: #18181b;
+  white-space: pre-line;
+}
+
+.rp__pend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px dashed #e4e4e7;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #a16207;
+  background: #fffbeb;
+}
+
+.rp__sub {
+  border: 1px solid #ececee;
+  border-radius: 6px;
+  margin-top: 14px;
+}
+.rp__sub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f1f3;
+  font-size: 11px;
+  color: #52525b;
+}
+.rp__sub-n {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  color: #4338ca;
+}
+.rp__sub-tag {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #c2410c;
+  background: #ffedd5;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.rp__sub-body { padding: 12px; }
+
+/* Grillas de valoración: limpio, solo separadores de fila (como el de Reportes) */
+.rp__grilla {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 11px;
+}
+.rp__grilla caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #71717a;
+  padding: 6px 0 4px;
+}
+.rp__grilla th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: #52525b;
+  border-bottom: 1.5px solid #e4e4e7;
+}
+.rp__grilla td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f1f1f3;
+  vertical-align: top;
+  color: #18181b;
+}
+.rp__grilla tbody tr:last-child td { border-bottom: none; }
+.rp__grilla td:nth-child(2) { white-space: nowrap; width: 82px; }
+.rp__v-ok   { color: #15803d; font-weight: 600; }
+.rp__v-mej  { color: #a16207; font-weight: 600; }
+.rp__v-none { color: #c4c4c8; }
+
+/* Bloque de firmas: línea + rol debajo, como una hoja firmable */
+.rp__firmas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  margin-top: 22px;
+}
+.rp__firmas--2 { grid-template-columns: repeat(2, 1fr); }
+
+.rp__firma { text-align: center; }
+.rp__firma-status {
+  height: 22px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rp__firma-status--ok { color: #15803d; }
+.rp__firma-status--pend { color: #c4c4c8; }
+.rp__firma-slot {
+  min-height: 40px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+}
+.rp__firma-slot img { filter: contrast(1.15); }
+.rp__firma-line { border-top: 1px solid #3f3f46; margin: 2px 0 5px; }
+.rp__firma-role { font-size: 9.5px; color: #3f3f46; font-weight: 600; }
+.rp__firma-date {
+  font-size: 8.5px;
+  color: #a1a1aa;
+  font-family: "JetBrains Mono", monospace;
+  margin-top: 2px;
+}
+
+.rp__ubic {
+  margin-top: 10px;
+  font-size: 10px;
+  color: #71717a;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.rp__ubic--alerta { color: #b91c1c; }
+
+.rp__juicio {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 6px;
+  border: 1px solid #e4e4e7;
+  background: #fafafa;
+}
+.rp__juicio--aprobado   { background: #f0fdf4; border-color: #bbf7d0; }
+.rp__juicio--noaprobado { background: #fef2f2; border-color: #fecaca; }
+.rp__juicio-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #71717a;
+}
+.rp__juicio-value { font-size: 14px; font-weight: 700; }
+.rp__juicio-value--aprobado   { color: #15803d; }
+.rp__juicio-value--noaprobado { color: #b91c1c; }
+.rp__juicio-value--pend       { color: #a1a1aa; font-style: italic; font-weight: 500; font-size: 12px; }
+
+.rp__footer {
+  margin-top: 30px;
+  padding-top: 10px;
+  border-top: 1px solid #e4e4e7;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 9px;
+  color: #a1a1aa;
+}
+.rp__footer span:last-child { font-family: "JetBrains Mono", monospace; }
+
+/* Plan de trabajo: competencia -> RA, actividad -> evidencias */
+.rp__plan-cab { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.rp__plan-n { font-weight: 500; letter-spacing: 0; text-transform: none; color: #a1a1aa; font-family: "JetBrains Mono", monospace; }
+.rp__plan-grupo { padding: 7px 0; }
+.rp__plan-grupo + .rp__plan-grupo { border-top: 1px dashed #ececef; }
+.rp__plan-comp { display: flex; align-items: baseline; gap: 7px; font-weight: 600; color: #18181b; }
+.rp__plan-cod {
+  flex-shrink: 0; padding: 0 5px; border-radius: 4px; background: #f4f4f5; color: #52525b;
+  font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 600;
+}
+.rp__plan-otros { color: #71717a; font-weight: 500; }
+.rp__plan-item { display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; padding-left: 2px; color: #3f3f46; }
+.rp__plan-num {
+  flex-shrink: 0; margin-top: 2px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #eef2ff; color: #4338ca; font-size: 9.5px; font-weight: 700;
+}
+.rp__plan-act { display: flex; align-items: flex-start; gap: 8px; font-weight: 500; color: #18181b; }
+.rp__plan-a {
+  flex-shrink: 0; margin-top: 2px; min-width: 22px; padding: 0 3px; border-radius: 4px;
+  background: #18181b; color: #fff; text-align: center;
+  font-family: "JetBrains Mono", monospace; font-size: 9.5px; font-weight: 700; line-height: 15px;
+}
+.rp__plan-ev {
+  position: relative; margin: 4px 0 0 11px; padding-left: 19px;
+  border-left: 2px solid #eef2ff; color: #52525b;
+}
+.rp__plan-ev::before {
+  content: ""; position: absolute; left: 8px; top: 0.6em;
+  width: 5px; height: 5px; border-radius: 50%; background: #818cf8;
+}

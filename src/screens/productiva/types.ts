@@ -56,6 +56,13 @@ export interface EtapaProductiva {
   jefe_inmediato_telefono: string | null
   jefe_inmediato_email: string | null
   jefe_inmediato_cargo: string | null
+  // GFPI-F-023 (migración 008)
+  empresa_email: string | null
+  otro_contacto_nombre: string | null
+  otro_contacto_telefono: string | null
+  asiste_nombre: string | null
+  asiste_tipo: string | null
+  asiste_telefono: string | null
   fecha_inicio: string
   fecha_fin_estimada: string
   fecha_fin_real: string | null
@@ -64,6 +71,11 @@ export interface EtapaProductiva {
   // Vienen ya resueltos por el join del backend (findAll/findOne)
   aprendiz_nombre?: string
   aprendiz_documento?: string
+  aprendiz_tipo_documento?: TipoDocumento
+  numero_ficha?: string
+  programa_codigo?: string
+  programa_version?: string | number
+  programa_nombre?: string
   instructor_nombre?: string
   // Último snapshot semanal de SofiaPlus para este aprendiz (solo en el
   // listado, vía LEFT JOIN) -- permite que la lista distinga una etapa
@@ -142,6 +154,47 @@ export function planTrabajoVacio(): PlanTrabajo {
 export function lineasATexto(v: string[] | undefined): string { return (v ?? []).join('\n') }
 export function textoALineas(v: string): string[] { return v.split('\n').map(s => s.trim()).filter(Boolean) }
 
+// Vínculo actividad -> evidencia. El formato es texto libre, así que viaja en
+// el propio texto: "A1. Crear objetos…" en actividades y "A1. Crea la base de
+// datos…" en evidencias. Lo genera y lo lee PlanTrabajoEditor.
+
+const RE_NUM_ACTIVIDAD = /^A(\d+)\.\s/
+
+export function numeroActividad(linea: string): number | null {
+  const m = RE_NUM_ACTIVIDAD.exec(linea.trim())
+  return m ? Number(m[1]) : null
+}
+
+// ─── Columnas JSON del seguimiento (plan_trabajo / valoracion_json) ────────────
+// El prod corre MariaDB, donde `JSON` es un alias de LONGTEXT: mysql2 solo
+// autoparsea las columnas cuyo tipo nativo es JSON (MySQL 8), así que desde
+// MariaDB llegan como texto (o, si el driver las trae binarias, como un Buffer
+// serializado {type:'Buffer',data:[…]}). Se normaliza a objeto al recibir.
+function parseCampoJson<T>(v: unknown): T | null {
+  if (v == null) return null
+  if (typeof v === 'object') {
+    const b = v as { type?: string; data?: number[] }
+    if (b.type === 'Buffer' && Array.isArray(b.data)) {
+      try { return JSON.parse(new TextDecoder().decode(new Uint8Array(b.data))) as T } catch { return null }
+    }
+    return v as T
+  }
+  if (typeof v === 'string') {
+    const t = v.trim()
+    if (!t) return null
+    try { return JSON.parse(t) as T } catch { return null }
+  }
+  return null
+}
+
+export function normalizeSeguimiento(s: SeguimientoProductivo): SeguimientoProductivo {
+  return {
+    ...s,
+    plan_trabajo: parseCampoJson<PlanTrabajo>(s.plan_trabajo),
+    valoracion_json: parseCampoJson<SeguimientoProductivo['valoracion_json']>(s.valoracion_json),
+  }
+}
+
 export interface SeguimientoProductivo {
   id: number
   etapa_productiva_id: number
@@ -203,7 +256,10 @@ export interface EstadoAprendiz {
   caso: 1 | 2 | 3 | 4
   estado: EstadoCalculado
   etapa_productiva: { id: number; estado: EstadoEtapaProductiva; resultado_final: ResultadoFinal | null } | null
-  avance_juicios: { ra_sin_evaluar: number; estado_aprendiz: string; fecha_reporte: string } | null
+  avance_juicios: {
+    total_ra: number | null; ra_aprobados: number | null; ra_no_aprobados: number | null
+    ra_sin_evaluar: number; estado_aprendiz: string; fecha_reporte: string
+  } | null
 }
 
 export const ESTADO_META: Record<EstadoCalculado, { label: string; tone: 'warn' | 'accent' | 'ok' | 'err' }> = {
@@ -214,6 +270,23 @@ export const ESTADO_META: Record<EstadoCalculado, { label: string; tone: 'warn' 
 }
 
 export type CasoTono = 'EN_CURSO' | 'SIN_JUICIO' | 'APROBADO' | 'NO_APROBADO' | 'CANCELADA' | 'SUSPENDIDA' | 'APLAZADA'
+
+// Metadatos de cada caso para listas y agrupaciones (etiqueta, tono del Bdg y
+// color del punto de grupo). El orden de CASO_TONO_ORDER es por urgencia de
+// seguimiento: lo que necesita gestión va primero, los estados terminales al
+// final -- se usa tanto para el filtro como para agrupar la tabla.
+export const CASO_TONO_META: Record<CasoTono, { label: string; tone: 'warn' | 'accent' | 'ok' | 'err'; color: string }> = {
+  EN_CURSO:    { label: 'En curso',           tone: 'accent', color: '#4f46e5' },
+  SIN_JUICIO:  { label: 'Falta juicio Sofia', tone: 'warn',   color: '#a16207' },
+  SUSPENDIDA:  { label: 'Suspendida',         tone: 'warn',   color: '#ca8a04' },
+  APLAZADA:    { label: 'Aplazada',           tone: 'warn',   color: '#d97706' },
+  NO_APROBADO: { label: 'No aprobado',        tone: 'err',    color: '#dc2626' },
+  APROBADO:    { label: 'Aprobado',           tone: 'ok',     color: '#16a34a' },
+  CANCELADA:   { label: 'Cancelada',          tone: 'err',    color: '#b91c1c' },
+}
+
+export const CASO_TONO_ORDER: CasoTono[] =
+  ['EN_CURSO', 'SIN_JUICIO', 'SUSPENDIDA', 'APLAZADA', 'NO_APROBADO', 'APROBADO', 'CANCELADA']
 
 // Deriva el badge de la lista directo de la fila de etapa_productiva (ya
 // trae ra_sin_evaluar vía LEFT JOIN, ver etapa-productiva.service.ts), por

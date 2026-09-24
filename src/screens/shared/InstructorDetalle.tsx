@@ -1,285 +1,277 @@
 import { useState, useEffect } from 'react'
-import { Ic, Card, Ava, Bdg, Prog } from '../../components/ui'
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom'
+import { Ic, Card, Ava, Bdg } from '../../components/ui'
+import type { IcName } from '../../components/ui'
 import api from '../../lib/api'
-import { Pill, Donut, SM, fd } from './parts'
-import type { StatusTone } from './parts'
-import { descargarGuiaSesion } from './guia'
+import { fd, LoadingBlock, CenterState } from './parts'
+import { MODALIDAD_LABEL } from '../productiva/types'
+import type { ModalidadEtapaProductiva } from '../productiva/types'
+import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
 
-function Sk({ w, h, r = 5 }: { w: string | number; h: number; r?: number }) {
-  return <div className="skeleton" style={{ width: w, height: h, borderRadius: r }}/>
+// ─── Monitoreo de un instructor (rol admin / coordinación) ─────────────────────
+// Consume GET /instructores/:id/detalle (forma_server, módulo instructores).
+// Vista simplificada: cabecera (identidad + semáforo de adopción), un resumen
+// de pocos KPIs, y el roster de aprendices a su cargo (con el estado de los 3
+// momentos del GFPI-F-023). El endpoint devuelve más (carga completa,
+// cumplimiento por momento, calidad, actividad, últimos seguimientos); acá solo
+// se usa lo esencial.
+//
+// Lo montan SuperAdmin (UsuariosAdmin, CoordinacionDetalle) y Coordinador
+// (CoordInstructores) bajo un splat, con el id en `:instructorId` o
+// `:usuarioId`. Solo se llega aquí desde una fila cuyo rol es INSTRUCTOR.
+
+// Se mantiene exportado por compatibilidad con los consumidores que aún tipan
+// su estado con esta forma.
+export interface InstructorBasico {
+  id: string
+  nombre_completo: string
+  email: string
+  activo: boolean | number
 }
 
-function fmtDoc(d: string): string {
-  return /^\d+$/.test(d) ? Number(d).toLocaleString('es-CO') : d
+interface Cumpl { hechas: number; esperadas: number }
+
+interface DetalleAtrasado { etapa_id: number; aprendiz_nombre: string; numero_ficha: string; motivo: string }
+
+interface DetalleAprendiz {
+  etapa_id: number
+  aprendiz_id: number
+  aprendiz_nombre: string
+  numero_documento: string
+  numero_ficha: string
+  empresa_nombre: string | null
+  modalidad: ModalidadEtapaProductiva
+  estado: string
+  resultado_final: 'APROBADO' | 'NO_APROBADO' | null
+  momentos: { planeacion: boolean; seguimiento: boolean; evaluacion: boolean }
+  ultimo_seguimiento: string | null
 }
 
-// ─── Monitoreo completo de un instructor (read-only) ────────────────────────────
-// Lo usan SuperAdmin (UsuariosAdmin) y Coordinador (CoordInstructores, CoordinacionDetalle).
+interface DetalleReciente {
+  id: number
+  tipo_momento: string
+  tipo_seguimiento: string
+  concepto: string
+  fecha: string | null
+  aprendiz_nombre: string
+  numero_ficha: string
+  firmado: boolean
+  ubicacion_ok: boolean
+}
 
-interface MonRA { id: number; numero: string; descripcion: string; avance: number; status: StatusTone; completado: boolean }
-interface MonComp {
-  asignacion_id: number; ficha_id: number; numero_ficha: string; programa_codigo: string
-  competencia_id: number; codigo_norma: string; nombre: string; tipo: string
-  horas_maximas: number; horas_asignadas: number; horas_ejecutadas: number
-  avance: number; status: StatusTone; ra_completados: number; ra_total: number
-  resultados_aprendizaje: MonRA[]
-}
-interface MonFicha {
-  id: number; numero_ficha: string; estado: string; programa_nombre: string; programa_codigo: string
-  jornada: string | null; avance: number; status: StatusTone; dias_restantes: number
-  competencias_asignadas: number; competencias_completas: number
-}
-interface MonSesion {
-  id: number; fecha: string; horas_ejecutadas: number; tipo_sesion: string; estado_sesion: string
-  numero_ficha: string; competencia_nombre: string; codigo_norma: string
-  ras: number; conocimientos: number; criterios: number
-}
-interface MonitorData {
+interface InstructorDetalleData {
   instructor: {
-    id: string; nombre_completo: string; email: string; numero_documento: string
-    activo: boolean; ultimo_acceso: string | null; centro_nombre: string | null; coordinacion_nombre: string | null
+    id: string; nombre_completo: string; email: string
+    tipo_documento: string; numero_documento: string
+    activo: boolean; primer_login: boolean
+    centro_nombre: string | null; coordinacion_nombre: string | null
+    firma_registrada: boolean
   }
-  resumen: {
-    sesiones_semana: number; horas_semana: number; avance_promedio: number
-    ras_cerrados: number; ras_total: number; por_validar: number; competencias_asignadas: number
+  adopcion: {
+    semaforo: 'ACTIVO' | 'TIBIO' | 'INACTIVO' | 'NUNCA_ENTRO'
+    ultimo_acceso: string | null; dias_desde_acceso: number | null
+    ultimo_registro: string | null; dias_desde_ultimo_registro: number | null
+    seguimientos_30d: number; seguimientos_total: number
+    asignado_desde: string | null; firma_registrada: boolean
   }
-  fichas: MonFicha[]
-  competencias: MonComp[]
-  sesiones: MonSesion[]
+  carga: {
+    fichas_practica: number; aprendices_en_fichas: number
+    etapas_registradas: number; etapas_en_curso: number
+    aprobadas: number; no_aprobadas: number
+  }
+  cumplimiento: {
+    etapas_abiertas: number
+    planeacion: Cumpl; seguimiento: Cumpl; evaluacion: Cumpl
+    atrasados: DetalleAtrasado[]
+  }
+  calidad: {
+    favorables: number; no_favorables: number; pendientes: number
+    no_favorables_sin_plan: number; alertas_ubicacion: number; sin_firmar: number
+  }
+  aprendices: DetalleAprendiz[]
+  actividad: { fecha: string; count: number }[]
+  recientes: DetalleReciente[]
 }
 
-type ProgState =
-  | { status: 'loading' }
-  | { status: 'ok'; data: MonitorData }
-  | { status: 'error' }
+const SEMAFORO: Record<InstructorDetalleData['adopcion']['semaforo'], { label: string; fg: string; bg: string; dot: string }> = {
+  ACTIVO:      { label: 'Activo',        fg: '#15803d', bg: '#dcfce7', dot: '#16a34a' },
+  TIBIO:       { label: 'Poco activo',   fg: '#a16207', bg: '#fef9c3', dot: '#ca8a04' },
+  INACTIVO:    { label: 'Inactivo',      fg: '#b91c1c', bg: '#fee2e2', dot: '#dc2626' },
+  NUNCA_ENTRO: { label: 'Nunca entró',   fg: '#52525b', bg: '#f1f1f3', dot: '#a1a1aa' },
+}
 
-function KpiBox({ label, value, sub, icon }: { label: string; value: string; sub: string; icon: any }) {
+function Stat({ label, value, tone }: { label: string; value: number | string; tone?: 'risk' | 'crit' }) {
+  const color = tone === 'crit' ? '#dc2626' : tone === 'risk' ? '#c2410c' : '#0a0a0b'
   return (
-    <Card style={{ padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600 }}>{label}</div>
-        <Ic n={icon} s={14} style={{ color: '#a1a1aa' }}/>
-      </div>
-      <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 600, color: '#0a0a0b', marginTop: 10 }}>{value}</div>
-      <div style={{ fontSize: 11.5, color: '#52525b', marginTop: 4 }}>{sub}</div>
-    </Card>
+    <div style={{ border: '1px solid #e4e4e7', borderRadius: 8, padding: '12px 14px' }}>
+      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#71717a', fontWeight: 600 }}>{label}</div>
+      <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 20, fontWeight: 700, color, marginTop: 5 }}>{value}</div>
+    </div>
   )
 }
 
-// Acordeón de competencia: avance + RAs (read-only).
-function CompCard({ comp }: { comp: MonComp }) {
-  "use no memo"
-  const [open, setOpen] = useState(false)
-  return (
-    <Card style={{ overflow: 'hidden' }}>
-      <button onClick={() => setOpen(o => !o)} style={{
-        width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-        background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-      }}>
-        <Donut value={comp.avance} size={38} stroke={5} color={SM[comp.status].dot}>
-          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, fontWeight: 600 }}>{comp.avance}</span>
-        </Donut>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 2 }}>
-            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, color: '#71717a' }}>{comp.codigo_norma}</span>
-            <Pill status={comp.status} size="sm"/>
-          </div>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#18181b', lineHeight: 1.35 }}>{comp.nombre}</div>
-          <div style={{ fontSize: 11, color: '#71717a', marginTop: 4, fontFamily: '"JetBrains Mono", monospace' }}>
-            {comp.ra_completados}/{comp.ra_total} RA · {comp.horas_ejecutadas.toFixed(0)}/{comp.horas_maximas} h
-          </div>
-        </div>
-        <Ic n={open ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: '#a1a1aa', flexShrink: 0 }}/>
-      </button>
-      {open && (
-        <div style={{ borderTop: '1px solid #f1f1f3' }}>
-          {comp.resultados_aprendizaje.length === 0 ? (
-            <div style={{ padding: '12px 14px', fontSize: 12, color: '#71717a' }}>Sin resultados de aprendizaje cargados.</div>
-          ) : comp.resultados_aprendizaje.map((ra, i) => (
-            <div key={ra.id} style={{ padding: '11px 14px', display: 'flex', gap: 12, borderBottom: i < comp.resultados_aprendizaje.length - 1 ? '1px solid #f7f7f8' : 'none' }}>
-              <div style={{ width: 26, height: 26, borderRadius: 6, background: '#f7f7f8', border: '1px solid #e4e4e7', display: 'grid', placeItems: 'center', fontSize: 10.5, flexShrink: 0, fontFamily: '"JetBrains Mono", monospace' }}>RA{i + 1}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>{ra.numero}</div>
-                    <div style={{ fontSize: 12, color: '#18181b', lineHeight: 1.4, marginTop: 2 }}>{ra.descripcion}</div>
-                  </div>
-                  <Pill status={ra.status} size="sm"/>
-                </div>
-                <Prog value={ra.avance} status={ra.status} showLabel/>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </Card>
-  )
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, margin: '26px 0 12px' }}>{children}</div>
 }
 
-export function InstructorDetalle({ id, onBack }: { id: string; onBack: () => void }) {
+function momIcon(ok: boolean): { n: IcName; color: string } {
+  return ok ? { n: 'checkCircle', color: '#16a34a' } : { n: 'clock', color: '#d4d4d8' }
+}
+
+function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string; onBack: () => void }) {
   "use no memo"
-  const [state, setState] = useState<ProgState>({ status: 'loading' })
+  const navigate = useNavigate()
+  const [data, setData] = useState<InstructorDetalleData | null>(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
-    setState({ status: 'loading' })
-    api.get<MonitorData>(`/dashboard/instructor/monitor/${id}`)
-      .then(r => setState({ status: 'ok', data: r.data }))
-      .catch(() => setState({ status: 'error' }))
-  }, [id])
+    let live = true
+    api.get<InstructorDetalleData>(`/instructores/${instructorId}/detalle`)
+      .then(r => { if (live) { setData(r.data); setError(false) } })
+      .catch(() => { if (live) setError(true) })
+    return () => { live = false }
+  }, [instructorId])
 
   const back = (
-    <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#52525b', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16 }}>
-      <Ic n="arrowLeft" s={14}/> Usuarios
+    <button onClick={onBack} className="back-btn" style={{
+      fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none',
+      cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'Inter, sans-serif',
+    }}>
+      <Ic n="arrowLeft" s={14}/>Volver
     </button>
   )
 
-  if (state.status === 'loading') return <div>{back}<Card style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Sk w={220} h={16}/></Card></div>
-  if (state.status === 'error') return (
-    <div>{back}
-      <Card style={{ padding: 24 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Ic n="alert" s={15} style={{ color: '#b91c1c' }}/>
-          <span style={{ fontSize: 13.5, color: '#b91c1c' }}>No se pudo cargar el monitoreo del instructor.</span>
-        </div>
-      </Card>
-    </div>
-  )
+  if (error) return <div>{back}<Card style={{ padding: 24 }}><CenterState icon="alert" title="No se pudo cargar el instructor" sub="Verifica la conexión con el servidor."/></Card></div>
+  if (!data) return <div>{back}<LoadingBlock/></div>
 
-  const { instructor, resumen, fichas, competencias, sesiones } = state.data
-  const { nombre_completo: nombre, email, numero_documento: documento, activo } = instructor
-  const ubic = [instructor.centro_nombre, instructor.coordinacion_nombre].filter(Boolean).join(' · ')
+  const { instructor: ins, adopcion: ad, carga, cumplimiento: cu, aprendices } = data
+  const sem = SEMAFORO[ad.semaforo] ?? SEMAFORO.NUNCA_ENTRO
 
-  const header = (extra?: React.ReactNode) => (
-    <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 22, flexWrap: 'wrap' }}>
-      <Ava name={nombre} size={52}/>
-      <div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>{nombre}</h2>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, height: 20, padding: '0 7px',
-            fontSize: 10.5, fontWeight: 600, borderRadius: 4, textTransform: 'uppercase',
-            background: activo ? '#dcfce7' : '#f1f1f3', color: activo ? '#15803d' : '#52525b',
-          }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: activo ? '#16a34a' : '#a1a1aa' }}/>
-            {activo ? 'Activo' : 'Inactivo'}
-          </span>
-        </div>
-        <div style={{ display: 'flex', gap: 8, fontSize: 12.5, color: '#52525b', marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Bdg tone="neutral">Instructor</Bdg>
-          <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{fmtDoc(documento)}</span>
-          <span style={{ color: '#a1a1aa' }}>·</span>
-          <span>{email}</span>
-          {extra}
-        </div>
-      </div>
-    </div>
-  )
+  const ultReg = ad.dias_desde_ultimo_registro
+  const kpis: { label: string; value: number | string; tone?: 'risk' | 'crit' }[] = [
+    { label: 'Fichas de práctica', value: carga.fichas_practica },
+    { label: 'Aprendices a cargo', value: aprendices.length },
+    { label: 'Etapas en curso', value: carga.etapas_en_curso },
+    { label: 'Seguimientos', value: ad.seguimientos_total },
+    { label: 'Último registro', value: ultReg == null ? 'Nunca' : ultReg === 0 ? 'Hoy' : `hace ${ultReg}d`, tone: (ultReg ?? 99) > 14 ? 'risk' : undefined },
+    { label: 'Momentos atrasados', value: cu.atrasados.length, tone: cu.atrasados.length > 0 ? 'crit' : undefined },
+  ]
 
   return (
-    <div style={{ maxWidth: 1200 }}>
+    <div>
       {back}
-      {header(ubic ? <><span style={{ color: '#a1a1aa' }}>·</span><span>{ubic}</span></> : undefined)}
 
-      {/* KPIs de monitoreo */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-        <Card style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Donut value={resumen.avance_promedio} size={48} stroke={5} color="#4f46e5">
-            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600 }}>{resumen.avance_promedio}%</span>
-          </Donut>
-          <div>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>Avance promedio</div>
-            <div style={{ fontSize: 11.5, color: '#3f3f46', marginTop: 2, fontFamily: '"JetBrains Mono", monospace' }}>
-              {fichas.length} ficha{fichas.length === 1 ? '' : 's'} · {resumen.competencias_asignadas} comp.
+      {/* Cabecera */}
+      <Card style={{ padding: 18, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+          <Ava name={ins.nombre_completo} size={44}/>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#0a0a0b' }}>{ins.nombre_completo}</span>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 20,
+                fontSize: 11, fontWeight: 700, background: sem.bg, color: sem.fg,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: sem.dot }}/>{sem.label}
+              </span>
+              {!ins.activo && <Bdg tone="neutral">Inactivo</Bdg>}
+              {ins.primer_login && <Bdg tone="warn">No ha entrado</Bdg>}
+              {!ins.firma_registrada && <Bdg tone="warn">Sin firma</Bdg>}
             </div>
+            <div style={{ fontSize: 12.5, color: '#52525b', marginTop: 3 }}>{ins.email}</div>
+            <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 4, fontFamily: '"JetBrains Mono", monospace' }}>
+              {ins.tipo_documento} {ins.numero_documento}
+              {ins.centro_nombre ? ` · ${ins.centro_nombre}` : ''}
+              {ins.coordinacion_nombre ? ` · ${ins.coordinacion_nombre}` : ''}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Resumen */}
+      <SectionTitle>Resumen</SectionTitle>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+        {kpis.map(k => <Stat key={k.label} label={k.label} value={k.value} tone={k.tone}/>)}
+      </div>
+
+      {/* Aprendices */}
+      <SectionTitle>Aprendices a su cargo · {aprendices.length}</SectionTitle>
+      {aprendices.length === 0 ? (
+        <Card style={{ padding: 20 }}><div style={{ fontSize: 12.5, color: '#a1a1aa', textAlign: 'center' }}>Sin etapas productivas registradas.</div></Card>
+      ) : (
+        <Card style={{ overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, minWidth: 720 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600 }}>Aprendiz</th>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600 }}>Ficha</th>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600 }}>Modalidad</th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 600 }}>P · S · E</th>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600 }}>Últ. seguimiento</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aprendices.map(a => (
+                  <tr key={a.etapa_id}
+                    onClick={() => navigate(`etapa/${a.etapa_id}`, { relative: 'path' })}
+                    className="nx-row"
+                    style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}>
+                    <td style={{ padding: '10px 14px' }}>
+                      <div style={{ fontWeight: 600, color: '#0a0a0b' }}>{a.aprendiz_nombre}</div>
+                      <div style={{ fontSize: 10.5, color: '#a1a1aa', fontFamily: '"JetBrains Mono", monospace' }}>{a.numero_documento}</div>
+                    </td>
+                    <td style={{ padding: '10px 14px', fontFamily: '"JetBrains Mono", monospace', color: '#52525b' }}># {a.numero_ficha}</td>
+                    <td style={{ padding: '10px 14px', color: '#3f3f46' }}>{MODALIDAD_LABEL[a.modalidad] ?? a.modalidad}</td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                        {([a.momentos.planeacion, a.momentos.seguimiento, a.momentos.evaluacion]).map((ok, i) => {
+                          const m = momIcon(ok)
+                          return <Ic key={i} n={m.n} s={14} style={{ color: m.color }}/>
+                        })}
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 14px', fontFamily: '"JetBrains Mono", monospace', color: '#52525b' }}>{fd(a.ultimo_seguimiento)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
-        <KpiBox label="Sesiones (semana)" value={String(resumen.sesiones_semana)} sub={`${resumen.horas_semana.toFixed(0)} h registradas`} icon="calendar"/>
-        <KpiBox label="RAs cerrados" value={String(resumen.ras_cerrados)} sub={`de ${resumen.ras_total}`} icon="target"/>
-        <KpiBox label="Por validar" value={String(resumen.por_validar)} sub="sesiones registradas" icon="clock"/>
-      </div>
-
-      {/* Contenido: fichas+competencias | sesiones */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', marginBottom: 14 }}>
-            Fichas y competencias asignadas
-          </div>
-          {competencias.length === 0 ? (
-            <Card>
-              <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                <Ic n="briefcase" s={26} style={{ color: '#a1a1aa' }}/>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>Sin asignaciones</div>
-                <div style={{ fontSize: 12.5, color: '#71717a' }}>Este instructor aún no tiene competencias asignadas en ninguna ficha.</div>
-              </div>
-            </Card>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {fichas.map(f => {
-                const comps = competencias.filter(c => c.ficha_id === f.id)
-                if (comps.length === 0) return null
-                return (
-                  <div key={f.id}>
-                    {/* Banner de ficha */}
-                    <Card style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, background: '#fafafa' }}>
-                      <Donut value={f.avance} size={42} stroke={5} color={SM[f.status].dot}>
-                        <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, fontWeight: 600 }}>{f.avance}%</span>
-                      </Donut>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, color: '#71717a' }}>{f.programa_codigo}</span>
-                          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
-                          <Pill status={f.status} size="sm"/>
-                        </div>
-                        <div style={{ fontSize: 12, color: '#3f3f46', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.programa_nombre}</div>
-                      </div>
-                      <div style={{ textAlign: 'right', fontSize: 11, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>
-                        <div>{f.competencias_completas}/{f.competencias_asignadas} comp.</div>
-                        {f.estado === 'EN_EJECUCION' && <div style={{ color: f.dias_restantes < 60 ? '#dc2626' : '#71717a' }}>{f.dias_restantes}d</div>}
-                      </div>
-                    </Card>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 8 }}>
-                      {comps.map(c => <CompCard key={c.asignacion_id} comp={c}/>)}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Sesiones recientes */}
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', marginBottom: 14 }}>Sesiones recientes</div>
-          {sesiones.length === 0 ? (
-            <Card style={{ padding: 16 }}><div style={{ fontSize: 12, color: '#71717a' }}>Este instructor no ha registrado sesiones.</div></Card>
-          ) : (
-            <Card>
-              {sesiones.map((s, i) => (
-                <div key={s.id} style={{ padding: '10px 14px', borderBottom: i < sesiones.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
-                  <div style={{ display: 'flex', gap: 8, fontSize: 11, color: '#52525b', alignItems: 'center' }}>
-                    <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{fd(s.fecha)}</span>
-                    <span>·</span>
-                    <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{s.horas_ejecutadas.toFixed(1)} h</span>
-                    <span style={{ marginLeft: 'auto' }}>
-                      <Bdg tone={s.estado_sesion === 'VALIDADA' ? 'accent' : 'neutral'}>{s.estado_sesion}</Bdg>
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#18181b', marginTop: 4, lineHeight: 1.3 }}>
-                    <span style={{ fontFamily: '"JetBrains Mono", monospace', color: '#71717a', fontSize: 10.5 }}># {s.numero_ficha}</span> · {s.competencia_nombre}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: '#52525b', marginTop: 3, fontFamily: '"JetBrains Mono", monospace' }}>
-                    {s.ras} RA · {s.conocimientos} con · {s.criterios} crit.
-                  </div>
-                  <button onClick={() => descargarGuiaSesion(s.id)}
-                    style={{ marginTop: 6, fontSize: 11, color: '#4f46e5', background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
-                    <Ic n="download" s={11}/> Guía de aprendizaje
-                  </button>
-                </div>
-              ))}
-            </Card>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   )
+}
+
+function InstructorEtapaRoute() {
+  "use no memo"
+  const { etapaId } = useParams()
+  const navigate = useNavigate()
+  return (
+    <EtapaProductivaDetalle
+      etapaId={Number(etapaId)}
+      onBack={() => navigate('../..', { relative: 'path' })}
+    />
+  )
+}
+
+export function InstructorDetalle({ instructorId, onBack }: { instructorId: string; onBack: () => void }) {
+  "use no memo"
+  return (
+    <Routes>
+      <Route index element={<InstructorDetalleMain instructorId={instructorId} onBack={onBack}/>}/>
+      <Route path="etapa/:etapaId" element={<InstructorEtapaRoute/>}/>
+    </Routes>
+  )
+}
+
+// Wrapper de ruta: toma el id del splat (`:instructorId` en CoordInstructores /
+// CoordinacionDetalle, `:usuarioId` en UsuariosAdmin) y le da su `onBack`
+// relativo. El fetch del detalle vive en InstructorDetalleMain.
+export function InstructorDetalleRoute() {
+  "use no memo"
+  const params = useParams()
+  const id = params.instructorId ?? params.usuarioId ?? ''
+  const navigate = useNavigate()
+  return <InstructorDetalle instructorId={id} onBack={() => navigate('..', { relative: 'path' })}/>
 }

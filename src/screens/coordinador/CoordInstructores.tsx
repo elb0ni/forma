@@ -1,44 +1,47 @@
 import { useState, useEffect } from 'react'
-import { Ic, Card, Ava, Prog, Bdg } from '../../components/ui'
+import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Ic, Card, Ava, Bdg } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
-import { InstructorDetalle } from '../shared/InstructorDetalle'
-import { statusFromAvance } from '../shared/parts'
-import type { CoordDetalle, InstructorRow } from '../shared/types'
+import { InstructorDetalleRoute } from '../shared/InstructorDetalle'
+import type { InstructorBasico } from '../shared/InstructorDetalle'
 
-export function CoordInstructores() {
+type ListState =
+  | { status: 'loading' }
+  | { status: 'ok'; data: InstructorBasico[] }
+  | { status: 'error' }
+
+// Instructores de práctica de la coordinación del usuario -- reutiliza el
+// mismo endpoint que ya usan FichaForm.tsx y productiva/EtapaProductivaList.tsx
+// (PasoInstructorPractica) para elegir instructor al asignar una ficha.
+function InstructoresList() {
   "use no memo"
+  const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const coordId = user?.coordinacion_academica_id ?? null
-  const [data, setData] = useState<CoordDetalle | null>(null)
-  const [error, setError] = useState(false)
-  const [sel, setSel] = useState<InstructorRow | null>(null)
+  const [state, setState] = useState<ListState>({ status: 'loading' })
   const [q, setQ] = useState('')
 
   useEffect(() => {
     if (coordId == null) return
-    api.get<CoordDetalle>(`/coordinaciones/${coordId}/detalle`)
-      .then(r => setData(r.data))
-      .catch(() => setError(true))
+    api.get<InstructorBasico[]>(`/usuarios?rol=INSTRUCTOR&coordinacion_id=${coordId}`)
+      .then(r => setState({ status: 'ok', data: r.data }))
+      .catch(() => setState({ status: 'error' }))
   }, [coordId])
 
-  if (sel) {
-    return <InstructorDetalle id={sel.id} onBack={() => setSel(null)}/>
-  }
-
   if (coordId == null) return <Center title="Sin coordinación asignada" sub="Pide a un administrador que te asigne una coordinación académica."/>
-  if (error) return <Center title="No se pudieron cargar los instructores" sub="Verifica la conexión con el servidor."/>
-  if (!data) return <div style={{ padding: 40 }}><div className="skeleton" style={{ height: 18, width: 240 }}/></div>
+  if (state.status === 'error') return <Center title="No se pudieron cargar los instructores" sub="Verifica la conexión con el servidor."/>
+  if (state.status === 'loading') return <div style={{ padding: 40 }}><div className="skeleton" style={{ height: 18, width: 240 }}/></div>
 
   const ql = q.trim().toLowerCase()
-  const items = data.instructores.filter(u =>
+  const items = state.data.filter(u =>
     !ql || u.nombre_completo.toLowerCase().includes(ql) || u.email.toLowerCase().includes(ql))
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 900 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13.5, color: '#52525b' }}>
-          {data.instructores.length} instructor{data.instructores.length === 1 ? '' : 'es'} en tu coordinación.
+          {state.data.length} instructor{state.data.length === 1 ? '' : 'es'} en tu coordinación.
         </div>
         <div className="inst-search" style={{ position: 'relative' }}>
           <Ic n="search" s={14} style={{ position: 'absolute', left: 10, top: 10, color: '#a1a1aa', pointerEvents: 'none' }}/>
@@ -57,14 +60,14 @@ export function CoordInstructores() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>
-                {['Instructor', 'Competencias', 'Fichas', 'Sesiones', 'Avance', 'Estado'].map((h, i) => (
-                  <th key={h} style={{ padding: '11px 14px', textAlign: i >= 1 && i <= 3 ? 'center' : 'left', fontWeight: 600 }}>{h}</th>
+                {['Instructor', 'Estado'].map(h => (
+                  <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {items.map(u => (
-                <tr key={u.id} className="nx-row" onClick={() => setSel(u)} style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer', opacity: u.activo ? 1 : 0.6 }}>
+                <tr key={u.id} className="nx-row" onClick={() => navigate(String(u.id), { relative: 'path' })} style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer', opacity: u.activo ? 1 : 0.6 }}>
                   <td style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <Ava name={u.nombre_completo} size={30}/>
@@ -72,15 +75,6 @@ export function CoordInstructores() {
                         <div style={{ fontSize: 13, fontWeight: 500, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.nombre_completo}</div>
                         <div style={{ fontSize: 11, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
                       </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#27272a' }}>{u.competencias_asignadas}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#27272a' }}>{u.fichas}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#27272a' }}>{u.sesiones}</td>
-                  <td style={{ padding: '12px 14px', minWidth: 130 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ flex: 1 }}><Prog value={u.avance} status={statusFromAvance(u.avance)}/></div>
-                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#52525b', width: 34, textAlign: 'right' }}>{u.avance}%</span>
                     </div>
                   </td>
                   <td style={{ padding: '12px 14px' }}><Bdg tone={u.activo ? 'ok' : 'neutral'}>{u.activo ? 'Activo' : 'Inactivo'}</Bdg></td>
@@ -91,6 +85,16 @@ export function CoordInstructores() {
         </Card>
       )}
     </div>
+  )
+}
+
+export function CoordInstructores() {
+  "use no memo"
+  return (
+    <Routes>
+      <Route index element={<InstructoresList/>}/>
+      <Route path=":instructorId/*" element={<InstructorDetalleRoute/>}/>
+    </Routes>
   )
 }
 

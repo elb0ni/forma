@@ -1,0 +1,53 @@
+/* ─── Cobertura de diseños curriculares ─────────────────────────────────── */
+.dis { display: flex; flex-direction: column; gap: 12px; }
+
+.dis-resumen { display: flex; flex-direction: column; gap: 6px; }
+.dis-resumen__barra { display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; background: #f1f1f3; }
+.dis-resumen__seg { flex-basis: 0; }
+.dis-resumen__seg--ok { background: #4f46e5; }
+.dis-resumen__seg--problemas { background: #f59e0b; }
+.dis-resumen__seg--sin { background: #d4d4d8; }
+.dis-resumen__txt { font-size: 12.5px; color: #52525b; }
+.dis-resumen__txt b { color: #18181b; }
+.dis-resumen__urg { color: #dc2626; }
+
+.dis-barra { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.dis-buscar {
+  display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px;
+  border: 1px solid #e4e4e7; border-radius: 8px; background: #fff; color: #a1a1aa;
+  min-width: 220px; flex: 0 1 280px;
+}
+.dis-buscar input { border: 0; outline: 0; background: transparent; font: inherit; font-size: 12.5px; color: #18181b; width: 100%; }
+
+.dis-fila { border-bottom: 1px solid #f1f1f3; }
+.dis-fila--click { cursor: pointer; }
+.dis-vacio { padding: 28px 16px; text-align: center; font-size: 12.5px; color: #a1a1aa; }
+.dis-nada { color: #a1a1aa; font-size: 12px; font-weight: 400; }
+.dis-practica { font-size: 11px; font-weight: 500; color: #4f46e5; margin-top: 2px; white-space: nowrap; }
+
+.dis-archivo { display: flex; align-items: center; gap: 5px; font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: #3f3f46; }
+.dis-archivo svg { color: #a1a1aa; }
+.dis-peso { margin-left: 4px; color: #a1a1aa; font-size: 10.5px; }
+.dis-conteo { margin-top: 3px; font-size: 11px; color: #71717a; }
+
+.dis-estado { display: inline-flex; align-items: center; gap: 6px; color: #a1a1aa; white-space: nowrap; }
+.dis-nprob {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #f4f4f5; color: #52525b;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 600;
+}
+
+.dis-det td { padding: 4px 16px 14px 16px; background: #fafafb; border-bottom: 1px solid #f1f1f3; }
+.dis-prob { display: flex; align-items: flex-start; gap: 7px; padding: 5px 0; font-size: 12px; line-height: 1.5; color: #3f3f46; }
+.dis-prob svg { flex-shrink: 0; margin-top: 3px; }
+.dis-prob--error svg { color: #dc2626; }
+.dis-prob--aviso svg { color: #d97706; }
+.dis-otras { padding: 5px 0; font-size: 11.5px; color: #71717a; }
+
+.dis-msg { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; padding: 7px 10px; border-radius: 8px; font-size: 12px; }
+.dis-msg--ok { background: #eef2ff; color: #3730a3; }
+.dis-msg--err { background: #fef2f2; color: #b91c1c; }
+
+.dis-huerfanos { display: flex; gap: 7px; align-items: flex-start; font-size: 12px; color: #71717a; line-height: 1.6; }
+.dis-huerfanos svg { flex-shrink: 0; margin-top: 3px; }
+
+.dis-link { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: inherit; text-decoration: underline; cursor: pointer; }

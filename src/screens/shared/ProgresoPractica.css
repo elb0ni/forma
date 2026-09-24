@@ -1,0 +1,54 @@
+/* ─── Popover de progreso de la etapa práctica ──────────────────────────── */
+.ppr {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  background: #fff;
+  border: 1px solid #e4e4e7;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px -8px rgba(24, 24, 27, 0.18), 0 2px 6px rgba(24, 24, 27, 0.06);
+  font-family: Inter, sans-serif;
+  animation: ppr-in 140ms ease-out;
+}
+@keyframes ppr-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+
+.ppr__cab { display: flex; align-items: center; gap: 10px; padding: 14px 16px 0; }
+.ppr__who { flex: 1; min-width: 0; }
+.ppr__nombre { font-size: 13px; font-weight: 600; color: #18181b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ppr__meta { font-size: 11.5px; color: #71717a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+.ppr__pct { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+.ppr__pct b { font-size: 20px; font-weight: 700; color: #4f46e5; line-height: 1; font-variant-numeric: tabular-nums; }
+.ppr__pct span { font-size: 10px; color: #a1a1aa; margin-top: 2px; }
+
+/* Línea de hitos: el riel va de centro a centro del primer y último punto. */
+.ppr__linea { position: relative; height: 64px; margin: 18px 38px 6px; }
+.ppr__riel { position: absolute; left: 0; right: 0; top: 6px; height: 3px; border-radius: 2px; background: #ececef; overflow: hidden; }
+.ppr__riel-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #4f46e5); border-radius: 2px; }
+
+.ppr__hito { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; width: 76px; }
+.ppr__punto {
+  width: 15px; height: 15px; border-radius: 50%; box-sizing: border-box;
+  display: grid; place-items: center; background: #fff; border: 2px solid #d4d4d8; color: #fff;
+}
+.ppr__hito--hecho .ppr__punto { background: #4f46e5; border-color: #4f46e5; }
+.ppr__hito--actual .ppr__punto { border-color: #f59e0b; background: #fff; box-shadow: 0 0 0 4px #fef3c7; }
+.ppr__hito--actual .ppr__punto::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; }
+
+.ppr__label { margin-top: 7px; font-size: 10.5px; font-weight: 600; color: #a1a1aa; text-align: center; white-space: nowrap; }
+.ppr__hito--hecho .ppr__label { color: #3f3f46; }
+.ppr__hito--actual .ppr__label { color: #b45309; }
+.ppr__sub { font-size: 10px; color: #a1a1aa; white-space: nowrap; font-variant-numeric: tabular-nums; margin-top: 1px; }
+
+.ppr__pie { border-top: 1px solid #f1f1f3; padding: 11px 16px 13px; display: flex; flex-direction: column; gap: 9px; background: #fafafb; border-radius: 0 0 14px 14px; }
+.ppr__sig { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #27272a; }
+.ppr__sig-l { color: #71717a; }
+.ppr__nota { font-size: 11px; color: #a1a1aa; }
+
+.ppr__tiempo-txt { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #71717a; margin-bottom: 5px; }
+.ppr__vencida { color: #dc2626; font-weight: 600; }
+.ppr__tbar { height: 4px; border-radius: 2px; background: #ececef; overflow: hidden; }
+.ppr__tbar > div { height: 100%; background: #a1a1aa; border-radius: 2px; }
+
+/* Versión fija dentro del detalle de la etapa productiva */
+.ppr--fija { position: static; z-index: auto; pointer-events: auto; animation: none; box-shadow: none; margin-bottom: 20px; }
+.ppr--fija .ppr__linea { margin-left: 48px; margin-right: 48px; }

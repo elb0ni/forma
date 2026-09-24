@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import './ui.css'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -7,7 +9,7 @@ export type IcName =
   | 'home' | 'folder' | 'bell' | 'layers' | 'list' | 'sparkles' | 'users' | 'user'
   | 'briefcase' | 'shield' | 'cog' | 'check' | 'checkCircle' | 'x' | 'alert' | 'info'
   | 'clock' | 'flame' | 'plus' | 'minus' | 'search' | 'download' | 'upload' | 'edit'
-  | 'trash' | 'refresh' | 'copy' | 'eye' | 'chevronDown' | 'chevronRight' | 'chevronLeft'
+  | 'trash' | 'refresh' | 'copy' | 'eye' | 'chevronUp' | 'chevronDown' | 'chevronRight' | 'chevronLeft'
   | 'arrowRight' | 'arrowLeft' | 'calendar' | 'trend' | 'logout' | 'lock' | 'key'
   | 'fileText' | 'more' | 'pin' | 'target' | 'external' | 'filter'
 
@@ -40,6 +42,7 @@ const PATHS: Record<IcName, ReactNode> = {
   refresh:     <><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><polyline points="3 21 3 16 8 16"/></>,
   copy:        <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
   eye:         <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>,
+  chevronUp:   <polyline points="6 15 12 9 18 15"/>,
   chevronDown: <polyline points="6 9 12 15 18 9"/>,
   chevronRight:<polyline points="9 6 15 12 9 18"/>,
   chevronLeft: <polyline points="15 6 9 12 15 18"/>,
@@ -151,13 +154,6 @@ export function Bdg({ tone = 'neutral', icon, children }: {
   )
 }
 
-// Estado de digitalización del diseño curricular — lenguaje visual único en toda la app.
-export function DigBadge({ dig }: { dig: boolean }) {
-  return dig
-    ? <Bdg tone="ok"   icon="checkCircle">Digitalizado</Bdg>
-    : <Bdg tone="warn" icon="alert">Sin digitalizar</Bdg>
-}
-
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
 export function Card({ children, style: s, onClick }: {
@@ -214,7 +210,7 @@ export function Modal({ title, icon, onClose, children, footer, width = 420 }: {
   title?: string; icon?: IcName; onClose: () => void
   children: ReactNode; footer?: ReactNode; width?: number
 }) {
-  return (
+  const overlay = (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card pop-in" style={{ width }} onClick={e => e.stopPropagation()}>
         {title && (
@@ -233,6 +229,11 @@ export function Modal({ title, icon, onClose, children, footer, width = 420 }: {
       </div>
     </div>
   )
+  // Se monta en <body>: el contenedor de la app (`.shell.dash-in`) tiene una
+  // animación con `transform`, y eso convierte a `position: fixed` en relativo a
+  // ese contenedor (no al viewport), lo que dejaba el modal "muy abajo" en
+  // pantallas largas. El portal lo saca de ese contexto.
+  return typeof document === 'undefined' ? overlay : createPortal(overlay, document.body)
 }
 
 // ─── Paginación ─────────────────────────────────────────────────────────────────
@@ -299,5 +300,60 @@ export function Metric({ label, value, delta, deltaTone = 'neutral', sub, icon }
       </div>
       {sub && <div className="metric__sub">{sub}</div>}
     </Card>
+  )
+}
+
+// ─── Tooltip (hover) ──────────────────────────────────────────────────────────
+// Globo flotante con contenido enriquecido, en vez del `title` nativo (feo y
+// lento). Se monta con portal en <body> para no quedar recortado por el
+// `overflow: hidden` de las tarjetas/tablas. `content` va con colores claros
+// (el globo es oscuro). Se cierra al salir el mouse o al hacer scroll.
+
+export function Tip({ content, children, style: st }: {
+  content: ReactNode; children: ReactNode; style?: CSSProperties
+}) {
+  const [box, setBox] = useState<{ x: number; y: number; below: boolean } | null>(null)
+  const ref = useRef<HTMLSpanElement>(null)
+
+  function show() {
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    const below = r.top < 96
+    setBox({ x: r.left + r.width / 2, y: below ? r.bottom : r.top, below })
+  }
+  function hide() { setBox(null) }
+
+  useEffect(() => {
+    if (!box) return
+    const h = () => setBox(null)
+    window.addEventListener('scroll', h, true)
+    return () => window.removeEventListener('scroll', h, true)
+  }, [box])
+
+  return (
+    <>
+      <span
+        ref={ref}
+        tabIndex={0}
+        className="tip-trigger"
+        style={st}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+      >
+        {children}
+      </span>
+      {box && typeof document !== 'undefined' && createPortal(
+        <div
+          role="tooltip"
+          className={`tip-pop${box.below ? ' tip-pop--below' : ''}`}
+          style={{ left: box.x, top: box.y }}
+        >
+          {content}
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }

@@ -1,51 +1,86 @@
-import { useState } from 'react'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
 import { DashboardHome } from './DashboardHome'
-import { Digitalizacion } from './Digitalizacion'
 import { ProgramasFormacion } from './ProgramasFormacion'
+import { DisenosCurriculares } from './DisenosCurriculares'
 import { FichasAdmin } from '../shared/FichasAdmin'
 import { CentrosCoord } from './CentrosCoord'
 import { UsuariosAdmin } from './UsuariosAdmin'
 import { ReportesAdmin } from '../shared/ReportesAdmin'
+import { SofiaSync } from './SofiaSync'
+
+const BASE = '/dashboard/superadmin'
+
+// id de nav (para resaltar el sidebar) ↔ segmento de URL
+const SECTION_PATH: Record<string, string> = {
+  'admin-home':      BASE,
+  'admin-programas': `${BASE}/programas`,
+  'admin-disenos':   `${BASE}/disenos`,
+  'admin-fichas':    `${BASE}/fichas`,
+  'admin-centros':   `${BASE}/centros`,
+  'admin-usuarios':  `${BASE}/usuarios`,
+  'admin-reportes':  `${BASE}/reportes`,
+  'admin-sofia':     `${BASE}/sofia`,
+}
+
+const SECTION_BY_SEGMENT: Record<string, string> = {
+  '':          'admin-home',
+  programas:   'admin-programas',
+  disenos:     'admin-disenos',
+  fichas:      'admin-fichas',
+  centros:     'admin-centros',
+  usuarios:    'admin-usuarios',
+  reportes:    'admin-reportes',
+  sofia:       'admin-sofia',
+}
 
 const ADMIN_TITLES: Record<string, string> = {
   'admin-home':      'Dashboard',
-  'admin-dig':       'Digitalización',
   'admin-programas': 'Programas de formación',
-  'admin-fichas':    'Gestión de fichas',
+  'admin-disenos':   'Diseños curriculares',
+  'admin-fichas':    'Fichas en etapa productiva',
   'admin-centros':   'Centros y coordinaciones',
   'admin-usuarios':  'Gestión de usuarios',
   'admin-reportes':  'Reportes ejecutivos',
+  'admin-sofia':     'Sincronización SofiaPlus',
+}
+
+function sectionFor(pathname: string): string {
+  const rest = pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname
+  const seg = rest.replace(/^\/+/, '').split('/')[0]
+  return SECTION_BY_SEGMENT[seg] ?? 'admin-home'
 }
 
 export function SuperAdminDashboard() {
-  const [navItem,     setNavItem]     = useState('admin-home')
-  const [drillNombre, setDrillNombre] = useState<string | null>(null)
+  "use no memo"
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const navItem = sectionFor(pathname)
+  const title = ADMIN_TITLES[navItem] ?? navItem
+  const breadcrumb = navItem === 'admin-home' ? ['Regional Atlántico'] : ['SUPER ADMIN', title]
 
-  function handleNav(id: string) {
-    setNavItem(id)
-    setDrillNombre(null)
+  function onNav(id: string) {
+    navigate(SECTION_PATH[id] ?? BASE)
   }
 
-  const breadcrumb = navItem === 'admin-home'
-    ? drillNombre
-      ? ['Regional Atlántico', drillNombre]
-      : ['Regional Atlántico']
-    : ['SUPER ADMIN', ADMIN_TITLES[navItem] ?? navItem]
-
-  const title = navItem === 'admin-home'
-    ? (drillNombre ?? 'Dashboard')
-    : (ADMIN_TITLES[navItem] ?? navItem)
-
   return (
-    <Shell current={navItem} onNav={handleNav} title={title} breadcrumb={breadcrumb}>
-      {navItem === 'admin-home'      && <DashboardHome onDrillDown={setDrillNombre} onNav={handleNav}/>}
-      {navItem === 'admin-dig'       && <Digitalizacion onSaved={() => handleNav('admin-programas')}/>}
-      {navItem === 'admin-programas' && <ProgramasFormacion onDigitalizar={() => handleNav('admin-dig')}/>}
-      {navItem === 'admin-fichas'    && <FichasAdmin onDigitalizar={() => handleNav('admin-dig')}/>}
-      {navItem === 'admin-centros'   && <CentrosCoord onDigitalizar={() => handleNav('admin-dig')}/>}
-      {navItem === 'admin-usuarios'  && <UsuariosAdmin/>}
-      {navItem === 'admin-reportes'  && <ReportesAdmin/>}
+    <Shell current={navItem} onNav={onNav} title={title} breadcrumb={breadcrumb}>
+      <Routes>
+        <Route index element={
+          <DashboardHome
+            onNav={onNav}
+            onOpenFicha={id => navigate(`${BASE}/fichas/${id}`)}
+          />
+        }/>
+        <Route path="programas/*" element={<ProgramasFormacion/>}/>
+        <Route path="disenos" element={<DisenosCurriculares/>}/>
+        <Route path="fichas/*" element={<FichasAdmin/>}/>
+        <Route path="centros/*" element={<CentrosCoord/>}/>
+        <Route path="usuarios/*" element={<UsuariosAdmin/>}/>
+        <Route path="reportes" element={<ReportesAdmin/>}/>
+        <Route path="sofia/*" element={<SofiaSync/>}/>
+        <Route path="*" element={<Navigate to={BASE} replace/>}/>
+      </Routes>
     </Shell>
   )
 }

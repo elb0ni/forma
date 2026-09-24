@@ -1,9 +1,10 @@
 import { useState, useEffect, Fragment } from 'react'
 import type { ReactNode } from 'react'
 import axios from 'axios'
-import { Ic, Bdg, Card, Btn } from '../../components/ui'
-import type { ProgramaListItem } from '../../types'
+import { Ic, Card, Btn } from '../../components/ui'
+import type { ProgramaResumen } from '../../types'
 import api from '../../lib/api'
+import { AprendicesAsignacion } from './AprendicesAsignacion'
 
 type Jornada = 'MAÑANA' | 'TARDE' | 'NOCHE' | 'MIXTA'
 type EstadoFicha = 'EN_EJECUCION' | 'FINALIZADA' | 'SUSPENDIDA'
@@ -22,22 +23,14 @@ export interface FichaEdit {
   fecha_fin_productiva:      string | null
   sede:                      string | null
   jornada:                   string | null
+  modalidad_formacion?:      'PRESENCIAL' | 'VIRTUAL' | 'A_DISTANCIA' | null
+  estrategia_formativa?:     string | null
   etapa_actual?:             'LECTIVA' | 'PRACTICA' | null
-}
-
-interface CompetenciaResumen {
-  id:            number
-  codigo_norma:  string
-  nombre:        string
-  horas_maximas: number
 }
 
 interface InstructorOpt { id: string; nombre_completo: string }
 interface CentroOpt     { id: number; nombre: string; codigo: string }
 interface CoordOpt      { id: number; nombre: string; centro_formacion_id: number | null }
-
-interface AsignExistente { id: number; instructorId: string; horas: number }
-interface AsignRow       { instructorId: string; horas: string }
 
 interface AsignacionPractica { id: number; instructor_id: string; instructor_nombre?: string; fecha_inicio: string; estado: 'ACTIVA' | 'FINALIZADA' }
 
@@ -113,10 +106,9 @@ function fdISO(s: string): string {
 }
 
 // ─── Instructor de práctica: uno solo para toda la ficha (no por competencia) ───
-// A diferencia de la etapa lectiva (tabla de arriba, instructor por
-// competencia vía `asignacion`), en etapa productiva un único instructor hace
-// seguimiento a todos los aprendices de la ficha -- se gestiona con
-// asignacion_practica, no con la tabla de competencias.
+// A diferencia de la etapa lectiva, en etapa productiva un único instructor
+// hace seguimiento a todos los aprendices de la ficha -- se gestiona con
+// asignacion_practica.
 
 function InstructorPracticaSection({ fichaId, coordId, instructores }: {
   fichaId: number; coordId: number | null; instructores: InstructorOpt[]
@@ -201,10 +193,9 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
   const editando = ficha !== null
 
   // Catálogos
-  const [programs,     setPrograms]     = useState<ProgramaListItem[]>([])
+  const [programs,     setPrograms]     = useState<ProgramaResumen[]>([])
   const [centros,      setCentros]      = useState<CentroOpt[]>([])
   const [coords,       setCoords]       = useState<CoordOpt[]>([])
-  const [comps,        setComps]        = useState<CompetenciaResumen[]>([])
   const [instructores, setInstructores] = useState<InstructorOpt[]>([])
 
   // Campos del formulario
@@ -216,55 +207,42 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
   const [fechaFin,    setFechaFin]    = useState(toInputDate(ficha?.fecha_fin_lectiva ?? null))
   const [sede,        setSede]        = useState(ficha?.sede ?? '')
   const [jornada,     setJornada]     = useState<Jornada>(normalizeJornada(ficha?.jornada))
+  // GFPI-F-023: en el formato de etapa productiva salen bloqueados, así que
+  // este es el único sitio donde se diligencian.
+  const [modalidadForm,  setModalidadForm]  = useState(ficha?.modalidad_formacion ?? '')
+  const [estrategiaForm, setEstrategiaForm] = useState(ficha?.estrategia_formativa ?? '')
   const [estado,      setEstado]      = useState<EstadoFicha>(ficha?.estado ?? 'EN_EJECUCION')
 
-  // Asignaciones (controladas + reconciliación)
-  const [existing, setExisting] = useState<Record<number, AsignExistente>>({})
-  const [asign,    setAsign]    = useState<Record<number, AsignRow>>({})
   const [savedId,  setSavedId]  = useState<number | null>(ficha?.id ?? null)
 
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState<string | null>(null)
-  const [verHistoricoLectiva, setVerHistoricoLectiva] = useState(false)
 
   // Una vez creada la ficha (o si ya editamos), bloqueamos lo que el backend no deja cambiar.
   const locked = editando || savedId != null
 
-  // El coordinador solo asigna instructores y hace seguimiento -- no toca
-  // fechas ni datos sensibles de una ficha que ya existe (esos vienen de la
-  // fuente oficial). El Super Admin conserva edición completa.
+  // El coordinador solo asigna el instructor de práctica y hace seguimiento --
+  // no toca fechas ni datos sensibles de una ficha que ya existe (esos vienen
+  // de la fuente oficial). El Super Admin conserva edición completa.
   const soloAsignacionCoord = !!lockScope && locked
-  const enPractica = ficha?.etapa_actual === 'PRACTICA'
-  // En etapa práctica la asignación lectiva ya quedó cerrada: para el
-  // coordinador se colapsa como histórico de solo lectura hasta que decida
-  // abrirlo; el Super Admin la sigue viendo siempre abierta y editable.
-  const lectivaColapsada = !!lockScope && enPractica && !verHistoricoLectiva
-  const lectivaSoloLectura = !!lockScope && enPractica
 
   useEffect(() => {
-    api.get<ProgramaListItem[]>('/programas')
+    api.get<ProgramaResumen[]>('/programas')
       .then(r => setPrograms(r.data))
       .catch(() => {})
     // El centro solo se elige cuando NO hay scope fijo (el coordinador ya tiene el suyo).
     if (!lockScope) {
-      api.get<CentroOpt[]>('/dashboard/super-admin/centros')
+      api.get<CentroOpt[]>('/centros')
         .then(r => setCentros(r.data))
         .catch(() => {})
     }
     api.get<CoordOpt[]>('/coordinaciones')
       .then(r => setCoords(r.data))
       .catch(() => {})
-    if (ficha) void refreshExisting(ficha.id)
   }, [])
 
-  useEffect(() => {
-    if (progId == null) { setComps([]); return }
-    api.get<{ competencias: CompetenciaResumen[] }>(`/programas/${progId}`)
-      .then(r => setComps(r.data.competencias ?? []))
-      .catch(() => setComps([]))
-  }, [progId])
-
-  // Solo instructores de la coordinación de la ficha (regla: misma coordinación).
+  // Solo instructores de la coordinación de la ficha (regla: misma coordinación) --
+  // es el pool del que se elige el instructor de práctica.
   useEffect(() => {
     if (coordId == null) { setInstructores([]); return }
     api.get<InstructorOpt[]>(`/usuarios?rol=INSTRUCTOR&coordinacion_id=${coordId}`)
@@ -272,96 +250,12 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
       .catch(() => setInstructores([]))
   }, [coordId])
 
-  // Construye/mantiene las filas de asignación a partir de las competencias + lo ya guardado.
-  useEffect(() => {
-    setAsign(prev => {
-      const next: Record<number, AsignRow> = {}
-      for (const c of comps) {
-        const ex = existing[c.id]
-        next[c.id] = prev[c.id] ?? { instructorId: ex?.instructorId ?? '', horas: String(ex?.horas ?? c.horas_maximas) }
-      }
-      return next
-    })
-  }, [comps, existing])
-
   const selProg = programs.find(p => p.id === progId) ?? null
-  // Solo se pueden asignar instructores si el diseño curricular del programa está digitalizado.
-  const progDigitalizado = !!selProg?.tiene_disenio_curricular
 
   // Filtra coordinaciones por el centro elegido si el dato existe.
   const coordsVisibles = (centroId != null && coords.some(c => c.centro_formacion_id != null))
     ? coords.filter(c => c.centro_formacion_id === centroId)
     : coords
-
-  async function refreshExisting(fichaId: number) {
-    try {
-      const r = await api.get<{ asignaciones: { id: number; competencia_id: number; instructor_id: string; horas_asignadas: number }[] }>(`/fichas/${fichaId}`)
-      const map: Record<number, AsignExistente> = {}
-      for (const a of r.data.asignaciones ?? []) {
-        map[a.competencia_id] = { id: a.id, instructorId: a.instructor_id, horas: Number(a.horas_asignadas) }
-      }
-      setExisting(map)
-    } catch { /* noop */ }
-  }
-
-  // Al cambiar de coordinación cambia el pool de instructores → limpiamos las selecciones.
-  function changeCoord(newId: number | null) {
-    setCoordId(newId)
-    setAsign(prev => {
-      const next: Record<number, AsignRow> = {}
-      for (const k of Object.keys(prev)) {
-        const id = Number(k)
-        next[id] = { ...prev[id], instructorId: '' }
-      }
-      return next
-    })
-  }
-
-  function autoAsignar() {
-    if (instructores.length === 0) return
-    setAsign(prev => {
-      const next = { ...prev }
-      for (const c of comps) {
-        const cur = next[c.id] ?? { instructorId: '', horas: String(c.horas_maximas) }
-        if (!cur.instructorId) next[c.id] = { ...cur, instructorId: instructores[0].id }
-      }
-      return next
-    })
-  }
-
-  function setRow(compId: number, patch: Partial<AsignRow>) {
-    setAsign(prev => {
-      const cur = prev[compId] ?? { instructorId: '', horas: '' }
-      return { ...prev, [compId]: { ...cur, ...patch } }
-    })
-  }
-
-  // Crea/actualiza/elimina asignaciones para que coincidan con la tabla. Devuelve errores por fila.
-  async function reconcileAsignaciones(fichaId: number): Promise<string[]> {
-    const errs: string[] = []
-    for (const c of comps) {
-      const row = asign[c.id]
-      const ex = existing[c.id]
-      const wantInstr = row?.instructorId || ''
-      const wantHoras = Number(row?.horas) || 0
-      try {
-        if (!wantInstr) {
-          if (ex) await api.delete(`/asignaciones/${ex.id}`)
-        } else if (!ex) {
-          await api.post('/asignaciones', { ficha_id: fichaId, instructor_id: wantInstr, competencia_id: c.id, horas_asignadas: wantHoras })
-        } else if (ex.instructorId !== wantInstr) {
-          await api.delete(`/asignaciones/${ex.id}`)
-          await api.post('/asignaciones', { ficha_id: fichaId, instructor_id: wantInstr, competencia_id: c.id, horas_asignadas: wantHoras })
-        } else if (ex.horas !== wantHoras) {
-          await api.patch(`/asignaciones/${ex.id}`, { horas_asignadas: wantHoras })
-        }
-      } catch (e) {
-        const m = axios.isAxiosError(e) ? (e.response?.data?.message ?? e.message) : 'error'
-        errs.push(`${c.codigo_norma}: ${Array.isArray(m) ? m.join(', ') : m}`)
-      }
-    }
-    return errs
-  }
 
   async function handleSave() {
     setError(null)
@@ -382,6 +276,8 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
           fecha_fin_lectiva:         fechaFin,
           sede:                      sede.trim() || undefined,
           jornada,
+          modalidad_formacion:       modalidadForm || undefined,
+          estrategia_formativa:      estrategiaForm.trim() || undefined,
         })
         fichaId = res.data.id
         setSavedId(fichaId)
@@ -393,16 +289,10 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
           fecha_fin_lectiva:         fechaFin,
           sede:                      sede.trim() || undefined,
           jornada,
+          modalidad_formacion:       modalidadForm || undefined,
+          estrategia_formativa:      estrategiaForm.trim() || undefined,
           estado,
         })
-      }
-
-      const asignErrors = await reconcileAsignaciones(fichaId)
-      if (asignErrors.length) {
-        await refreshExisting(fichaId)
-        setError('La ficha se guardó, pero algunas asignaciones fallaron: ' + asignErrors.join(' · '))
-        setSaving(false)
-        return
       }
       onSaved()
     } catch (e) {
@@ -427,7 +317,7 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
         {editando ? `Editar ficha ${ficha!.numero_ficha}` : 'Crear ficha de formación'}
       </h2>
       <div style={{ fontSize: 13, color: '#52525b', marginBottom: 24 }}>
-        Define el grupo, el programa, los instructores por competencia (etapa lectiva) y el instructor de práctica (etapa productiva).
+        Define el grupo, el programa y el instructor de práctica que hará seguimiento a sus aprendices en etapa productiva.
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
@@ -461,13 +351,13 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
               ) : (
                 <>
                   <Field label="Centro de formación" required>
-                    <select className="nx-input" value={centroId ?? ''} onChange={e => { setCentroId(e.target.value ? Number(e.target.value) : null); changeCoord(null) }}>
+                    <select className="nx-input" value={centroId ?? ''} onChange={e => { setCentroId(e.target.value ? Number(e.target.value) : null); setCoordId(null) }}>
                       <option value="">Selecciona un centro…</option>
                       {centros.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}
                     </select>
                   </Field>
                   <Field label="Coordinación académica" required hint="define los instructores disponibles">
-                    <select className="nx-input" value={coordId ?? ''} onChange={e => changeCoord(e.target.value ? Number(e.target.value) : null)} disabled={centroId == null}>
+                    <select className="nx-input" value={coordId ?? ''} onChange={e => setCoordId(e.target.value ? Number(e.target.value) : null)} disabled={centroId == null}>
                       <option value="">{centroId == null ? 'Elige un centro primero…' : 'Selecciona una coordinación…'}</option>
                       {coordsVisibles.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
@@ -485,6 +375,17 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
               </Field>
               <Field label="Jornada">
                 <Seg name="jornada" value={jornada} onChange={v => setJornada(v as Jornada)} options={JORNADAS} disabled={soloAsignacionCoord}/>
+              </Field>
+              <Field label="Modalidad de formación" hint="GFPI-F-023">
+                <select className="nx-input" value={modalidadForm} onChange={e => setModalidadForm(e.target.value as typeof modalidadForm)} disabled={soloAsignacionCoord}>
+                  <option value="">Sin definir</option>
+                  <option value="PRESENCIAL">Presencial</option>
+                  <option value="VIRTUAL">Virtual</option>
+                  <option value="A_DISTANCIA">A distancia</option>
+                </select>
+              </Field>
+              <Field label="Estrategia formativa" hint="GFPI-F-023">
+                <input className="nx-input" value={estrategiaForm} onChange={e => setEstrategiaForm(e.target.value)} disabled={soloAsignacionCoord}/>
               </Field>
               {editando && (
                 <Field label="Estado">
@@ -505,96 +406,14 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
             )}
           </Card>
 
-          {/* Asignación de instructores (etapa lectiva) */}
-          <Card style={{ padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600 }}>
-                  Asignación de instructores · etapa lectiva
-                </div>
-                <div style={{ fontSize: 12, color: '#52525b', marginTop: 2 }}>
-                  {lectivaSoloLectura ? 'Histórico de solo lectura -- la etapa lectiva de esta ficha ya finalizó.' : 'Solo instructores de la coordinación seleccionada.'}
-                </div>
-              </div>
-              {lectivaSoloLectura && verHistoricoLectiva ? (
-                <Btn size="sm" variant="ghost" icon="chevronRight" onClick={() => setVerHistoricoLectiva(false)}>Ocultar histórico</Btn>
-              ) : !lectivaSoloLectura && (
-                <Btn size="sm" variant="ghost" icon="sparkles" onClick={autoAsignar} disabled={!progDigitalizado}>Auto-asignar</Btn>
-              )}
-            </div>
-            {lectivaColapsada ? (
-              <button
-                onClick={() => setVerHistoricoLectiva(true)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px',
-                  background: '#f7f7f8', border: '1px solid #e4e4e7', borderRadius: 8, cursor: 'pointer',
-                  fontSize: 12.5, color: '#3f3f46', fontFamily: 'inherit',
-                }}
-              >
-                <Ic n="chevronRight" s={13} style={{ color: '#71717a' }}/>
-                Ver histórico de asignaciones de etapa lectiva · {comps.length} competencia{comps.length === 1 ? '' : 's'}
-              </button>
-            ) : selProg && !progDigitalizado ? (
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: 16, background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8 }}>
-                <Ic n="alert" s={16} style={{ color: '#a16207', flexShrink: 0, marginTop: 1 }}/>
-                <div style={{ fontSize: 12.5, color: '#854d0e', lineHeight: 1.5 }}>
-                  <strong>Diseño curricular no digitalizado.</strong> Este programa todavía no tiene su diseño curricular cargado, por lo que no tiene competencias para asignar. Digitalízalo primero (Programas → Digitalizar) y después podrás asignar instructores a esta ficha.
-                </div>
-              </div>
-            ) : (
-            <div style={{ border: '1px solid #e4e4e7', borderRadius: 8, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', background: '#f7f7f8', borderBottom: '1px solid #e4e4e7' }}>
-                    {['Código', 'Competencia', 'Horas', 'Instructor'].map(h => (
-                      <th key={h} style={{ padding: '8px 10px', textAlign: h === 'Horas' ? 'right' : 'left', fontWeight: 600 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {comps.length === 0 && (
-                    <tr><td colSpan={4} style={{ padding: '18px 10px', textAlign: 'center', color: '#a1a1aa', fontSize: 12 }}>
-                      {progId == null ? 'Selecciona un programa.' : 'Este programa no tiene competencias digitalizadas.'}
-                    </td></tr>
-                  )}
-                  {comps.map(c => {
-                    const row = asign[c.id] ?? { instructorId: '', horas: String(c.horas_maximas) }
-                    return (
-                    <tr key={c.id} style={{ borderBottom: '1px solid #f1f1f3' }}>
-                      <td style={{ padding: '8px 10px', fontFamily: '"JetBrains Mono", monospace', color: '#71717a', fontSize: 10.5 }}>{c.codigo_norma}</td>
-                      <td style={{ padding: '8px 10px', color: '#18181b', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nombre}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                        <input
-                          value={row.horas}
-                          onChange={e => setRow(c.id, { horas: e.target.value })}
-                          disabled={lectivaSoloLectura}
-                          style={{ width: 50, textAlign: 'right', padding: '3px 6px', border: '1px solid #e4e4e7', borderRadius: 4, fontSize: 12, fontFamily: '"JetBrains Mono", monospace' }}
-                        />
-                      </td>
-                      <td style={{ padding: '8px 10px' }}>
-                        <select
-                          value={row.instructorId}
-                          onChange={e => setRow(c.id, { instructorId: e.target.value })}
-                          disabled={coordId == null || lectivaSoloLectura}
-                          style={{ fontSize: 12, padding: '3px 6px', border: '1px solid #e4e4e7', borderRadius: 4, width: '100%', fontFamily: 'Inter, sans-serif' }}
-                        >
-                          <option value="">{coordId == null ? 'Elige coordinación' : 'Sin asignar'}</option>
-                          {coordId != null && instructores.length === 0 && <option disabled>No hay instructores en esta coordinación</option>}
-                          {instructores.map(i => <option key={i.id} value={i.id}>{i.nombre_completo}</option>)}
-                        </select>
-                      </td>
-                    </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            )}
-          </Card>
-
-          {/* Instructor de práctica (etapa productiva): uno por ficha, no por competencia */}
+          {/* Instructor de práctica (etapa productiva): uno por ficha */}
           {savedId != null && (
             <InstructorPracticaSection fichaId={savedId} coordId={coordId} instructores={instructores}/>
+          )}
+
+          {/* Override por aprendiz, para los que ya pueden arrancar práctica */}
+          {savedId != null && (
+            <AprendicesAsignacion fichaId={savedId} instructores={instructores}/>
           )}
 
           {/* Error + acciones */}
@@ -631,23 +450,15 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, paddingTop: 12, borderTop: '1px solid #f1f1f3' }}>
-                  {([
-                    ['Comp.', selProg.total_competencias],
-                    ['RAs',   selProg.total_ra],
-                    ['Horas', (selProg.horas_lectivas + (selProg.horas_productivas ?? 0)).toLocaleString('es-CO')],
-                  ] as const).map(([l, v]) => (
-                    <div key={l}>
-                      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>{l}</div>
-                      <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 15, fontWeight: 600, color: '#0a0a0b', marginTop: 4 }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f1f1f3', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 10.5, color: '#71717a' }}>Diseño curricular</span>
-                  <Bdg tone={selProg.tiene_disenio_curricular ? 'ok' : 'warn'}>
-                    {selProg.tiene_disenio_curricular ? 'Validado' : 'Pendiente'}
-                  </Bdg>
+                <div style={{ paddingTop: 12, borderTop: '1px solid #f1f1f3', display: 'grid', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>Nivel de formación</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#18181b', marginTop: 3 }}>{selProg.nivel_formacion}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>Título que otorga</div>
+                    <div style={{ fontSize: 12.5, color: '#3f3f46', marginTop: 3, lineHeight: 1.4 }}>{selProg.titulo_otorga}</div>
+                  </div>
                 </div>
               </>
             ) : (
