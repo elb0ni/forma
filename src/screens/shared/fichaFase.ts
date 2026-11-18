@@ -15,6 +15,10 @@
 // shared/FichasAdmin.
 import type { IcName } from '../../components/ui'
 
+// FORMA empieza a operar este día: lo que arrancó práctica antes es histórico
+// y no se mide (p. ej. fichas en práctica sin instructor).
+export const FORMA_INICIO = '2026-10-01'
+
 export type FaseFicha = 'PROXIMA' | 'EN_PRACTICA' | 'EN_CIERRE' | 'FINALIZADA'
 
 export function faseFicha(f: {

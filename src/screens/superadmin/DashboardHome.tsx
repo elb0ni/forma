@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { Ic, Card, Prog } from '../../components/ui'
 import type { IcName } from '../../components/ui'
 import api from '../../lib/api'
-import { diasHasta, centroLabel } from '../shared/parts'
+import { centroLabel } from '../shared/parts'
 import type { FichaRow } from '../shared/FichasAdmin'
-import { faseFicha } from '../shared/fichaFase'
+import { faseFicha, FORMA_INICIO } from '../shared/fichaFase'
 import type { FaseFicha } from '../shared/fichaFase'
 import type { CentroResumen } from '../shared/types'
 import './DashboardHome.css'
@@ -80,10 +80,10 @@ function Donut2({ segments, size = 132, stroke = 20 }: { segments: Segmento[]; s
 
 // ─── Gráfico: calendario de cierres / entradas a práctica ──────────────────────
 // Barras por mes. "Cierres": fichas en práctica por mes de fin de etapa
-// productiva (+ bin de vencidas). "Entradas": fichas próximas por mes de inicio.
-// Cada barra apila con-instructor / sin-instructor.
-
-interface Bin { key: string; label: string; con: number; sin: number; venc?: boolean }
+// productiva. "Entradas": fichas próximas por mes de inicio. Lo rojo son solo
+// las fichas que arrancaron práctica desde FORMA_INICIO sin instructor: antes
+// de esa fecha no se mide.
+interface Bin { key: string; label: string; total: number; sin: number; fichas: FichaRow[] }
 
 function ymLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
@@ -99,35 +99,25 @@ function buildBins(fichas: FichaRow[], mode: 'cierres' | 'entradas', hoy: string
     horizon.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
   const lastYm = horizon[horizon.length - 1]
-
-  const bins: Bin[] = []
-  if (mode === 'cierres') bins.push({ key: 'venc', label: 'Vencidas', con: 0, sin: 0, venc: true })
-  for (const ym of horizon) bins.push({ key: ym, label: ymLabel(ym), con: 0, sin: 0 })
-  bins.push({ key: 'luego', label: 'Luego', con: 0, sin: 0 })
+  const bins: Bin[] = horizon.map(ym => ({ key: ym, label: ymLabel(ym), total: 0, sin: 0, fichas: [] }))
+  const luego: Bin = { key: 'luego', label: 'Luego', total: 0, sin: 0, fichas: [] }
 
   for (const f of fichas) {
     if (f.estado !== 'EN_EJECUCION') continue
     const fase = faseFicha(f)
-    let iso: string | null
-    if (mode === 'cierres') {
-      if (fase !== 'EN_PRACTICA' && fase !== 'EN_CIERRE') continue
-      iso = f.fecha_fin_productiva
-    } else {
-      if (fase !== 'PROXIMA') continue
-      iso = f.fecha_inicio_productiva
-    }
+    const iso = mode === 'cierres'
+      ? (fase === 'EN_PRACTICA' ? f.fecha_fin_productiva : null)
+      : (fase === 'PROXIMA' ? f.fecha_inicio_productiva : null)
     if (!iso) continue
     const d = iso.slice(0, 10)
-    const ym = d.slice(0, 7)
-    let slot: Bin | undefined
-    if (mode === 'cierres' && d < hoy) slot = bins[0]
-    else if (ym > lastYm) slot = bins[bins.length - 1]
-    else slot = bins.find(b => b.key === ym) ?? bins[bins.length - 1]
-    if (!slot) continue
-    if (f.instructor_practica) slot.con++
-    else slot.sin++
+    if (d < hoy) continue
+    const slot = d.slice(0, 7) > lastYm ? luego : (bins.find(b => b.key === d.slice(0, 7)) ?? luego)
+    slot.total++
+    slot.fichas.push(f)
+    const inicio = (f.fecha_inicio_productiva ?? '').slice(0, 10)
+    if (!f.instructor_practica && inicio >= FORMA_INICIO && inicio <= hoy) slot.sin++
   }
-  return bins
+  return luego.total ? [...bins, luego] : bins
 }
 
 const CHART_H = 104
@@ -137,16 +127,17 @@ const CHART_H = 104
 // composición por fase (dona), a la derecha cuándo cierran/entran las fichas por
 // mes. Antes eran dos tarjetas apiladas que ocupaban media pantalla.
 
-function PanoramaResumen({ segments, fichas, filtrado }: {
-  segments: Segmento[]; fichas: FichaRow[]; filtrado: boolean
+function PanoramaResumen({ segments, fichas, filtrado, onOpenFicha }: {
+  segments: Segmento[]; fichas: FichaRow[]; filtrado: boolean; onOpenFicha?: (id: number) => void
 }) {
   "use no memo"
   const [mode, setMode] = useState<'cierres' | 'entradas'>('cierres')
+  const [sel, setSel] = useState<string | null>(null)
   const hoy = new Date().toISOString().slice(0, 10)
-  const bins = buildBins(fichas, mode, hoy).filter(b => b.key !== 'luego' || b.con + b.sin > 0)
-  const max = Math.max(1, ...bins.map(b => b.con + b.sin))
+  const bins = buildBins(fichas, mode, hoy)
+  const max = Math.max(1, ...bins.map(b => b.total))
   const totalSin = bins.reduce((a, b) => a + b.sin, 0)
-  const barVacio = bins.every(b => b.con + b.sin === 0)
+  const barVacio = bins.every(b => b.total === 0)
   const total = segments.reduce((a, s) => a + s.value, 0)
 
   return (
@@ -189,12 +180,12 @@ function PanoramaResumen({ segments, fichas, filtrado }: {
                 {mode === 'cierres' ? 'Cuándo cierran (fin de práctica)' : 'Cuándo entran a práctica'}
               </div>
               <div className="panorama__bar-hint">
-                por mes · <span style={{ color: '#b91c1c' }}>rojo</span> = sin instructor
+                fichas por mes · toca una barra para ver cuáles{totalSin > 0 && <> · <span style={{ color: '#b91c1c' }}>rojo</span> = sin instructor</>}
               </div>
             </div>
             <div className="mini-toggle">
-              <button className={mode === 'cierres' ? 'on' : ''} onClick={() => setMode('cierres')}>Cierres</button>
-              <button className={mode === 'entradas' ? 'on' : ''} onClick={() => setMode('entradas')}>Entradas</button>
+              <button className={mode === 'cierres' ? 'on' : ''} onClick={() => { setMode('cierres'); setSel(null) }}>Cierres</button>
+              <button className={mode === 'entradas' ? 'on' : ''} onClick={() => { setMode('entradas'); setSel(null) }}>Entradas</button>
             </div>
           </div>
 
@@ -209,33 +200,141 @@ function PanoramaResumen({ segments, fichas, filtrado }: {
             <>
               <div className="cierres-chart">
                 {bins.map(b => {
-                  const tot = b.con + b.sin
+                  const tot = b.total
                   const h = Math.round((tot / max) * CHART_H)
                   return (
-                    <div key={b.key} className="cierres-col">
+                    <button key={b.key} type="button" disabled={tot === 0}
+                      className={`cierres-col cierres-col--btn${sel === b.key ? ' cierres-col--sel' : ''}`}
+                      onClick={() => setSel(sel === b.key ? null : b.key)}
+                      title={tot ? `Ver las ${tot} fichas de ${b.label}` : undefined}>
                       <div className="cierres-val">{tot > 0 ? tot : ''}</div>
                       <div className="cierres-bar-wrap" style={{ height: CHART_H }}>
                         {tot > 0 && (
-                          <div className="cierres-bar" style={{ height: h }}>
+                          <div className="cierres-bar" style={{ height: h }} title={`${b.label}: ${tot} fichas`}>
                             {b.sin > 0 && <div style={{ height: `${(b.sin / tot) * 100}%`, background: '#dc2626' }} title={`Sin instructor: ${b.sin}`}/>}
-                            {b.con > 0 && <div style={{ height: `${(b.con / tot) * 100}%`, background: b.venc ? '#9f1239' : PRACTICA_COLOR }} title={`Con instructor: ${b.con}`}/>}
+                            <div style={{ height: `${((tot - b.sin) / tot) * 100}%`, background: PRACTICA_COLOR }}/>
                           </div>
                         )}
                       </div>
-                      <div className={`cierres-lbl${b.venc ? ' venc' : ''}`}>{b.label}</div>
-                    </div>
+                      <div className="cierres-lbl">{b.label}</div>
+                    </button>
                   )
                 })}
               </div>
-              <div className="panorama__bar-legend">
-                <span><span className="panorama__legend-dot" style={{ background: PRACTICA_COLOR }}/>Con instructor</span>
-                <span><span className="panorama__legend-dot" style={{ background: '#dc2626' }}/>Sin instructor{totalSin > 0 ? ` · ${totalSin}` : ''}</span>
-              </div>
+              {totalSin > 0 && (
+                <div className="panorama__bar-legend">
+                  <span><span className="panorama__legend-dot" style={{ background: '#dc2626' }}/>Sin instructor · {totalSin} (práctica iniciada desde el {FORMA_INICIO.split('-').reverse().join('/')})</span>
+                </div>
+              )}
             </>
           )}
         </div>
       </div>
+      {sel && (() => {
+        const b = bins.find(x => x.key === sel)
+        return b && b.fichas.length > 0
+          ? <DetalleMes bin={b} mode={mode} onCerrar={() => setSel(null)} onOpenFicha={onOpenFicha}/>
+          : null
+      })()}
     </Card>
+  )
+}
+
+// Las fichas de una barra: de qué centro, programa y coordinación son, con sus
+// fechas de práctica, aprendices e instructor. El resumen por centro filtra.
+function DetalleMes({ bin, mode, onCerrar, onOpenFicha }: {
+  bin: Bin; mode: 'cierres' | 'entradas'; onCerrar: () => void; onOpenFicha?: (id: number) => void
+}) {
+  "use no memo"
+  const [centro, setCentro] = useState<string | null>(null)
+  const porCentro = [...bin.fichas.reduce((m, f) => {
+    const k = f.centro_nombre ?? 'Sin centro'
+    return m.set(k, (m.get(k) ?? 0) + 1)
+  }, new Map<string, number>())].sort((a, b) => b[1] - a[1])
+  const lista = bin.fichas
+    .filter(f => !centro || (f.centro_nombre ?? 'Sin centro') === centro)
+    .sort((a, b) => (mode === 'entradas'
+      ? (a.fecha_inicio_productiva ?? '').localeCompare(b.fecha_inicio_productiva ?? '')
+      : (a.fecha_fin_productiva ?? '').localeCompare(b.fecha_fin_productiva ?? ''))
+      || a.programa_nombre.localeCompare(b.programa_nombre, 'es'))
+  // Del reporte de juicios; si la ficha aún no está ahí, los activos del PE-04.
+  const nAprendices = (f: FichaRow) => f.aprendices || f.sofia_total_activos || 0
+  const aprendices = lista.reduce((a, f) => a + nAprendices(f), 0)
+  const sinInstr = lista.filter(f => !f.instructor_practica).length
+  // Entradas: quién puede iniciar según el último reporte de juicios (scraper).
+  const conJuicios = mode === 'entradas' ? lista.filter(f => f.aprendices_pueden != null) : []
+  const pueden = conJuicios.reduce((a, f) => a + (f.aprendices_pueden ?? 0), 0)
+  const noPueden = conJuicios.reduce((a, f) => a + (f.aprendices_no_pueden ?? 0), 0)
+  const sinReporte = mode === 'entradas' ? lista.length - conJuicios.length : 0
+  const fecha = (iso: string | null) => (iso ? new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }).replace('.', '') : '—')
+  const coord = (n: string | null) => (n ? n.replace(/^Coordinaci[oó]n Acad[eé]mica de /i, '') : 'Sin coordinación')
+
+  return (
+    <div className="dm">
+      <div className="dm__cab">
+        <div>
+          <div className="dm__titulo">
+            {mode === 'entradas' ? 'Entran a práctica' : 'Cierran práctica'} en {bin.label === 'Luego' ? 'meses posteriores' : bin.label}
+          </div>
+          <div className="dm__sub">
+            {lista.length} ficha{lista.length === 1 ? '' : 's'} · {aprendices.toLocaleString('es-CO')} aprendices
+            {sinInstr > 0 && ` · ${sinInstr} aún sin instructor`}
+            {conJuicios.length > 0 && (
+              <> · <span style={{ color: '#15803d' }}>{pueden.toLocaleString('es-CO')} pueden iniciar</span>
+                {' · '}<span style={{ color: '#b45309' }}>{noPueden.toLocaleString('es-CO')} aún no</span></>
+            )}
+            {sinReporte > 0 && ` · ${sinReporte} ficha${sinReporte === 1 ? '' : 's'} sin reporte de juicios`}
+          </div>
+        </div>
+        <button type="button" className="dm__cerrar" onClick={onCerrar} aria-label="Cerrar"><Ic n="x" s={14}/></button>
+      </div>
+
+      <div className="dm__centros">
+        {porCentro.map(([c, n]) => (
+          <button key={c} type="button" className={`dm__centro${centro === c ? ' dm__centro--on' : ''}`} onClick={() => setCentro(centro === c ? null : c)}>
+            {c === 'Sin centro' ? c : centroLabel(c)} <b>{n}</b>
+          </button>
+        ))}
+      </div>
+
+      <div className="dm__tabla-scroll">
+        <table className="dm__tabla">
+          <thead>
+            <tr>
+              <th>Ficha</th><th>Programa</th><th>Centro · coordinación</th>
+              <th>Práctica</th><th className="dm__num">Aprendices</th><th>Instructor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lista.map(f => (
+              <tr key={f.id} onClick={() => onOpenFicha?.(f.id)} className={onOpenFicha ? 'dm__fila--click' : undefined}>
+                <td><span className="dm__mono">{f.numero_ficha}</span></td>
+                <td>
+                  <div className="dm__prog" title={f.programa_nombre}>{f.programa_nombre}</div>
+                  <div className="dm__meta">{[f.nivel_formacion, f.jornada ?? f.sofia_jornada, f.modalidad_formacion, f.sofia_municipio].filter(Boolean).join(' · ') || f.programa_codigo}</div>
+                </td>
+                <td>
+                  <div>{f.centro_nombre ? centroLabel(f.centro_nombre) : '—'}</div>
+                  <div className="dm__meta" title={f.coordinacion_nombre ?? undefined}>{coord(f.coordinacion_nombre)}</div>
+                </td>
+                <td className="dm__nowrap">
+                  <div>{fecha(f.fecha_inicio_productiva)} → {fecha(f.fecha_fin_productiva)}</div>
+                </td>
+                <td className="dm__num">
+                  {mode === 'entradas' && f.aprendices_pueden != null ? (
+                    <span title={`Reporte de juicios del ${fecha(f.juicios_fecha ?? null)}`}>
+                      <span style={{ color: '#15803d', fontWeight: 600 }}>{f.aprendices_pueden}</span> pueden
+                      <div className="dm__meta">{f.aprendices_no_pueden ?? 0} aún no</div>
+                    </span>
+                  ) : (nAprendices(f) || '—')}
+                </td>
+                <td>{f.instructor_practica ?? <span className="dm__meta">Sin asignar</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 
@@ -251,12 +350,6 @@ interface Agregado {
 
 function KpiCards({ agg, fichasFiltradas }: { agg: Agregado; fichasFiltradas: FichaRow[] }) {
   const enEjecucion = fichasFiltradas.filter(f => f.estado === 'EN_EJECUCION').length
-  const conDias = fichasFiltradas
-    .filter(f => f.estado === 'EN_EJECUCION' && f.etapa_actual_teorica === 'PRACTICA')
-    .map(f => diasHasta(f.fecha_fin_productiva))
-    .filter((d): d is number => d != null)
-  const vencidas = conDias.filter(d => d < 0).length
-  const cierranPronto = conDias.filter(d => d >= 0 && d <= 30).length
   const conInstr = agg.enPractica - agg.sinInstructor
 
   return (
@@ -269,11 +362,6 @@ function KpiCards({ agg, fichasFiltradas }: { agg: Agregado; fichasFiltradas: Fi
         <div className="kpi2-value">
           {agg.enPractica}
           <span className="kpi2-value-sub"> / {enEjecucion} en ejecución</span>
-        </div>
-        <div className="kpi2-sub" style={{ color: vencidas > 0 ? '#dc2626' : cierranPronto > 0 ? '#c2410c' : undefined }}>
-          {vencidas > 0
-            ? `${vencidas} vencida${vencidas === 1 ? '' : 's'} sin cerrar`
-            : cierranPronto > 0 ? `${cierranPronto} cierran en ≤30 días` : 'Ninguna cierra en los próximos 30 días'}
         </div>
       </Card>
 
@@ -316,132 +404,6 @@ function KpiCards({ agg, fichasFiltradas }: { agg: Agregado; fichasFiltradas: Fi
   )
 }
 
-// ─── Listas de fichas por fecha (vencidas / cierran pronto / van a práctica) ────
-
-interface FichaConDias { f: FichaRow; dias: number }
-
-function fichasConDias(fichas: FichaRow[], fechaFn: (f: FichaRow) => string | null, tope: number): FichaConDias[] {
-  return fichas
-    .map(f => ({ f, dias: diasHasta(fechaFn(f)) }))
-    .filter((x): x is FichaConDias => x.dias != null && x.dias <= tope)
-    .sort((a, b) => a.dias - b.dias)
-}
-
-function diasLabel(dias: number): string { return dias < 0 ? `${Math.abs(dias)}d vencida` : dias === 0 ? 'Hoy' : `${dias}d` }
-function diasColor(dias: number): string { return dias < 0 ? '#dc2626' : dias <= 7 ? '#c2410c' : '#a16207' }
-
-// ─── Panel de alertas de fecha ──────────────────────────────────────────────
-
-type AlertaId = 'vencidas' | 'cierran' | 'transicion'
-
-function AlertasFichas({ vencidas, cierranPronto, vanAPractica, onOpenFicha }: {
-  vencidas: FichaConDias[]; cierranPronto: FichaConDias[]; vanAPractica: FichaConDias[]
-  onOpenFicha?: (id: number) => void
-}) {
-  "use no memo"
-  const grupos: { id: AlertaId; label: string; items: FichaConDias[]; color: string; icon: IcName }[] = [
-    { id: 'vencidas',   label: 'Vencidas',        items: vencidas,      color: '#dc2626', icon: 'alert' },
-    { id: 'cierran',    label: 'Cierran pronto',  items: cierranPronto, color: '#c2410c', icon: 'clock' },
-    { id: 'transicion', label: 'Van a práctica',  items: vanAPractica,  color: '#4338ca', icon: 'briefcase' },
-  ]
-  const primeraConDatos = grupos.find(g => g.items.length > 0)?.id ?? 'vencidas'
-  const [tab, setTab] = useState<AlertaId>(primeraConDatos)
-  const [q, setQ] = useState('')
-
-  const activo = grupos.find(g => g.id === tab)!
-  const ql = q.trim().toLowerCase()
-  const view = activo.items.filter(({ f }) => !ql
-    || f.numero_ficha.toLowerCase().includes(ql)
-    || f.programa_nombre.toLowerCase().includes(ql)
-    || f.programa_codigo.toLowerCase().includes(ql))
-
-  return (
-    <Card style={{ overflow: 'hidden' }}>
-      <div style={{ display: 'flex', borderBottom: '1px solid #e4e4e7' }}>
-        {grupos.map(g => {
-          const active = g.id === tab
-          return (
-            <button
-              key={g.id}
-              onClick={() => { setTab(g.id); setQ('') }}
-              style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                padding: '13px 10px', border: 'none', borderBottom: active ? `2px solid ${g.color}` : '2px solid transparent',
-                background: active ? '#fafafa' : '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                fontSize: 12.5, fontWeight: active ? 600 : 500, color: active ? '#18181b' : '#71717a',
-                transition: 'all 120ms',
-              }}
-            >
-              <Ic n={g.icon} s={13} style={{ color: g.color }}/>
-              {g.label}
-              <span style={{
-                fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace',
-                background: g.items.length > 0 ? g.color : '#e4e4e7', color: g.items.length > 0 ? '#fff' : '#a1a1aa',
-                padding: '1px 6px', borderRadius: 10,
-              }}>{g.items.length}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      {activo.items.length > 0 && (
-        <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f1f3', position: 'relative' }}>
-          <Ic n="search" s={13} style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa' }}/>
-          <input
-            value={q} onChange={e => setQ(e.target.value)}
-            placeholder={`Buscar en ${activo.items.length} ficha${activo.items.length === 1 ? '' : 's'}…`}
-            style={{
-              width: '100%', height: 32, padding: '0 10px 0 30px', border: '1px solid #e4e4e7', borderRadius: 7,
-              fontSize: 12.5, color: '#18181b', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
-            }}
-          />
-        </div>
-      )}
-
-      {view.length === 0 ? (
-        <div style={{ padding: 32 }}>
-          <EmptyState
-            icon="checkCircle"
-            title={activo.items.length === 0 ? `Sin fichas en "${activo.label.toLowerCase()}"` : 'Sin resultados'}
-            sub={activo.items.length === 0 ? 'Nada que reportar en esta categoría por ahora.' : `Ninguna ficha coincide con "${q}".`}
-          />
-        </div>
-      ) : (
-        <div style={{ maxHeight: 420, overflowY: 'auto' }}>
-          {view.map(({ f, dias }, i) => (
-            <div
-              key={f.id}
-              className={onOpenFicha ? 'nx-row' : undefined}
-              onClick={() => onOpenFicha?.(f.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14, padding: '11px 16px',
-                borderBottom: i < view.length - 1 ? '1px solid #f1f1f3' : 'none',
-                cursor: onOpenFicha ? 'pointer' : 'default',
-              }}
-            >
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, fontWeight: 700, background: '#f1f1f3', color: '#52525b', padding: '2px 6px', borderRadius: 4 }}>{f.programa_codigo}</span>
-                  <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
-                </div>
-                <div style={{ fontSize: 12, color: '#52525b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.programa_nombre}</div>
-              </div>
-              <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 700, color: diasColor(dias), whiteSpace: 'nowrap', textAlign: 'right' }}>{diasLabel(dias)}</span>
-              {onOpenFicha && <Ic n="chevronRight" s={14} style={{ color: '#d4d4d8', flexShrink: 0 }}/>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activo.items.length > 0 && (
-        <div style={{ padding: '9px 16px', borderTop: '1px solid #f1f1f3', fontSize: 11.5, color: '#a1a1aa', background: '#fafafa' }}>
-          {view.length === activo.items.length ? `${view.length} ficha${view.length === 1 ? '' : 's'}` : `${view.length} de ${activo.items.length} fichas`}
-        </div>
-      )}
-    </Card>
-  )
-}
-
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
 function ResumenTab({ todas, filtradas, onOpenFicha }: {
@@ -452,121 +414,121 @@ function ResumenTab({ todas, filtradas, onOpenFicha }: {
     value: filtradas.filter(f => faseFicha(f) === k).length,
   }))
 
-  const activasFiltradas = filtradas.filter(f => f.estado === 'EN_EJECUCION')
-  const enPractica  = activasFiltradas.filter(f => f.etapa_actual_teorica === 'PRACTICA')
-  const vencidas    = fichasConDias(enPractica, f => f.fecha_fin_productiva, -1)
-  const cierranPronto = fichasConDias(enPractica, f => f.fecha_fin_productiva, 30).filter(x => x.dias >= 0)
-
-  const enLectiva = activasFiltradas.filter(f => f.etapa_actual_teorica !== 'PRACTICA')
-  const vanAPractica = fichasConDias(enLectiva, f => f.fecha_inicio_productiva ?? f.fecha_fin_lectiva, 30)
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PanoramaResumen segments={faseSegs} fichas={filtradas} filtrado={filtradas.length !== todas.length}/>
-
-      <div>
-        <div className="section-title">Fichas que requieren seguimiento por fecha</div>
-        <AlertasFichas vencidas={vencidas} cierranPronto={cierranPronto} vanAPractica={vanAPractica} onOpenFicha={onOpenFicha}/>
-      </div>
+      <PanoramaResumen segments={faseSegs} fichas={filtradas} filtrado={filtradas.length !== todas.length} onOpenFicha={onOpenFicha}/>
     </div>
   )
 }
 
-// ─── Tabs: ranking por centro / por coordinación ──────────────────────────────
-// Directo del rollup de GET /centros/resumen -- ya trae la señal real de práctica
-// (cobertura, aprendices, sin instructor) por centro y por coordinación.
+// ─── Tabs: por centro / por coordinación ────────────────────────────────────
+// Cómo se reparten las fichas en ejecución por fase de la etapa práctica
+// (calculada con fechas, mismos colores de la dona). Sin cobertura de
+// instructor: las asignaciones actuales son simulación y eso se mide desde
+// FORMA_INICIO.
 
-interface RankRow {
-  id: number | string; nombre: string; sub?: string
-  enPractica: number; aprendices: number; sinInstructor: number
-  extra: number; cobertura: number
+interface Grupo {
+  key: string; nombre: string; sub: string | null; centro: string
+  proximas: number; proximas3m: number; enPractica: number; enCierre: number; aprendices: number
+}
+type Agrupar = 'centro' | 'coordinacion'
+const FASES_BARRA: { k: 'proximas3m' | 'enPractica' | 'enCierre'; fase: FaseFicha; label: string }[] = [
+  { k: 'enPractica', fase: 'EN_PRACTICA', label: 'En práctica' },
+  { k: 'enCierre',   fase: 'EN_CIERRE',   label: 'En cierre' },
+  { k: 'proximas3m', fase: 'PROXIMA',     label: 'Entran en 3 meses' },
+]
+
+function agrupar(fichas: FichaRow[], por: Agrupar): Grupo[] {
+  const hoy = new Date()
+  const en3m = new Date(hoy.getFullYear(), hoy.getMonth() + 3, hoy.getDate()).toISOString().slice(0, 10)
+  const m = new Map<string, Grupo>()
+  for (const f of fichas) {
+    if (f.estado !== 'EN_EJECUCION') continue
+    const fase = faseFicha(f)
+    if (fase === 'FINALIZADA') continue
+    const centro = f.centro_nombre ? centroLabel(f.centro_nombre) : 'Sin centro'
+    const key = por === 'centro' ? `c${f.centro_formacion_id}` : `${f.centro_formacion_id}-${f.coordinacion_academica_id ?? 'sin'}`
+    const g = m.get(key) ?? {
+      key, centro,
+      nombre: por === 'centro' ? centro : (f.coordinacion_nombre ?? 'Sin coordinación').replace(/^Coordinaci[oó]n Acad[eé]mica de /i, ''),
+      sub: por === 'centro' ? null : (f.coordinacion_academica_id ? f.coordinador_nombre : 'Sus fichas aún no tienen coordinación'),
+      proximas: 0, proximas3m: 0, enPractica: 0, enCierre: 0, aprendices: 0,
+    }
+    if (fase === 'PROXIMA') {
+      g.proximas++
+      if ((f.fecha_inicio_productiva ?? '9999').slice(0, 10) <= en3m) g.proximas3m++
+    } else if (fase === 'EN_PRACTICA') {
+      g.enPractica++; g.aprendices += f.aprendices_en_practica
+    } else {
+      g.enCierre++; g.aprendices += f.aprendices_en_practica
+    }
+    m.set(key, g)
+  }
+  const sinCoord = (g: Grupo) => (g.nombre === 'Sin coordinación' ? 1 : 0)
+  return [...m.values()].sort((a, b) => sinCoord(a) - sinCoord(b) || b.enPractica - a.enPractica
+    || b.proximas3m - a.proximas3m || a.nombre.localeCompare(b.nombre, 'es'))
 }
 
-// Ranking por centro como barras horizontales (más legible que la tabla): el
-// largo es "fichas en práctica", el segmento rojo son las que están sin
-// instructor. Ordenado por volumen.
-function CentroBarras({ rows }: { rows: RankRow[] }) {
-  if (rows.length === 0) return <EmptyState icon="folder" title="Sin datos" sub="No hay práctica activa para mostrar."/>
-  const filas = [...rows].sort((a, b) => b.enPractica - a.enPractica)
-  const max = Math.max(1, ...filas.map(r => r.enPractica))
-  const totalSin = filas.reduce((a, r) => a + r.sinInstructor, 0)
-
+function FilaGrupo({ g, max, i }: { g: Grupo; max: number; i: number }) {
+  const total = g.proximas3m + g.enPractica + g.enCierre
   return (
-    <Card style={{ padding: 20 }}>
-      <div className="section-title">Fichas en práctica por centro</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-        {filas.map(r => {
-          const con = r.enPractica - r.sinInstructor
-          return (
-            <div key={r.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 5 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.nombre}</span>
-                <span style={{ fontSize: 11, color: '#71717a', fontFamily: '"JetBrains Mono", monospace', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  {r.enPractica} fichas · {r.aprendices} apr · {r.cobertura}%
-                </span>
-              </div>
-              <div style={{ display: 'flex', height: 13, background: '#f4f4f5', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ width: `${(con / max) * 100}%`, background: PRACTICA_COLOR, transition: 'width 400ms ease' }} title={`Con instructor: ${con}`}/>
-                <div style={{ width: `${(r.sinInstructor / max) * 100}%`, background: '#dc2626', transition: 'width 400ms ease' }} title={`Sin instructor: ${r.sinInstructor}`}/>
-              </div>
-            </div>
-          )
-        })}
+    <div className={`pg-fila${g.nombre === 'Sin coordinación' ? ' pg-fila--sin' : ''}`} style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}>
+      <div className="pg-fila__nombre">
+        <span title={g.nombre}>{g.nombre}</span>
+        {g.sub && <small>{g.sub}</small>}
       </div>
-      <div style={{ display: 'flex', gap: 16, marginTop: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#52525b' }}>
-          <span style={{ width: 9, height: 9, borderRadius: 2, background: PRACTICA_COLOR }}/>Con instructor
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#52525b' }}>
-          <span style={{ width: 9, height: 9, borderRadius: 2, background: '#dc2626' }}/>Sin instructor
-        </span>
-        {totalSin > 0 && (
-          <span style={{ marginLeft: 'auto', fontSize: 11.5, color: '#b91c1c', fontWeight: 600 }}>
-            {totalSin} ficha{totalSin === 1 ? '' : 's'} sin instructor en la regional
-          </span>
-        )}
+      <div className="pg-fila__barra" title={`${g.enPractica} en práctica · ${g.enCierre} en cierre · ${g.proximas3m} entran en 3 meses (${g.proximas} próximas en total)`}>
+        <div className="pg-fila__pista" style={{ width: `${(total / max) * 100}%` }}>
+          {FASES_BARRA.map(({ k, fase }) => g[k] > 0 && (
+            <span key={k} style={{ flexGrow: g[k], background: FASE_COLOR[fase] }}/>
+          ))}
+        </div>
       </div>
-    </Card>
+      <div className="pg-dato"><b>{g.enPractica + g.enCierre}</b><span>en práctica</span></div>
+      <div className="pg-dato"><b>{g.proximas3m}</b><span>entran en 3 meses</span></div>
+      <div className="pg-dato"><b>{g.aprendices.toLocaleString('es-CO')}</b><span>aprendices en práctica</span></div>
+    </div>
   )
 }
 
-function RankingTable({ filas, columnaNombre, extraLabel }: {
-  filas: RankRow[]; columnaNombre: string; extraLabel: string
-}) {
-  if (filas.length === 0) return <EmptyState icon="folder" title="Sin datos" sub="No hay práctica activa para mostrar."/>
+function PanoramaGrupos({ fichas, por }: { fichas: FichaRow[]; por: Agrupar }) {
+  "use no memo"
+  const [centro, setCentro] = useState<string | null>(null)
+  const grupos = agrupar(fichas, por)
+  if (grupos.length === 0) return <EmptyState icon="folder" title="Sin datos" sub="No hay fichas en ejecución para mostrar."/>
+  const centros = [...new Set(grupos.map(g => g.centro))].sort((a, b) => a.localeCompare(b, 'es'))
+  const visibles = grupos.filter(g => !centro || g.centro === centro)
+  const max = Math.max(1, ...visibles.map(g => g.proximas3m + g.enPractica + g.enCierre))
+  const porCentro = por === 'coordinacion' && !centro
+    ? centros.map(c => ({ c, gs: visibles.filter(g => g.centro === c) })).filter(x => x.gs.length)
+    : [{ c: null as string | null, gs: visibles }]
+
   return (
-    <Card style={{ overflow: 'hidden' }}>
-      <div style={{ overflowX: 'auto' }}>
-      <table className="data-table">
-        <thead>
-          <tr className="data-table__head-row">
-            <th className="data-table__th">{columnaNombre}</th>
-            <th className="data-table__th" style={{ textAlign: 'right' }}>En práctica</th>
-            <th className="data-table__th" style={{ textAlign: 'right' }}>Aprendices</th>
-            <th className="data-table__th" style={{ textAlign: 'right' }}>Sin instructor</th>
-            <th className="data-table__th" style={{ textAlign: 'right' }}>{extraLabel}</th>
-            <th className="data-table__th" style={{ minWidth: 150 }}>Cobertura</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map(r => (
-            <tr key={r.id} style={{ borderBottom: '1px solid #f1f1f3' }}>
-              <td className="data-table__td--name">
-                {r.nombre}
-                {r.sub && <div style={{ fontSize: 11, color: '#a1a1aa', fontWeight: 400, marginTop: 2 }}>{r.sub}</div>}
-              </td>
-              <td className="data-table__td--fichas" style={{ textAlign: 'right', color: PRACTICA_COLOR }}>{r.enPractica}</td>
-              <td className="data-table__td--fichas" style={{ textAlign: 'right' }}>{r.aprendices}</td>
-              <td className="data-table__td--fichas" style={{ textAlign: 'right', color: r.sinInstructor > 0 ? '#dc2626' : '#a1a1aa' }}>{r.sinInstructor}</td>
-              <td className="data-table__td--fichas" style={{ textAlign: 'right', color: r.extra > 0 ? '#c2410c' : '#a1a1aa' }}>{r.extra}</td>
-              <td className="data-table__td" style={{ minWidth: 150 }}>
-                <Prog value={r.cobertura} showLabel/>
-              </td>
-            </tr>
+    <Card style={{ padding: 20 }}>
+      <div className="pg-cab">
+        <div className="section-title" style={{ marginBottom: 0 }}>
+          Fichas en ejecución por {por === 'centro' ? 'centro' : 'coordinación'}
+        </div>
+        <div className="pg-leyenda">
+          {FASES_BARRA.map(({ fase, label }) => (
+            <span key={fase}><i style={{ background: FASE_COLOR[fase] }}/>{label}</span>
           ))}
-        </tbody>
-      </table>
+        </div>
       </div>
+      {por === 'coordinacion' && (
+        <div className="pg-centros">
+          <button type="button" className={`pg-centro${!centro ? ' pg-centro--on' : ''}`} onClick={() => setCentro(null)}>Todos</button>
+          {centros.map(c => (
+            <button key={c} type="button" className={`pg-centro${centro === c ? ' pg-centro--on' : ''}`} onClick={() => setCentro(centro === c ? null : c)}>{c}</button>
+          ))}
+        </div>
+      )}
+      {porCentro.map(({ c, gs }) => (
+        <div key={c ?? 'todos'} className="pg-grupo">
+          {c && <div className="pg-grupo__titulo">{c}</div>}
+          {gs.map((g, i) => <FilaGrupo key={g.key} g={g} max={max} i={i}/>)}
+        </div>
+      ))}
     </Card>
   )
 }
@@ -651,29 +613,6 @@ export function DashboardHome({ onNav, onOpenFicha }: { onNav?: (id: string) => 
     }
   }, [centros])
 
-  const rankCentros = useMemo<RankRow[]>(() =>
-    (centros ?? [])
-      .map(c => ({
-        id: c.id, nombre: centroLabel(c.nombre), sub: `${c.ciudad} · ${c.coordinaciones} coordinaciones`,
-        enPractica: c.fichas_en_practica, aprendices: c.aprendices_en_practica,
-        sinInstructor: c.fichas_sin_instructor, extra: c.etapas_por_cerrar,
-        cobertura: cobertura(c.fichas_en_practica, c.fichas_sin_instructor),
-      }))
-      .sort((a, b) => b.sinInstructor - a.sinInstructor || b.enPractica - a.enPractica),
-    [centros])
-
-  const rankCoords = useMemo<RankRow[]>(() =>
-    (centros ?? [])
-      .flatMap(c => c.coordinaciones_detalle.map(co => ({
-        id: `${c.id}-${co.id}`, nombre: co.nombre, sub: `${centroLabel(c.nombre)}${co.coordinador_nombre ? ` · ${co.coordinador_nombre}` : ''}`,
-        enPractica: co.fichas_en_practica, aprendices: co.aprendices_en_practica,
-        sinInstructor: co.fichas_sin_instructor, extra: co.instructores,
-        cobertura: cobertura(co.fichas_en_practica, co.fichas_sin_instructor),
-      })))
-      .filter(r => r.enPractica > 0)
-      .sort((a, b) => b.sinInstructor - a.sinInstructor || b.enPractica - a.enPractica),
-    [centros])
-
   const counts: Record<EstadoFilt, number> = {
     '':            fichas?.length ?? 0,
     EN_EJECUCION:  fichas?.filter(f => f.estado === 'EN_EJECUCION').length ?? 0,
@@ -732,10 +671,8 @@ export function DashboardHome({ onNav, onOpenFicha }: { onNav?: (id: string) => 
             <Card style={{ padding: 40 }}><Sk w="40%" h={16}/></Card>
           ) : tab === 'resumen' ? (
             <ResumenTab todas={fichas} filtradas={fichasFiltradas} onOpenFicha={onOpenFicha}/>
-          ) : tab === 'centro' ? (
-            <CentroBarras rows={rankCentros}/>
           ) : (
-            <RankingTable filas={rankCoords} columnaNombre="Coordinación" extraLabel="Instructores"/>
+            <PanoramaGrupos key={tab} fichas={fichasFiltradas} por={tab === 'centro' ? 'centro' : 'coordinacion'}/>
           )}
         </div>
         <aside className="dash-lower__side">

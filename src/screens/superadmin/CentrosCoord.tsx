@@ -39,7 +39,6 @@ function CentroCard({ c, tone, escala, active, onClick }: {
   const barPct = enPractica > 0 ? Math.max(4, share) : 0
   const barCol = c.fichas_sin_instructor === 0 ? '#16a34a'
     : cobertura >= 60 ? '#c2410c' : '#dc2626'
-  const senales = c.fichas_sin_instructor + c.etapas_por_cerrar + c.conceptos_por_resolver
 
   return (
     <button
@@ -52,8 +51,8 @@ function CentroCard({ c, tone, escala, active, onClick }: {
         <span className="cc-card__name">{centroLabel(c.nombre)}</span>
         {!c.activo
           ? <Bdg tone="neutral">Inactivo</Bdg>
-          : senales > 0
-            ? <span className="cc-card__flag" title={`${plural(senales, 'señal', 'señales')} de atención`}>{senales}</span>
+          : c.fichas_sin_instructor > 0
+            ? <span className="cc-card__flag" title="Fichas en práctica sin instructor asignado">{c.fichas_sin_instructor} sin instructor</span>
             : enPractica > 0
               ? <span className="cc-card__flag cc-card__flag--ok"><Ic n="check" s={10}/></span>
               : null}
@@ -100,6 +99,7 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
   onToggleCoord: (co: CoordResumen) => void
   onOpenCoord: (id: number) => void
 }) {
+  const navigate = useNavigate()
   const enPractica = c.fichas_en_practica
   const conInstr   = enPractica - c.fichas_sin_instructor
   const pct        = enPractica > 0 ? Math.round((conInstr / enPractica) * 100) : 0
@@ -203,6 +203,14 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
         <Btn size="sm" variant="ghost" icon="plus" onClick={onNuevaCoord}>Nueva</Btn>
       </div>
 
+      {coords.length > 0 && c.fichas_en_practica > 0 && coords.every(co => co.fichas_en_practica === 0) && (
+        <button type="button" className="cc-sin-catalogo" onClick={() => navigate('/dashboard/superadmin/integridad/catalogo')}>
+          <Ic n="info" s={14}/>
+          <span>Sus fichas en práctica todavía no están en ninguna coordinación: se asignan definiendo las reglas del catálogo del centro.</span>
+          <span className="cc-sin-catalogo__ir">Ir al catálogo <Ic n="chevronRight" s={12}/></span>
+        </button>
+      )}
+
       {coords.length === 0 ? (
         <div className="cc-empty">
           Este centro aún no tiene coordinaciones. Crea la primera para abrir fichas y asignar instructores.
@@ -214,8 +222,8 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
               <button className="cc-coord__main" onClick={() => onOpenCoord(co.id)} title="Ver detalle de la coordinación">
                 <span className="cc-coord__dot" style={{ background: co.activa ? '#16a34a' : '#a1a1aa' }}/>
                 <span className="cc-coord__body">
-                  <span className="cc-coord__name">
-                    {co.nombre}
+                  <span className="cc-coord__name" title={co.nombre}>
+                    {co.nombre.replace(/^Coordinaci[oó]n Acad[eé]mica de /i, '')}
                     {!co.activa && <Bdg tone="neutral">Inactiva</Bdg>}
                   </span>
                   <span className="cc-coord__who">{co.coordinador_nombre ?? 'Sin coordinador asignado'}</span>

@@ -5,23 +5,15 @@
   max-width: 1240px;
 }
 
-/* ─── Layout: contenido + panel de centros a la derecha ───────────────── */
+/* ─── Layout: centros arriba (también filtran) + tabla a todo el ancho ─── */
 .prog-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
   align-items: start;
 }
 
-.prog-layout__aside {
-  position: sticky;
-  top: 12px;
-}
-
-@media (max-width: 1000px) {
-  .prog-layout { grid-template-columns: 1fr; }
-  .prog-layout__aside { position: static; order: -1; }
-}
+.prog-layout__aside { order: -1; }
 
 /* ─── Panel de centros (2×2 compacto, también es el filtro por centro) ─── */
 .prog-centros__head {
@@ -35,14 +27,9 @@
 
 .prog-centros {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
 }
-
-@media (max-width: 1000px) {
-  .prog-centros { grid-template-columns: repeat(4, 1fr); }
-}
-@media (max-width: 620px) { .prog-centros { grid-template-columns: 1fr 1fr; } }
 
 .prog-centro-card {
   display: flex;

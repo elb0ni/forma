@@ -215,10 +215,11 @@ export function ProgresoPracticaPopover({ a, badge, modalidad, ancla, onClose }:
 }
 
 // Versión fija (sin portal ni hover) para el detalle de la etapa productiva,
-// donde la etapa y sus momentos ya están cargados.
+// donde la etapa y sus momentos ya están cargados. `etapa` null: al crear la
+// etapa, cuando todavía no existe.
 export function ProgresoPracticaTarjeta(props: {
   a: AprendizPractica
-  etapa: EtapaConSeguimientos
+  etapa: EtapaConSeguimientos | null
   badge: { label: string; tone: 'ok' | 'err' | 'warn' | 'accent' | 'neutral' | 'blue' }
   modalidad: string | null
 }) {

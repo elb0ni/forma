@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useNavigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Ic, Card, Ava, Btn, Tag, Pager, Tip } from '../../components/ui'
 import api from '../../lib/api'
+import { useAuthStore } from '../../store/auth'
 import { FichaForm } from './FichaForm'
 import type { FichaEdit } from './FichaForm'
 import { jornadaLabel, centroLabel } from './parts'
@@ -36,6 +37,16 @@ export interface FichaRow {
   etapa_actual_teorica:      string | null
   sede:                      string | null
   jornada:                   string | null
+  // Vienen en f.* de GET /fichas; opcionales porque otras vistas arman FichaRow a mano.
+  nivel_formacion?:          string | null
+  modalidad_formacion?:      string | null
+  sofia_municipio?:          string | null
+  sofia_jornada?:            string | null
+  sofia_total_activos?:      number | null   // aprendices activos según el PE-04
+  // Último reporte de juicios del scraper (null si la ficha no se ha consultado).
+  juicios_fecha?:            string | null
+  aprendices_pueden?:        number | null   // activos que ya pueden iniciar práctica
+  aprendices_no_pueden?:     number | null   // activos a los que aún les falta lectiva
 }
 
 type ListState =
@@ -195,8 +206,8 @@ const VACIO_AL_FINAL: Partial<Record<FichaSortCol, (f: FichaRow) => boolean>> = 
   cierre:     f => !f.fecha_fin_productiva,
 }
 
-const TH_S = { padding: '10px 14px', textAlign: 'left' as const, fontWeight: 600 }
-const TD_S = { padding: '12px 14px' }
+const TH_S = { padding: '10px 11px', textAlign: 'left' as const, fontWeight: 600 }
+const TD_S = { padding: '12px 11px' }
 
 // ─── Detalle de ficha (read-only: instructor de práctica + roster de aprendices) ─
 // Independientemente de si la ficha ya entró a etapa productiva o todavía
@@ -247,6 +258,8 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
   id: number; onBack: () => void; onEditar: () => void; onOpenEtapa: (etapaId: number) => void
 }) {
   "use no memo"
+  // El coordinador no edita la ficha: solo asigna instructores.
+  const esCoordinador = useAuthStore(s => s.user?.rol) === 'COORD_ACADEMICO'
   const [state, setState] = useState<DetState>({ status: 'loading' })
 
   useEffect(() => {
@@ -317,11 +330,11 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
             {instructor_practica ? (
               <span style={{ color: '#3f3f46' }}>Instructor de práctica: <strong>{instructor_practica.nombre}</strong> · desde {fd(instructor_practica.fecha_inicio)}</span>
             ) : (
-              <span style={{ color: '#a16207' }}>Sin instructor de práctica asignado -- asígnalo desde "Editar ficha y asignaciones".</span>
+              <span style={{ color: '#a16207' }}>Sin instructor de práctica asignado -- asígnalo desde "{esCoordinador ? 'Asignar instructores' : 'Editar ficha y asignaciones'}".</span>
             )}
           </div>
         </div>
-        <Btn variant="accent" icon="users" onClick={onEditar}>Editar ficha y asignaciones</Btn>
+        <Btn variant="accent" icon="users" onClick={onEditar}>{esCoordinador ? 'Asignar instructores' : 'Editar ficha y asignaciones'}</Btn>
       </div>
 
       {/* Distribución de los aprendices entre los 5 estados de práctica */}
@@ -358,6 +371,9 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
 function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: number } }) {
   "use no memo"
   const navigate = useNavigate()
+  // El coordinador no crea ni edita fichas (solo el super admin): su acción
+  // sobre una ficha es asignar el instructor de práctica.
+  const esCoordinador = useAuthStore(s => s.user?.rol) === 'COORD_ACADEMICO'
   // Por defecto se ven las fichas "activas" (en práctica + en cierre) -- lo que
   // FORMA gestiona a diario. Próximas y finalizadas quedan a un clic dentro del
   // panel de filtros.
@@ -566,7 +582,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
             </span>
           </div>
         </div>
-        <Btn variant="accent" icon="plus" onClick={() => navigate('nueva', { relative: 'path' })}>Crear ficha</Btn>
+        {!esCoordinador && <Btn variant="accent" icon="plus" onClick={() => navigate('nueva', { relative: 'path' })}>Crear ficha</Btn>}
       </div>
 
       {/* Barra: búsqueda siempre visible + botón que despliega el panel de filtros */}
@@ -715,7 +731,8 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
       {state.status === 'ok' && filtered.length > 0 && (
         <>
         <Card style={{ overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>{theadRow}</thead>
             <tbody>
               {pageItems.map(f => (
@@ -731,17 +748,17 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
                       <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: '#0a0a0b' }}>{f.numero_ficha}</span>
                     </div>
                     {(f.centro_nombre || f.coordinacion_nombre) && (
-                      <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 3 }}>
-                        {[f.centro_nombre && centroLabel(f.centro_nombre), f.coordinacion_nombre].filter(Boolean).join(' · ')}
+                      <div
+                        title={[f.centro_nombre, f.coordinacion_nombre].filter(Boolean).join(' · ')}
+                        style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 3, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      >
+                        {f.centro_nombre ? centroLabel(f.centro_nombre) : f.coordinacion_nombre}
                       </div>
                     )}
                   </td>
                   <td style={TD_S}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <Tag>{programaShort(f.programa_nombre)}</Tag>
-                      <span style={{ color: '#18181b', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {f.programa_nombre}
-                      </span>
+                    <div title={f.programa_nombre} style={{ color: '#18181b', maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {f.programa_nombre}
                     </div>
                     <div style={{ fontSize: 10.5, color: '#52525b', marginTop: 3 }}>
                       {[f.jornada, f.sede].filter(Boolean).join(' · ') || '—'}
@@ -751,7 +768,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
                     {f.coordinador_nombre ? (
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <Ava name={f.coordinador_nombre} size={22}/>
-                        <span style={{ fontSize: 12, color: '#27272a', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span title={f.coordinador_nombre} style={{ fontSize: 12, color: '#27272a', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {f.coordinador_nombre}
                         </span>
                       </div>
@@ -763,7 +780,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
                     {f.instructor_practica ? (
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <Ava name={f.instructor_practica} size={22}/>
-                        <span style={{ fontSize: 12, color: '#27272a', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span title={f.instructor_practica} style={{ fontSize: 12, color: '#27272a', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {f.instructor_practica}
                         </span>
                       </div>
@@ -796,17 +813,18 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
                   <td style={TD_S}><FasePill fase={faseFicha(f)}/></td>
                   <td style={{ ...TD_S, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                     <button
-                      title="Editar ficha"
+                      title={esCoordinador ? 'Asignar instructores' : 'Editar ficha'}
                       onClick={() => navigate(`${f.id}/editar`, { relative: 'path' })}
                       style={{ width: 28, height: 28, borderRadius: 6, background: 'none', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', color: '#71717a' }}
                     >
-                      <Ic n="edit" s={13}/>
+                      <Ic n={esCoordinador ? 'users' : 'edit'} s={13}/>
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
         <Pager
           page={curPage}
@@ -859,6 +877,8 @@ function FichaDetalleRoute() {
 function FichaCrearRoute({ scope }: { scope?: Scope }) {
   "use no memo"
   const navigate = useNavigate()
+  const esCoordinador = useAuthStore(s => s.user?.rol) === 'COORD_ACADEMICO'
+  if (esCoordinador) return <Navigate to=".." relative="path" replace/>
   return (
     <FichaForm
       ficha={null}

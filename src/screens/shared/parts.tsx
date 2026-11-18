@@ -28,7 +28,10 @@ export function statusFromAvance(avance: number): StatusTone {
 
 export function fd(s: string | null | undefined): string {
   if (!s) return '—'
-  const d = new Date(s)
+  // "2026-10-01" sola es una fecha de calendario: new Date() la leería como
+  // medianoche UTC, que en Colombia (UTC-5) todavía es el día anterior.
+  const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  const d = soloFecha ? new Date(+soloFecha[1], +soloFecha[2] - 1, +soloFecha[3]) : new Date(s)
   if (isNaN(d.getTime())) return '—'
   return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
 }

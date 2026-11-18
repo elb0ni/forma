@@ -343,3 +343,10 @@
   border: 1px dashed #e4e4e7;
   border-radius: 10px;
 }
+.cc-card__flag:not(.cc-card__flag--ok) { padding: 0 8px; height: 20px; font-family: inherit; font-size: 11px; font-weight: 600; white-space: nowrap; background: #fff7ed; color: #c2410c; }
+.cc-sin-catalogo {
+  display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 10px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid #c7d2fe; background: #eef2ff; font: inherit; font-size: 12.5px; color: #3730a3; text-align: left; cursor: pointer;
+}
+.cc-sin-catalogo > span:nth-child(2) { flex: 1; }
+.cc-sin-catalogo__ir { display: inline-flex; align-items: center; gap: 2px; font-weight: 600; white-space: nowrap; }
