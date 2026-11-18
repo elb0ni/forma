@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useNavigate, useParams } from 'react-router-dom'
+import type { CSSProperties } from 'react'
+import { Routes, Route, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { Ic, Card, Ava, Btn, Pager, Modal } from '../../components/ui'
+import { AprendicesSeguimiento } from './AprendicesSeguimiento'
+import './UsuariosVista.css'
 import api from '../../lib/api'
 import { UsuarioForm } from './UsuarioForm'
 import type { UsuarioEdit } from './UsuarioForm'
@@ -26,6 +29,10 @@ interface UsuarioRow {
   fichas_practica:           number | null   // asignaciones de práctica activas (fichas)
   etapas_activas:            number | null   // aprendices con etapa productiva en ejecución
   seguimientos:              number | null   // seguimientos registrados en total
+  seguimientos_30d:          number | null
+  ultimo_seguimiento:        string | null
+  fichas_coordinacion:       number | null   // solo coordinadores: fichas en ejecución de su coordinación
+  semaforo:                  'ACTIVO' | 'TIBIO' | 'INACTIVO' | 'NUNCA_ENTRO' | null
 }
 
 type ListState =
@@ -33,53 +40,23 @@ type ListState =
   | { status: 'ok'; data: UsuarioRow[] }
   | { status: 'error' }
 
-type Grupo = 'todos' | 'instructor' | 'coordinador' | 'admin'
+type Grupo = 'instructor' | 'coordinador' | 'admin'
 
-const PAGE_SIZE = 10
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function Sk({ w, h, r = 5 }: { w: string | number; h: number; r?: number }) {
-  return <div className="skeleton" style={{ width: w, height: h, borderRadius: r }}/>
-}
-
-function rolGrupo(rol: string): Exclude<Grupo, 'todos'> | 'otro' {
+function rolGrupo(rol: string): Grupo | 'otro' {
   if (rol === 'INSTRUCTOR')  return 'instructor'
   if (rol === 'SUPER_ADMIN') return 'admin'
-  if (rol === 'COORD_ACADEMICO' || rol === 'COORD_MISIONAL' || rol === 'SUBDIRECTOR') return 'coordinador'
+  if (rol === 'COORD_ACADEMICO') return 'coordinador'
   return 'otro'
 }
 
 const ROL_LABEL: Record<string, string> = {
   SUPER_ADMIN:     'Super Admin',
-  SUBDIRECTOR:     'Subdirector',
-  COORD_MISIONAL:  'Coord. Misional',
   COORD_ACADEMICO: 'Coordinador',
   INSTRUCTOR:      'Instructor',
-}
-
-function rolBadgeStyle(rol: string) {
-  const g = rolGrupo(rol)
-  if (g === 'admin')       return { bg: '#0a0a0b', fg: '#ffffff' }
-  if (g === 'coordinador') return { bg: '#eef2ff', fg: '#312e81' }
-  return { bg: '#f1f1f3', fg: '#27272a' }
-}
-
-function fmtDoc(d: string): string {
-  return /^\d+$/.test(d) ? Number(d).toLocaleString('es-CO') : d
-}
-
-function fmtAcceso(s: string | null): string {
-  if (!s) return 'Nunca'
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return '—'
-  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  const now = new Date()
-  const yest = new Date(now); yest.setDate(now.getDate() - 1)
-  if (d.toDateString() === now.toDateString())  return `Hoy · ${hm}`
-  if (d.toDateString() === yest.toDateString()) return `Ayer · ${hm}`
-  return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]} · ${hm}`
 }
 
 function isActivo(u: UsuarioRow): boolean {
@@ -138,22 +115,119 @@ function toUsuarioEdit(u: UsuarioRow): UsuarioEdit {
   }
 }
 
-const THEAD: { label: string; right?: boolean }[] = [
-  { label: 'Persona' }, { label: 'Centro · coordinación' }, { label: 'Rol' },
-  { label: 'Estado' }, { label: 'Último acceso' }, { label: 'Acciones', right: true },
-]
-const TH_S = { padding: '10px 16px', fontWeight: 600 }
-const TD_S = { padding: '12px 16px' }
-
 // ─── Lista ───────────────────────────────────────────────────────────────────────
+// Tres vistas: instructores (con su actividad real en FORMA), coordinación y
+// admins, y aprendices (que no inician sesión pero se siguen igual). Arriba, el
+// pulso de la plataforma.
+
+type Vista = 'instructores' | 'equipo' | 'aprendices'
+type Semaforo = 'ACTIVO' | 'TIBIO' | 'INACTIVO' | 'NUNCA_ENTRO'
+
+const SEMAFORO: Record<Semaforo, { label: string; color: string; sub: string }> = {
+  ACTIVO:      { label: 'Activo',      color: '#16a34a', sub: 'Entra y registra seguimientos' },
+  TIBIO:       { label: 'Tibio',       color: '#f59e0b', sub: 'Entra, pero no registra hace más de 2 semanas' },
+  INACTIVO:    { label: 'Inactivo',    color: '#e11d48', sub: 'No entra hace un mes o tiene aprendices sin registros' },
+  NUNCA_ENTRO: { label: 'Nunca entró', color: '#a1a1aa', sub: 'Todavía no ha iniciado sesión' },
+}
+
+interface Resumen {
+  instructores: { total: number; entraron: number; activos_7d: number; con_aprendices: number }
+  coordinadores: { total: number; entraron: number; activos_7d: number }
+  aprendices_en_practica: number
+  seguimientos_30d: number
+  sin_firmar: number
+  seguimientos_por_semana: { semana: string; n: number }[]
+}
+
+interface AvanceInstructor {
+  instructor_id: string; aprendices: number; progreso_promedio: number
+  planeacion: number; seguimiento: number; evaluacion: number; certificacion: number
+}
+
+const PAGE = 15
+const num = (x: number) => x.toLocaleString('es-CO')
+
+// "Hoy", "Ayer", "Hace 5 días", "Hace 3 semanas", o la fecha.
+function hace(s: string | null): string {
+  if (!s) return 'Nunca'
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return '—'
+  const dias = Math.floor((Date.now() - d.getTime()) / 864e5)
+  if (dias <= 0) return 'Hoy'
+  if (dias === 1) return 'Ayer'
+  if (dias < 14) return `Hace ${dias} días`
+  if (dias < 60) return `Hace ${Math.floor(dias / 7)} semanas`
+  return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`
+}
+
+function AnilloMini({ valor, total, color }: { valor: number; total: number; color: string }) {
+  const [listo, setListo] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setListo(true)); return () => cancelAnimationFrame(r) }, [])
+  const r = 26, c = 2 * Math.PI * r, p = total ? valor / total : 0
+  return (
+    <svg width={64} height={64} viewBox="0 0 64 64" className="us-anillo" aria-hidden>
+      <circle cx={32} cy={32} r={r} fill="none" stroke="#eef0f5" strokeWidth={7}/>
+      <circle cx={32} cy={32} r={r} fill="none" stroke={color} strokeWidth={7} strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={listo ? c * (1 - p) : c} transform="rotate(-90 32 32)"/>
+      <text x={32} y={36} textAnchor="middle">{Math.round(p * 100)}%</text>
+    </svg>
+  )
+}
+
+function Pulso({ r }: { r: Resumen }) {
+  const max = Math.max(1, ...r.seguimientos_por_semana.map(s => s.n))
+  return (
+    <div className="us-pulso">
+      <div className="us-pulso__card" style={{ animationDelay: '0ms' }}>
+        <AnilloMini valor={r.instructores.entraron} total={r.instructores.total} color="#6366f1"/>
+        <div>
+          <div className="us-pulso__titulo">Instructores que han entrado</div>
+          <div className="us-pulso__valor">{num(r.instructores.entraron)} <small>de {num(r.instructores.total)}</small></div>
+          <div className="us-pulso__sub">{num(r.instructores.activos_7d)} activos esta semana</div>
+        </div>
+      </div>
+      <div className="us-pulso__card" style={{ animationDelay: '70ms' }}>
+        <AnilloMini valor={r.coordinadores.entraron} total={r.coordinadores.total} color="#0ea5a4"/>
+        <div>
+          <div className="us-pulso__titulo">Coordinadores que han entrado</div>
+          <div className="us-pulso__valor">{num(r.coordinadores.entraron)} <small>de {num(r.coordinadores.total)}</small></div>
+          <div className="us-pulso__sub">{num(r.coordinadores.activos_7d)} activos esta semana</div>
+        </div>
+      </div>
+      <div className="us-pulso__card" style={{ animationDelay: '140ms' }}>
+        <span className="us-pulso__icono"><Ic n="briefcase" s={20}/></span>
+        <div>
+          <div className="us-pulso__titulo">Aprendices en práctica</div>
+          <div className="us-pulso__valor">{num(r.aprendices_en_practica)}</div>
+          <div className="us-pulso__sub">con {num(r.instructores.con_aprendices)} instructores asignados</div>
+        </div>
+      </div>
+      <div className="us-pulso__card" style={{ animationDelay: '210ms' }}>
+        <div className="us-spark" aria-hidden>
+          {r.seguimientos_por_semana.map(s => <span key={s.semana} style={{ height: `${Math.max(6, (s.n / max) * 100)}%` }} title={`Semana del ${s.semana}: ${s.n}`}/>)}
+        </div>
+        <div>
+          <div className="us-pulso__titulo">Seguimientos · 30 días</div>
+          <div className="us-pulso__valor">{num(r.seguimientos_30d)}</div>
+          <div className="us-pulso__sub">{r.sin_firmar ? `${num(r.sin_firmar)} realizados sin firmar` : 'Todos firmados'}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function UsuariosList() {
   "use no memo"
   const navigate = useNavigate()
-  const [grupo, setGrupo] = useState<Grupo>('todos')
+  const [params, setParams] = useSearchParams()
+  const vista = (params.get('vista') as Vista | null) ?? 'instructores'
+  const [semaforo, setSemaforo] = useState<Semaforo | ''>('')
   const [search, setSearch] = useState('')
   const [centroFilt, setCentroFilt] = useState('')
   const [state, setState] = useState<ListState>({ status: 'loading' })
+  const [resumen, setResumen] = useState<Resumen | null>(null)
+  // Rendimiento visto desde sus aprendices: avance promedio de su proceso.
+  const [avance, setAvance] = useState<Map<string, AvanceInstructor>>(new Map())
   const [page,  setPage]  = useState(0)
   const [reloadKey, setReloadKey] = useState(0)
   const [modal, setModal] = useState<UsuarioModal>(null)
@@ -162,13 +236,19 @@ function UsuariosList() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
-    setState({ status: 'loading' })
     api.get<UsuarioRow[]>('/usuarios')
       .then(r => setState({ status: 'ok', data: r.data }))
       .catch(() => setState({ status: 'error' }))
   }, [reloadKey])
+  useEffect(() => {
+    api.get<Resumen>('/usuarios/resumen').then(r => setResumen(r.data)).catch(() => setResumen(null))
+    api.get<AvanceInstructor[]>('/aprendices/avance-instructores')
+      .then(r => setAvance(new Map(r.data.map(x => [x.instructor_id, x]))))
+      .catch(() => setAvance(new Map()))
+  }, [reloadKey])
 
   function reload() { setReloadKey(k => k + 1) }
+  function irA(v: Vista) { setParams(v === 'instructores' ? {} : { vista: v }); setPage(0); setSearch('') }
 
   async function runAction(fn: () => Promise<void>) {
     setBusy(true); setActionError(null)
@@ -201,323 +281,214 @@ function UsuariosList() {
     })
   }
 
-  useEffect(() => { setPage(0) }, [grupo, search, centroFilt])
-
-  const all       = state.status === 'ok' ? state.data : []
-  const activos   = all.filter(isActivo).length
-  const inactivos = all.length - activos
-  const instrConPractica = all.filter(u => (u.fichas_practica ?? 0) > 0).length
-  const [corte30d] = useState(() => Date.now() - 30 * 86400000)
-  const sinAcceso = all.filter(u => isActivo(u) && (!u.ultimo_acceso || new Date(u.ultimo_acceso).getTime() < corte30d)).length
-
-  const centrosDisponibles = [...new Set(all.map(u => u.centro_nombre).filter((n): n is string => !!n))]
+  const all = state.status === 'ok' ? state.data : []
+  const instructores = all.filter(u => u.rol === 'INSTRUCTOR')
+  const equipo = all.filter(u => u.rol !== 'INSTRUCTOR')
+  const base = vista === 'instructores' ? instructores : equipo
+  const centrosDisponibles = [...new Set(base.map(u => u.centro_nombre).filter((c): c is string => !!c))]
     .sort((a, b) => a.localeCompare(b, 'es'))
-
-  const TABS: { key: Grupo; label: string; count: number }[] = [
-    { key: 'todos',       label: 'Todos',         count: all.length },
-    { key: 'instructor',  label: 'Instructores',  count: all.filter(u => rolGrupo(u.rol) === 'instructor').length },
-    { key: 'coordinador', label: 'Coordinadores', count: all.filter(u => rolGrupo(u.rol) === 'coordinador').length },
-    { key: 'admin',       label: 'Admins',        count: all.filter(u => rolGrupo(u.rol) === 'admin').length },
-  ]
+  const cuentaSem = (s: Semaforo) => instructores.filter(u => isActivo(u) && u.semaforo === s).length
 
   const q = search.trim().toLowerCase()
-  const filtered = all.filter(u => {
-    if (grupo !== 'todos' && rolGrupo(u.rol) !== grupo) return false
-    if (centroFilt && u.centro_nombre !== centroFilt) return false
-    if (q
-      && !u.nombre_completo.toLowerCase().includes(q)
-      && !u.email.toLowerCase().includes(q)
-      && !u.numero_documento.toLowerCase().includes(q)) return false
-    return true
-  })
-  const pageCount = Math.ceil(filtered.length / PAGE_SIZE)
+  const filtered = base
+    .filter(u => vista !== 'instructores' || !semaforo || (isActivo(u) && u.semaforo === semaforo))
+    .filter(u => !centroFilt || u.centro_nombre === centroFilt)
+    .filter(u => !q
+      || u.nombre_completo.toLowerCase().includes(q)
+      || u.email.toLowerCase().includes(q)
+      || u.numero_documento.toLowerCase().includes(q)
+      || (u.coordinacion_nombre ?? '').toLowerCase().includes(q))
+    .sort((a, b) => Number(isActivo(b)) - Number(isActivo(a))
+      || (vista === 'instructores' ? (b.etapas_activas ?? 0) - (a.etapas_activas ?? 0) : 0)
+      || a.nombre_completo.localeCompare(b.nombre_completo, 'es'))
+  const pageCount = Math.ceil(filtered.length / PAGE)
   const curPage   = Math.min(page, Math.max(0, pageCount - 1))
-  const pageItems = filtered.slice(curPage * PAGE_SIZE, (curPage + 1) * PAGE_SIZE)
+  const pageItems = filtered.slice(curPage * PAGE, (curPage + 1) * PAGE)
 
-  const theadRow = (
-    <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
-      {THEAD.map(h => <th key={h.label} style={{ ...TH_S, textAlign: h.right ? 'right' : 'left' }}>{h.label}</th>)}
-    </tr>
+  const acciones = (u: UsuarioRow) => (
+    <div className="us-acciones" onClick={e => e.stopPropagation()}>
+      {u.rol === 'INSTRUCTOR' && avance.has(u.id) &&
+        <IconBtn icon="eye" title="Ver sus aprendices" color="#4f46e5" onClick={() => { setParams({ vista: 'aprendices', instructor: u.id }); setPage(0) }}/>}
+      {(u.rol === 'INSTRUCTOR' || u.rol === 'COORD_ACADEMICO') &&
+        <IconBtn icon="fileText" title="Firma" color="#7c3aed" onClick={() => setFirmaUser(u)}/>}
+      <IconBtn icon="edit" title="Editar" onClick={() => navigate(`${u.id}/editar`, { relative: 'path' })}/>
+      <IconBtn icon="key" title="Restablecer contraseña" onClick={() => { setActionError(null); setModal({ kind: 'reset', u }) }}/>
+      {isActivo(u)
+        ? <IconBtn icon="x" title="Desactivar" color="#b91c1c" onClick={() => { setActionError(null); setModal({ kind: 'desactivar', u }) }}/>
+        : <IconBtn icon="check" title="Activar" color="#15803d" onClick={() => { setActionError(null); setModal({ kind: 'activar', u }) }}/>}
+    </div>
   )
 
   return (
-    <div>
+    <div className="us">
       {firmaUser && (
         <FirmaModal userId={firmaUser.id} nombre={firmaUser.nombre_completo} onClose={() => setFirmaUser(null)}/>
       )}
-      {/* Modales de acciones */}
       {modal?.kind === 'desactivar' && (
         <Modal title="Desactivar usuario" icon="alert" onClose={() => setModal(null)}
           footer={<>
             <Btn variant="ghost" onClick={() => setModal(null)} disabled={busy}>Cancelar</Btn>
             <Btn variant="danger" onClick={() => doDesactivar(modal.u)} disabled={busy}>{busy ? 'Desactivando…' : 'Desactivar'}</Btn>
           </>}>
-          <p style={{ fontSize: 13.5, color: '#3f3f46', lineHeight: 1.5 }}>
-            <strong>{modal.u.nombre_completo}</strong> ya no podrá iniciar sesión. Puedes reactivarlo después.
-          </p>
-          {actionError && <div style={{ marginTop: 10, fontSize: 12.5, color: '#b91c1c' }}>{actionError}</div>}
+          <p className="us-modal-txt"><strong>{modal.u.nombre_completo}</strong> ya no podrá iniciar sesión. Puedes reactivarlo después.</p>
+          {actionError && <div className="us-modal-err">{actionError}</div>}
         </Modal>
       )}
-
       {modal?.kind === 'activar' && (
         <Modal title="Activar usuario" icon="checkCircle" onClose={() => setModal(null)}
           footer={<>
             <Btn variant="ghost" onClick={() => setModal(null)} disabled={busy}>Cancelar</Btn>
             <Btn variant="accent" onClick={() => doActivar(modal.u)} disabled={busy}>{busy ? 'Activando…' : 'Activar'}</Btn>
           </>}>
-          <p style={{ fontSize: 13.5, color: '#3f3f46', lineHeight: 1.5 }}>
-            Se reactivará el acceso de <strong>{modal.u.nombre_completo}</strong>.
-          </p>
-          {actionError && <div style={{ marginTop: 10, fontSize: 12.5, color: '#b91c1c' }}>{actionError}</div>}
+          <p className="us-modal-txt">Se reactivará el acceso de <strong>{modal.u.nombre_completo}</strong>.</p>
+          {actionError && <div className="us-modal-err">{actionError}</div>}
         </Modal>
       )}
-
       {modal?.kind === 'reset' && (
         <Modal title="Restablecer contraseña" icon="key" onClose={() => setModal(null)}
           footer={<>
             <Btn variant="ghost" onClick={() => setModal(null)} disabled={busy}>Cancelar</Btn>
             <Btn variant="accent" onClick={() => doReset(modal.u)} disabled={busy}>{busy ? 'Generando…' : 'Generar contraseña'}</Btn>
           </>}>
-          <p style={{ fontSize: 13.5, color: '#3f3f46', lineHeight: 1.5 }}>
-            Se generará una contraseña temporal para <strong>{modal.u.nombre_completo}</strong>. Deberá cambiarla en su primer acceso.
-          </p>
-          {actionError && <div style={{ marginTop: 10, fontSize: 12.5, color: '#b91c1c' }}>{actionError}</div>}
+          <p className="us-modal-txt">Se generará una contraseña temporal para <strong>{modal.u.nombre_completo}</strong>. Deberá cambiarla en su primer acceso.</p>
+          {actionError && <div className="us-modal-err">{actionError}</div>}
         </Modal>
       )}
-
       {modal?.kind === 'reset-done' && (
         <Modal title="Contraseña temporal generada" icon="checkCircle" onClose={() => setModal(null)}
           footer={<Btn variant="accent" onClick={() => setModal(null)}>Listo</Btn>}>
-          <p style={{ fontSize: 13, color: '#52525b', lineHeight: 1.5, marginBottom: 12 }}>
-            Comparte esta contraseña con <strong>{modal.u.nombre_completo}</strong>. No volverá a mostrarse.
-          </p>
+          <p className="us-modal-txt" style={{ marginBottom: 12 }}>Comparte esta contraseña con <strong>{modal.u.nombre_completo}</strong>. No volverá a mostrarse.</p>
           <CopyField value={modal.password}/>
         </Modal>
       )}
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+      <header className="us-cab">
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>Usuarios</h2>
-          <div style={{ fontSize: 13, color: '#52525b', marginTop: 4 }}>
-            {state.status === 'ok' ? `${activos} activos · ${inactivos} inactivos` : ' '}
-          </div>
+          <h2>Usuarios</h2>
+          <p>Quién usa FORMA, cómo va su trabajo y cómo van los aprendices.</p>
         </div>
         <Btn variant="accent" icon="plus" onClick={() => navigate('nuevo', { relative: 'path' })}>Crear usuario</Btn>
-      </div>
+      </header>
 
-      {/* KPIs */}
-      {state.status === 'ok' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 18 }}>
-          {([
-            ['Activos', activos, '#15803d', 'usuarios que pueden iniciar sesión'],
-            ['Inactivos', inactivos, '#71717a', 'sin acceso a la plataforma'],
-            ['Instructores con práctica', instrConPractica, '#4f46e5', 'con ficha de seguimiento asignada'],
-            ['Sin acceso ≥30 días', sinAcceso, sinAcceso > 0 ? '#c2410c' : '#71717a', 'activos que no entran hace un mes'],
-          ] as const).map(([label, value, color, sub]) => (
-            <Card key={label} style={{ padding: 13 }}>
-              <div style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#71717a', fontWeight: 600 }}>{label}</div>
-              <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 22, fontWeight: 600, color, marginTop: 5 }}>{value}</div>
-              <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 2 }}>{sub}</div>
-            </Card>
-          ))}
-        </div>
-      )}
+      {resumen && <Pulso r={resumen}/>}
 
-      {/* Tabs por rol + búsqueda + centro */}
-      {state.status === 'ok' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-        <div style={{ display: 'inline-flex', background: '#f1f1f3', borderRadius: 8, padding: 2, border: '1px solid #e4e4e7' }}>
-          {TABS.map(t => {
-            const active = grupo === t.key
-            return (
-              <button
-                key={t.key}
-                onClick={() => setGrupo(t.key)}
-                style={{
-                  height: 28, padding: '0 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                  background: active ? '#fff' : 'transparent',
-                  color: active ? '#0a0a0b' : '#52525b',
-                  fontSize: 12.5, fontWeight: 500, fontFamily: 'Inter, sans-serif',
-                  boxShadow: active ? '0 1px 2px rgba(0,0,0,.05)' : undefined,
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                }}
-              >
-                {t.label}
-                <span style={{ fontSize: 10.5, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>{t.count}</span>
-              </button>
-            )
-          })}
-        </div>
+      <nav className="us-vistas">
+        {([
+          ['instructores', 'Instructores', instructores.length, 'user'],
+          ['equipo', 'Coordinación y admins', equipo.length, 'shield'],
+          ['aprendices', 'Aprendices', null, 'users'],
+        ] as const).map(([id, label, cuenta, icon]) => (
+          <button key={id} type="button" className={`us-vista${vista === id ? ' us-vista--activa' : ''}`} onClick={() => irA(id)}>
+            <Ic n={icon} s={14}/> {label}{cuenta != null && state.status === 'ok' && <span>{cuenta}</span>}
+          </button>
+        ))}
+      </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Ic n="search" s={14} style={{ position: 'absolute', left: 10, color: '#a1a1aa', pointerEvents: 'none' }}/>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar nombre, correo o documento…"
-              style={{ width: 240, maxWidth: '100%', height: 32, padding: '0 10px 0 30px', border: '1px solid #e4e4e7', borderRadius: 8, fontSize: 12.5, color: '#18181b', fontFamily: 'Inter, sans-serif', outline: 'none', background: '#fff' }}
-            />
-          </div>
-          {centrosDisponibles.length > 1 && (
-            <select
-              value={centroFilt}
-              onChange={e => setCentroFilt(e.target.value)}
-              style={{ height: 32, padding: '0 10px', borderRadius: 8, fontSize: 12.5, background: '#fff', color: centroFilt ? '#4f46e5' : '#3f3f46', fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none', border: centroFilt ? '1.5px solid #4f46e5' : '1px solid #e4e4e7' }}
-            >
-              <option value="">Todos los centros</option>
-              {centrosDisponibles.map(c => <option key={c} value={c}>{centroLabel(c)}</option>)}
-            </select>
-          )}
-        </div>
-        </div>
-      )}
-
-      {state.status === 'loading' && (
-        <Card style={{ overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>{theadRow}</thead>
-            <tbody>
-              {[0, 1, 2, 3, 4].map(i => (
-                <tr key={i} style={{ borderBottom: '1px solid #f1f1f3' }}>
-                  <td style={TD_S}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Sk w={30} h={30} r={15}/>
-                      <Sk w={150} h={12}/>
-                    </div>
-                  </td>
-                  <td style={TD_S}><Sk w={100} h={12}/></td>
-                  <td style={TD_S}><Sk w={80} h={18} r={4}/></td>
-                  <td style={TD_S}><Sk w={64} h={18} r={4}/></td>
-                  <td style={TD_S}><Sk w={90} h={12}/></td>
-                  <td style={TD_S}/>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
-
-      {state.status === 'error' && (
-        <Card style={{ padding: 24 }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <Ic n="alert" s={15} style={{ color: '#b91c1c' }}/>
-            <span style={{ fontSize: 13.5, color: '#b91c1c' }}>No se pudo cargar la lista de usuarios.</span>
-          </div>
-        </Card>
-      )}
-
-      {state.status === 'ok' && filtered.length === 0 && (
-        <Card>
-          <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <Ic n="users" s={28} style={{ color: '#a1a1aa' }}/>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0b' }}>Sin usuarios</div>
-            <div style={{ fontSize: 12.5, color: '#71717a' }}>No hay usuarios en esta categoría.</div>
-          </div>
-        </Card>
-      )}
-
-      {state.status === 'ok' && filtered.length > 0 && (
+      {vista === 'aprendices' ? <AprendicesSeguimiento/> : (
         <>
-        <Card style={{ overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>{theadRow}</thead>
-            <tbody>
-              {pageItems.map(u => {
-                const rb           = rolBadgeStyle(u.rol)
-                const activo       = isActivo(u)
-                const esInstructor = rolGrupo(u.rol) === 'instructor'
+          {vista === 'instructores' && state.status === 'ok' && (
+            <div className="us-semaforos">
+              {(Object.keys(SEMAFORO) as Semaforo[]).map(s => (
+                <button key={s} type="button" title={SEMAFORO[s].sub}
+                  className={`us-sem${semaforo === s ? ' us-sem--activo' : ''}`}
+                  style={{ '--c': SEMAFORO[s].color } as CSSProperties}
+                  onClick={() => { setSemaforo(semaforo === s ? '' : s); setPage(0) }}>
+                  <i/> {SEMAFORO[s].label} <b>{cuentaSem(s)}</b>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="us-barra">
+            <label className="us-buscar">
+              <Ic n="search" s={14}/>
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} placeholder="Nombre, correo, documento o coordinación"/>
+            </label>
+            {centrosDisponibles.length > 1 && (
+              <select className="us-select" value={centroFilt} onChange={e => { setCentroFilt(e.target.value); setPage(0) }}>
+                <option value="">Todos los centros</option>
+                {centrosDisponibles.map(c => <option key={c} value={c}>{centroLabel(c)}</option>)}
+              </select>
+            )}
+          </div>
+
+          {state.status === 'loading' && <LoadingBlock/>}
+          {state.status === 'error' && <CenterState icon="alert" title="No se pudo cargar la lista de usuarios"/>}
+          {state.status === 'ok' && (
+            <div className="us-lista">
+              {filtered.length === 0 && <div className="us-vacio">Nadie en este filtro.</div>}
+              {pageItems.map((u, i) => {
+                const activo = isActivo(u)
+                if (vista === 'instructores') {
+                  const s = SEMAFORO[(u.semaforo ?? 'NUNCA_ENTRO') as Semaforo]
+                  return (
+                    <div key={u.id} className={`us-fila us-fila--instr${activo ? '' : ' us-fila--off'}`} style={{ animationDelay: `${i * 25}ms` }}
+                      onClick={() => navigate(String(u.id), { relative: 'path' })}>
+                      <div className="us-fila__quien">
+                        <Ava name={u.nombre_completo} size={34}/>
+                        <div>
+                          <div className="us-fila__nombre">{u.nombre_completo}</div>
+                          <div className="us-fila__meta">{u.coordinacion_nombre ? u.coordinacion_nombre.replace(/^Coordinaci[oó]n Acad[eé]mica de /i, '') : (u.centro_nombre ? centroLabel(u.centro_nombre) : u.email)}</div>
+                        </div>
+                      </div>
+                      <div className="us-dato">
+                        <b>{num(u.etapas_activas ?? 0)}</b>
+                        <span>aprendices{u.fichas_practica ? ` · ${u.fichas_practica} ficha${u.fichas_practica === 1 ? '' : 's'}` : ''}</span>
+                      </div>
+                      {(() => {
+                        const av = avance.get(u.id)
+                        return av ? (
+                          <div className="us-avance" title={`De ${av.aprendices} aprendices: ${av.planeacion} con planeación, ${av.seguimiento} con seguimiento, ${av.evaluacion} con evaluación, ${av.certificacion} certificados`}>
+                            <div className="us-avance__barra"><span style={{ width: `${av.progreso_promedio}%` }}/></div>
+                            <span><b>{av.progreso_promedio}%</b> avance de sus aprendices</span>
+                          </div>
+                        ) : (
+                          <div className="us-dato"><b className="us-gris">—</b><span>sin aprendices a cargo</span></div>
+                        )
+                      })()}
+                      <div className="us-dato">
+                        <b>{num(u.seguimientos_30d ?? 0)}</b>
+                        <span>seguimientos · 30 días</span>
+                      </div>
+                      <div className="us-dato">
+                        <b className={u.ultimo_acceso ? '' : 'us-gris'}>{hace(u.ultimo_acceso)}</b>
+                        <span>última conexión</span>
+                      </div>
+                      {activo
+                        ? <span className="us-sem-chip" style={{ '--c': s.color } as CSSProperties} title={s.sub}><i/>{s.label}</span>
+                        : <span className="us-sem-chip us-sem-chip--off">Desactivado</span>}
+                      {acciones(u)}
+                    </div>
+                  )
+                }
                 return (
-                  <tr
-                    key={u.id}
-                    className="nx-row"
-                    onClick={esInstructor ? () => navigate(String(u.id), { relative: 'path' }) : undefined}
-                    style={{ borderBottom: '1px solid #f1f1f3', cursor: esInstructor ? 'pointer' : 'default' }}
-                  >
-                    <td style={TD_S}>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <Ava name={u.nombre_completo} size={30}/>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 500, color: '#0a0a0b' }}>{u.nombre_completo}</div>
-                          <div style={{ fontSize: 11, color: '#52525b', marginTop: 2 }}>
-                            {u.email}
-                            <span style={{ color: '#c4c4c8' }}> · </span>
-                            <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{fmtDoc(u.numero_documento)}</span>
-                          </div>
-                          {esInstructor && (u.fichas_practica != null) && (
-                            <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 2, fontFamily: '"JetBrains Mono", monospace' }}>
-                              {u.fichas_practica} ficha{u.fichas_practica === 1 ? '' : 's'} · {u.etapas_activas ?? 0} en curso · {u.seguimientos ?? 0} seguimiento{(u.seguimientos ?? 0) === 1 ? '' : 's'}
-                            </div>
-                          )}
-                        </div>
+                  <div key={u.id} className={`us-fila us-fila--equipo${activo ? '' : ' us-fila--off'}`} style={{ animationDelay: `${i * 25}ms` }}>
+                    <div className="us-fila__quien">
+                      <Ava name={u.nombre_completo} size={34}/>
+                      <div>
+                        <div className="us-fila__nombre">{u.nombre_completo}</div>
+                        <div className="us-fila__meta">{u.email}</div>
                       </div>
-                    </td>
-                    <td style={TD_S}>
-                      {u.centro_nombre || u.coordinacion_nombre ? (
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 12, color: '#27272a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
-                            {u.centro_nombre ? centroLabel(u.centro_nombre) : '—'}
-                          </div>
-                          {u.coordinacion_nombre && (
-                            <div style={{ fontSize: 10.5, color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
-                              {u.coordinacion_nombre}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 12, color: '#c4c4c8' }}>—</span>
-                      )}
-                    </td>
-                    <td style={TD_S}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 6px',
-                        fontSize: 10.5, fontWeight: 700, borderRadius: 4, background: rb.bg, color: rb.fg,
-                        textTransform: 'uppercase', letterSpacing: '0.03em',
-                      }}>
-                        {ROL_LABEL[u.rol] ?? u.rol}
-                      </span>
-                    </td>
-                    <td style={TD_S}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6, height: 20, padding: '0 7px',
-                        fontSize: 10.5, fontWeight: 600, borderRadius: 4, textTransform: 'uppercase',
-                        background: activo ? '#dcfce7' : '#f1f1f3', color: activo ? '#15803d' : '#52525b',
-                      }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: activo ? '#16a34a' : '#a1a1aa' }}/>
-                        {activo ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#52525b', whiteSpace: 'nowrap' }}>
-                      {fmtAcceso(u.ultimo_acceso)}
-                    </td>
-                    <td style={{ ...TD_S, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', gap: 4 }}>
-                        {esInstructor && <IconBtn icon="eye" title="Ver progreso" color="#4f46e5" onClick={() => navigate(String(u.id), { relative: 'path' })}/>}
-                        {(u.rol === 'INSTRUCTOR' || u.rol === 'COORD_ACADEMICO') &&
-                          <IconBtn icon="fileText" title="Firma" color="#7c3aed" onClick={() => setFirmaUser(u)}/>}
-                        <IconBtn icon="edit" title="Editar" onClick={() => navigate(`${u.id}/editar`, { relative: 'path' })}/>
-                        <IconBtn icon="key" title="Restablecer contraseña" onClick={() => { setActionError(null); setModal({ kind: 'reset', u }) }}/>
-                        {activo
-                          ? <IconBtn icon="x" title="Desactivar" color="#b91c1c" onClick={() => { setActionError(null); setModal({ kind: 'desactivar', u }) }}/>
-                          : <IconBtn icon="check" title="Activar" color="#15803d" onClick={() => { setActionError(null); setModal({ kind: 'activar', u }) }}/>
-                        }
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                    <span className={`us-rol us-rol--${rolGrupo(u.rol)}`}>{ROL_LABEL[u.rol] ?? u.rol}</span>
+                    <div className="us-dato us-dato--texto">
+                      <b>{u.coordinacion_nombre ? u.coordinacion_nombre.replace(/^Coordinaci[oó]n Acad[eé]mica de /i, '') : (u.centro_nombre ? centroLabel(u.centro_nombre) : 'Toda la regional')}</b>
+                      <span>{u.fichas_coordinacion != null ? `${num(u.fichas_coordinacion)} fichas en ejecución` : (u.centro_nombre ? centroLabel(u.centro_nombre) : '')}</span>
+                    </div>
+                    <div className="us-dato">
+                      <b className={u.ultimo_acceso ? '' : 'us-gris'}>{hace(u.ultimo_acceso)}</b>
+                      <span>última conexión</span>
+                    </div>
+                    {activo
+                      ? <span className="us-sem-chip" style={{ '--c': '#16a34a' } as CSSProperties}><i/>Activo</span>
+                      : <span className="us-sem-chip us-sem-chip--off">Desactivado</span>}
+                    {acciones(u)}
+                  </div>
                 )
               })}
-            </tbody>
-          </table>
-        </Card>
-        <Pager
-          page={curPage}
-          pageCount={pageCount}
-          total={filtered.length}
-          pageSize={PAGE_SIZE}
-          onPage={setPage}
-          noun="usuarios"
-        />
+            </div>
+          )}
+          <Pager page={curPage} pageCount={pageCount} total={filtered.length} pageSize={PAGE} onPage={setPage} noun={vista === 'instructores' ? 'instructores' : 'usuarios'}/>
         </>
       )}
     </div>
