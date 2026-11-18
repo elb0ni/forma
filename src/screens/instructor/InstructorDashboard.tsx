@@ -1,8 +1,8 @@
-import { Routes, Route, Navigate, Outlet, useNavigate, useLocation, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet, useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
 import { InstructorHome } from './InstructorHome'
 import { InstFichas } from './InstFichas'
-import type { FichaInstructor } from './types'
+import type { FichaInstructor, TabEtapa } from './types'
 import { InstReportes } from './InstReportes'
 import { InstHistorial } from './InstHistorial'
 import { InstAgenda } from './InstAgenda'
@@ -23,11 +23,12 @@ const SECTION_PATH: Record<string, string> = {
 // Sección activa + título de página según la URL actual: cada patrón
 // corresponde a una pantalla real.
 const TITLE_RULES: { re: RegExp; title: string; section: string }[] = [
-  { re: /^\/agenda\/?$/,                   title: 'Agenda',            section: 'inst-agenda' },
+  { re: /^\/agenda\/?$/,                   title: 'Pendientes',        section: 'inst-agenda' },
   { re: /^\/fichas\/[^/]+\/etapa\/[^/]+$/, title: 'Etapa productiva',  section: 'inst-fichas' },
   { re: /^\/fichas(\/[^/]+)?$/,            title: 'Mis fichas',        section: 'inst-fichas' },
   { re: /^\/etapa-productiva\/nueva$/,     title: 'Nuevo registro',    section: 'inst-etapa-productiva' },
-  { re: /^\/etapa-productiva(\/[^/]+)?$/,  title: 'Etapa productiva',  section: 'inst-etapa-productiva' },
+  { re: /^\/etapa-productiva\/[^/]+$/,      title: 'Etapa productiva',  section: 'inst-etapa-productiva' },
+  { re: /^\/etapa-productiva\/?$/,          title: 'Aprendices',        section: 'inst-etapa-productiva' },
   { re: /^\/historial\/[^/]+$/,            title: 'Etapa productiva',  section: 'inst-historial' },
   { re: /^\/historial\/?$/,                title: 'Historial',         section: 'inst-historial' },
   { re: /^\/reportes\/?$/,                 title: 'Reportes',          section: 'inst-reportes' },
@@ -61,7 +62,7 @@ export function InstructorDashboard() {
             onOpenFicha={openFicha}
             onVerFichas={() => navigate(`${BASE}/fichas`)}
             onVerEtapaProductiva={id => navigate(`${BASE}/etapa-productiva/${id}`)}
-            onVerAgenda={() => navigate(`${BASE}/agenda`)}
+            onVerAgenda={() => navigate(`${BASE}/agenda?vista=calendario`)}
             onVerHistorial={() => navigate(`${BASE}/historial`)}
           />
         }/>
@@ -79,7 +80,10 @@ export function InstructorDashboard() {
         </Route>
 
         <Route path="agenda" element={
-          <InstAgenda onVerEtapaProductiva={id => navigate(`${BASE}/etapa-productiva/${id}`)}/>
+          <InstAgenda
+            onVerEtapaProductiva={(id, tab) => navigate(`${BASE}/etapa-productiva/${id}${tab ? `?tab=${tab}` : ''}`, { state: { desde: 'agenda' } })}
+            onVerFicha={id => navigate(`${BASE}/fichas/${id}`)}
+          />
         }/>
 
         <Route path="historial" element={<InstHistorial onOpenEtapa={id => navigate(`${BASE}/historial/${id}`)}/>}/>
@@ -93,10 +97,27 @@ export function InstructorDashboard() {
   )
 }
 
+// Pestañas a las que se puede entrar directo (?tab=), p. ej. desde la Agenda.
+const TABS_ETAPA: TabEtapa[] = ['cronograma', 'planeacion', 'seguimientos', 'evaluacion', 'bitacoras']
+
 function EtapaProductivaDetalleRoute() {
   const { etapaId } = useParams()
+  const [params] = useSearchParams()
   const navigate = useNavigate()
-  return <EtapaProductivaDetalle etapaId={Number(etapaId)} onBack={() => navigate('..')}/>
+  const location = useLocation()
+  const tab = TABS_ETAPA.find(t => t === params.get('tab'))
+  // Si se llegó desde Pendientes, "volver" regresa ahí (con su vista).
+  const desdeAgenda = (location.state as { desde?: string } | null)?.desde === 'agenda'
+  // La key remonta el detalle si cambia la pestaña pedida en la URL.
+  return (
+    <EtapaProductivaDetalle
+      key={`${etapaId}-${tab ?? ''}`}
+      etapaId={Number(etapaId)}
+      initialTab={tab}
+      backLabel={desdeAgenda ? 'Pendientes' : 'Aprendices'}
+      onBack={() => (desdeAgenda ? navigate(-1) : navigate('..'))}
+    />
+  )
 }
 
 function HistorialEtapaRoute() {

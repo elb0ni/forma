@@ -137,7 +137,7 @@ function FichaCrearRoute() {
   if (aprendiz === undefined) return <LoadingBlock/>
   if (!aprendiz) return null
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
       <button onClick={() => navigate('../..', { relative: 'path' })} style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
         <Ic n="arrowLeft" s={14}/>Volver a la ficha
       </button>

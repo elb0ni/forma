@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useNavigate, useParams } from 'react-router-dom'
+import { Routes, Route, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Ic, Card, Ava, Bdg } from '../../components/ui'
 import type { IcName } from '../../components/ui'
 import api from '../../lib/api'
@@ -7,6 +7,12 @@ import { fd, LoadingBlock, CenterState } from './parts'
 import { MODALIDAD_LABEL } from '../productiva/types'
 import type { ModalidadEtapaProductiva } from '../productiva/types'
 import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
+import { useAuthStore } from '../../store/auth'
+import { AgendaPendientes } from '../instructor/AgendaPendientes'
+import { AgendaCalendario } from '../instructor/AgendaCalendario'
+import { InstHistorial } from '../instructor/InstHistorial'
+import type { FichaInstructor, PendientesInstructor, TabEtapa } from '../instructor/types'
+import '../instructor/instructor.css'
 
 // ─── Monitoreo de un instructor (rol admin / coordinación) ─────────────────────
 // Consume GET /instructores/:id/detalle (forma_server, módulo instructores).
@@ -16,9 +22,14 @@ import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
 // cumplimiento por momento, calidad, actividad, últimos seguimientos); acá solo
 // se usa lo esencial.
 //
-// Lo montan SuperAdmin (UsuariosAdmin, CoordinacionDetalle) y Coordinador
-// (CoordInstructores) bajo un splat, con el id en `:instructorId` o
-// `:usuarioId`. Solo se llega aquí desde una fila cuyo rol es INSTRUCTOR.
+// Lo montan SuperAdmin (Instructores, UsuariosAdmin, CoordinacionDetalle) y
+// Coordinador (InstructoresPractica) bajo un splat, con el id en `:instructorId`
+// o `:usuarioId`. Solo se llega aquí desde una fila cuyo rol es INSTRUCTOR.
+//
+// Además del resumen, muestra las mismas vistas que el instructor tiene de sí
+// mismo -- Pendientes, Calendario e Historial -- vía /instructores/:id/*. Al
+// abrir una etapa, el super admin puede registrar y editar; el coordinador la
+// ve en solo lectura (el backend tampoco le deja escribir).
 
 // Se mantiene exportado por compatibilidad con los consumidores que aún tipan
 // su estado con esta forma.
@@ -27,6 +38,7 @@ export interface InstructorBasico {
   nombre_completo: string
   email: string
   activo: boolean | number
+  coordinacion_nombre?: string | null
 }
 
 interface Cumpl { hechas: number; esperadas: number }
@@ -118,9 +130,55 @@ function momIcon(ok: boolean): { n: IcName; color: string } {
   return ok ? { n: 'checkCircle', color: '#16a34a' } : { n: 'clock', color: '#d4d4d8' }
 }
 
+type VistaId = 'resumen' | 'pendientes' | 'calendario' | 'historial'
+const VISTAS: { id: VistaId; label: string; icon: IcName }[] = [
+  { id: 'resumen',    label: 'Resumen',    icon: 'trend' },
+  { id: 'pendientes', label: 'Pendientes', icon: 'bell' },
+  { id: 'calendario', label: 'Calendario', icon: 'calendar' },
+  { id: 'historial',  label: 'Historial',  icon: 'clock' },
+]
+
+// Pendientes y Calendario del instructor, vistos por super admin /
+// coordinador. Mismos componentes que usa el instructor en su Agenda.
+function VistaAgendaInstructor({ instructorId, vista, onVerEtapa, onIrPendientes }: {
+  instructorId: string
+  vista: 'pendientes' | 'calendario'
+  onVerEtapa: (etapaId: number, tab?: TabEtapa | null) => void
+  onIrPendientes: () => void
+}) {
+  "use no memo"
+  const navigate = useNavigate()
+  const rol = useAuthStore(s => s.user?.rol)
+  const [pend, setPend] = useState<PendientesInstructor | null>(null)
+  const [fichas, setFichas] = useState<FichaInstructor[]>([])
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let live = true
+    void Promise.allSettled([
+      api.get<PendientesInstructor>(`/instructores/${instructorId}/pendientes`).then(r => { if (live) setPend(r.data) }),
+      api.get<FichaInstructor[]>(`/instructores/${instructorId}/fichas`).then(r => { if (live) setFichas(r.data) }),
+    ]).then(() => { if (live) setCargando(false) })
+    return () => { live = false }
+  }, [instructorId])
+
+  // La ficha se abre en la sección Fichas del rol que está mirando.
+  const verFicha = (id: number) =>
+    navigate(`/dashboard/${rol === 'SUPER_ADMIN' ? 'superadmin' : 'coordinador'}/fichas/${id}`)
+
+  if (cargando) return <LoadingBlock/>
+  if (!pend) return <Card style={{ padding: 24 }}><CenterState icon="alert" title="No se pudieron cargar los pendientes" sub="Verifica la conexión con el servidor."/></Card>
+  return vista === 'calendario'
+    ? <AgendaCalendario data={pend} onVerEtapa={onVerEtapa} onVerFicha={verFicha} onIrPendientes={onIrPendientes}/>
+    : <AgendaPendientes data={pend} fichas={fichas} onVerEtapa={onVerEtapa} onVerFicha={verFicha}/>
+}
+
 function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string; onBack: () => void }) {
   "use no memo"
   const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const vista = (VISTAS.find(v => v.id === params.get('vista'))?.id ?? 'resumen') as VistaId
+  const cambiarVista = (v: VistaId) => setParams(v === 'resumen' ? {} : { vista: v }, { replace: true })
   const [data, setData] = useState<InstructorDetalleData | null>(null)
   const [error, setError] = useState(false)
 
@@ -145,6 +203,8 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
   if (!data) return <div>{back}<LoadingBlock/></div>
 
   const { instructor: ins, adopcion: ad, carga, cumplimiento: cu, aprendices } = data
+  const verEtapa = (etapaId: number, tab?: TabEtapa | null) =>
+    navigate(`etapa/${etapaId}${tab ? `?tab=${tab}` : ''}`, { relative: 'path' })
   const sem = SEMAFORO[ad.semaforo] ?? SEMAFORO.NUNCA_ENTRO
 
   const ultReg = ad.dias_desde_ultimo_registro
@@ -188,6 +248,19 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
         </div>
       </Card>
 
+      <div className="agenda-vistas" role="tablist" style={{ marginBottom: 18 }}>
+        {VISTAS.map(v => (
+          <button key={v.id} role="tab" aria-selected={vista === v.id} className={vista === v.id ? 'sel' : ''} onClick={() => cambiarVista(v.id)}>
+            <Ic n={v.icon} s={13}/>{v.label}
+          </button>
+        ))}
+      </div>
+
+      {vista === 'pendientes' || vista === 'calendario' ? (
+        <VistaAgendaInstructor instructorId={instructorId} vista={vista} onVerEtapa={verEtapa} onIrPendientes={() => cambiarVista('pendientes')}/>
+      ) : vista === 'historial' ? (
+        <InstHistorial url={`/instructores/${instructorId}/historial`} onOpenEtapa={id => verEtapa(id)}/>
+      ) : (<>
       {/* Resumen */}
       <SectionTitle>Resumen</SectionTitle>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
@@ -214,7 +287,7 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
               <tbody>
                 {aprendices.map(a => (
                   <tr key={a.etapa_id}
-                    onClick={() => navigate(`etapa/${a.etapa_id}`, { relative: 'path' })}
+                    onClick={() => verEtapa(a.etapa_id)}
                     className="nx-row"
                     style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}>
                     <td style={{ padding: '10px 14px' }}>
@@ -239,18 +312,28 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
           </div>
         </Card>
       )}
+      </>)}
     </div>
   )
 }
 
+const TABS_ETAPA: TabEtapa[] = ['cronograma', 'planeacion', 'seguimientos', 'evaluacion', 'bitacoras']
+
 function InstructorEtapaRoute() {
   "use no memo"
   const { etapaId } = useParams()
+  const [params] = useSearchParams()
   const navigate = useNavigate()
+  const rol = useAuthStore(s => s.user?.rol)
+  const tab = TABS_ETAPA.find(t => t === params.get('tab'))
   return (
     <EtapaProductivaDetalle
+      key={`${etapaId}-${tab ?? ''}`}
       etapaId={Number(etapaId)}
-      onBack={() => navigate('../..', { relative: 'path' })}
+      initialTab={tab}
+      soloLectura={rol !== 'SUPER_ADMIN'}
+      backLabel="Volver"
+      onBack={() => navigate(-1)}
     />
   )
 }
@@ -265,7 +348,7 @@ export function InstructorDetalle({ instructorId, onBack }: { instructorId: stri
   )
 }
 
-// Wrapper de ruta: toma el id del splat (`:instructorId` en CoordInstructores /
+// Wrapper de ruta: toma el id del splat (`:instructorId` en InstructoresPractica /
 // CoordinacionDetalle, `:usuarioId` en UsuariosAdmin) y le da su `onBack`
 // relativo. El fetch del detalle vive en InstructorDetalleMain.
 export function InstructorDetalleRoute() {

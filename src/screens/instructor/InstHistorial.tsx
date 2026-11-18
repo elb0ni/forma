@@ -2,26 +2,38 @@ import { useState, useEffect, Fragment } from 'react'
 import { Ic, Card, Bdg, Pager } from '../../components/ui'
 import api from '../../lib/api'
 import { fd, LoadingBlock, CenterState } from '../shared/parts'
-import { CONCEPTO_META, momentoLabel } from './types'
+import { CONCEPTO_META, esMomento, iconoHistorial, momentoLabel } from './types'
 import type { InstructorHistorial, HistorialEvento } from './types'
 import './instructor.css'
 
 // ─── Historial / trazabilidad del instructor ─────────────────────────────────
-// Todo lo que el instructor ha registrado (planeaciones, seguimientos y
-// evaluaciones), en orden cronológico -- lo más reciente primero -- agrupado
-// por mes, con a quién, en qué ficha, su concepto y si quedó firmado/ubicado.
-// Fuente: GET /instructores/mi/historial.
+// Todo lo que queda guardado de su trabajo, lo más reciente primero y agrupado
+// por mes: registro y actualización de etapas productivas (información
+// general del aprendiz), planeaciones, seguimientos y evaluaciones (y sus
+// ediciones) y visitas agendadas. Para los momentos, además su concepto y si
+// quedó firmado/ubicado. Fuente: GET /instructores/mi/historial.
 
 const PAGE_SIZE = 20
 
-type TipoFilt = 'TODOS' | 'PLANEACION' | 'SEGUIMIENTO' | 'EVALUACION'
+type TipoFilt = 'TODOS' | 'ETAPAS' | 'PLANEACION' | 'SEGUIMIENTO' | 'EVALUACION' | 'VISITAS'
 
 const TIPO_CHIPS: { key: TipoFilt; label: string }[] = [
   { key: 'TODOS',       label: 'Todo' },
+  { key: 'ETAPAS',      label: 'Etapas (info general)' },
   { key: 'PLANEACION',  label: 'Planeación' },
   { key: 'SEGUIMIENTO', label: 'Seguimientos' },
   { key: 'EVALUACION',  label: 'Evaluación' },
+  { key: 'VISITAS',     label: 'Visitas' },
 ]
+
+function deTipo(e: HistorialEvento, f: TipoFilt): boolean {
+  switch (f) {
+    case 'TODOS':   return true
+    case 'ETAPAS':  return e.clase === 'ETAPA_REGISTRADA' || e.clase === 'ETAPA_ACTUALIZADA'
+    case 'VISITAS': return e.clase === 'VISITA'
+    default:        return esMomento(e) && e.tipo_momento === f
+  }
+}
 
 const TIPO_SEG_LABEL: Record<string, string> = {
   PRESENCIAL: 'Presencial', VIRTUAL: 'Virtual', TELEFONICA: 'Telefónica',
@@ -130,16 +142,23 @@ const TH_S = { padding: '10px 14px', textAlign: 'left' as const, fontWeight: 600
 const TD_S = { padding: '12px 14px', verticalAlign: 'top' as const }
 
 function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
-  const con = CONCEPTO_META[e.concepto] ?? CONCEPTO_META.PENDIENTE
-  const mostrarConcepto = e.tipo_momento !== 'PLANEACION'
+  const momento = esMomento(e)
+  const con = CONCEPTO_META[e.concepto ?? 'PENDIENTE'] ?? CONCEPTO_META.PENDIENTE
+  const mostrarConcepto = momento && e.tipo_momento !== 'PLANEACION'
+  const icono = iconoHistorial(e)
   return (
     <tr className="nx-row" onClick={onOpen} style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}>
       <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
         <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#27272a' }}>{fdHora(e.registrado_at)}</div>
-        <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 3 }}>{TIPO_SEG_LABEL[e.tipo_seguimiento] ?? e.tipo_seguimiento}</div>
+        {e.tipo_seguimiento && (
+          <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 3 }}>{TIPO_SEG_LABEL[e.tipo_seguimiento] ?? e.tipo_seguimiento}</div>
+        )}
       </td>
       <td style={TD_S}>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ width: 22, height: 22, borderRadius: 6, display: 'grid', placeItems: 'center', background: icono.bg, color: icono.color, flexShrink: 0 }}>
+            <Ic n={icono.icon} s={12}/>
+          </span>
           <span style={{ fontSize: 12.5, fontWeight: 600, color: '#18181b' }}>{momentoLabel(e)}</span>
           {e.motivo_extraordinario && <Bdg tone="warn">Extraordinario</Bdg>}
           {e.tipo_momento === 'EVALUACION' && e.resultado_final && (
@@ -150,6 +169,9 @@ function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
         </div>
         {e.motivo_extraordinario && (
           <div style={{ fontSize: 10.5, color: '#71717a', marginTop: 3, maxWidth: 260 }}>{e.motivo_extraordinario}</div>
+        )}
+        {e.detalle && (
+          <div style={{ fontSize: 10.5, color: '#71717a', marginTop: 3, maxWidth: 280 }}>{e.detalle}</div>
         )}
       </td>
       <td style={TD_S}>
@@ -169,6 +191,7 @@ function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
         {mostrarConcepto ? <Bdg tone={con.tone}>{con.label}</Bdg> : <span style={{ fontSize: 11, color: '#c4c4c8' }}>—</span>}
       </td>
       <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
+        {!momento ? <span style={{ fontSize: 11, color: '#c4c4c8' }}>—</span> : (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span title={e.firmado ? `Firmado ${e.firmado_at ? fd(e.firmado_at) : ''}` : 'Sin firmas completas'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: e.firmado ? '#15803d' : '#c2410c' }}>
             <Ic n={e.firmado ? 'checkCircle' : 'clock'} s={12}/>Firma
@@ -179,6 +202,7 @@ function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
             </span>
           )}
         </div>
+        )}
       </td>
       <td style={{ ...TD_S, textAlign: 'right' }}>
         <Ic n="chevronRight" s={16} style={{ color: '#d4d4d8' }}/>
@@ -187,7 +211,12 @@ function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
   )
 }
 
-export function InstHistorial({ onOpenEtapa }: { onOpenEtapa: (etapaId: number) => void }) {
+// `url` permite que super admin / coordinador vean el historial de otro
+// instructor (GET /instructores/:id/historial); por defecto, el propio.
+export function InstHistorial({ onOpenEtapa, url = '/instructores/mi/historial' }: {
+  onOpenEtapa: (etapaId: number) => void
+  url?: string
+}) {
   "use no memo"
   const [data, setData] = useState<InstructorHistorial | null>(null)
   const [error, setError] = useState(false)
@@ -196,24 +225,20 @@ export function InstHistorial({ onOpenEtapa }: { onOpenEtapa: (etapaId: number) 
   const [page, setPage] = useState(0)
 
   useEffect(() => {
-    api.get<InstructorHistorial>('/instructores/mi/historial')
+    api.get<InstructorHistorial>(url)
       .then(r => setData(r.data))
       .catch(() => setError(true))
-  }, [])
+  }, [url])
 
   if (error) return <Card style={{ padding: 24 }}><CenterState icon="alert" title="No se pudo cargar tu historial" sub="Verifica la conexión con el servidor."/></Card>
   if (!data) return <LoadingBlock/>
 
-  const counts: Record<TipoFilt, number> = {
-    TODOS: data.eventos.length,
-    PLANEACION: data.eventos.filter(e => e.tipo_momento === 'PLANEACION').length,
-    SEGUIMIENTO: data.eventos.filter(e => e.tipo_momento === 'SEGUIMIENTO').length,
-    EVALUACION: data.eventos.filter(e => e.tipo_momento === 'EVALUACION').length,
-  }
+  const counts = Object.fromEntries(TIPO_CHIPS.map(c =>
+    [c.key, data.eventos.filter(e => deTipo(e, c.key)).length])) as Record<TipoFilt, number>
 
   const ql = q.trim().toLowerCase()
   const view = data.eventos.filter(e => {
-    if (filt !== 'TODOS' && e.tipo_momento !== filt) return false
+    if (!deTipo(e, filt)) return false
     if (ql && ![e.aprendiz_nombre, e.aprendiz_documento, e.numero_ficha, e.empresa_nombre]
       .some(s => (s ?? '').toLowerCase().includes(ql))) return false
     return true
@@ -234,9 +259,11 @@ export function InstHistorial({ onOpenEtapa }: { onOpenEtapa: (etapaId: number) 
           </span>
           <span style={{ fontSize: 13, color: '#52525b' }}>
             registros en total
-            {' · '}<span>{counts.SEGUIMIENTO} seguimientos</span>
-            {' · '}<span>{counts.PLANEACION} planeaciones</span>
-            {' · '}<span>{counts.EVALUACION} evaluaciones</span>
+            {' · '}<span>{counts.ETAPAS} de etapas</span>
+            {' · '}<span>{counts.PLANEACION} de planeación</span>
+            {' · '}<span>{counts.SEGUIMIENTO} de seguimiento</span>
+            {' · '}<span>{counts.EVALUACION} de evaluación</span>
+            {counts.VISITAS > 0 && <>{' · '}<span>{counts.VISITAS} visitas</span></>}
             {ultimo && <> · último {fd(ultimo)}</>}
           </span>
         </div>
@@ -265,7 +292,7 @@ export function InstHistorial({ onOpenEtapa }: { onOpenEtapa: (etapaId: number) 
 
       {view.length === 0 ? (
         <Card><CenterState icon="clock" title={data.total === 0 ? 'Todavía no has registrado nada' : 'Sin registros'}
-          sub={data.total === 0 ? 'Cuando diligencies una planeación, seguimiento o evaluación, quedará acá con su fecha, aprendiz y ficha.' : 'Ningún registro coincide con el filtro.'}/></Card>
+          sub={data.total === 0 ? 'Cuando registres una etapa productiva, una planeación, un seguimiento o una evaluación, quedará acá con su fecha, aprendiz y ficha.' : 'Ningún registro coincide con el filtro.'}/></Card>
       ) : (
         <>
           <Card style={{ overflow: 'hidden' }}>
@@ -274,7 +301,7 @@ export function InstHistorial({ onOpenEtapa }: { onOpenEtapa: (etapaId: number) 
                 <thead>
                   <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
                     <th style={TH_S}>Cuándo</th>
-                    <th style={TH_S}>Momento</th>
+                    <th style={TH_S}>Registro</th>
                     <th style={TH_S}>Aprendiz · ficha</th>
                     <th style={TH_S}>Empresa</th>
                     <th style={TH_S}>Concepto</th>
@@ -287,7 +314,7 @@ export function InstHistorial({ onOpenEtapa }: { onOpenEtapa: (etapaId: number) 
                     const mk = mesKey(e.registrado_at)
                     const nuevoMes = i === 0 || mesKey(pageItems[i - 1].registrado_at) !== mk
                     return (
-                      <Fragment key={e.id}>
+                      <Fragment key={e.key}>
                         {nuevoMes && (
                           <tr>
                             <td colSpan={7} style={{ padding: '11px 14px 7px', background: '#fbfbfc', borderTop: i === 0 ? 'none' : '2px solid #ececef' }}>

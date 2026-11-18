@@ -1,19 +1,12 @@
 import { Ic, Card, Bdg } from '../../components/ui'
-import type { IcName } from '../../components/ui'
 import { fd } from '../shared/parts'
-import { CONCEPTO_META, momentoLabel } from './types'
+import { CONCEPTO_META, esMomento, iconoHistorial, momentoLabel } from './types'
 import type { HistorialEvento, InstructorResumen } from './types'
 
 // ─── Actividad reciente (Home del instructor) ────────────────────────────────
-// Los últimos momentos que el instructor registró, en una tarjeta compacta.
+// Lo último que el instructor guardó (momentos, etapas, visitas), compacto.
 // Es la puerta al Historial completo: aquí no hay filtros ni heatmap, solo lo
 // último con lo que queda pendiente de cada registro (firma, concepto).
-
-const MOMENTO_ICON: Record<HistorialEvento['tipo_momento'], { icon: IcName; color: string; bg: string }> = {
-  PLANEACION:  { icon: 'edit',        color: '#4f46e5', bg: '#eef2ff' },
-  SEGUIMIENTO: { icon: 'briefcase',   color: '#0369a1', bg: '#e0f2fe' },
-  EVALUACION:  { icon: 'checkCircle', color: '#15803d', bg: '#dcfce7' },
-}
 
 function parseFecha(s: string): Date {
   return new Date(s.includes('T') ? s : s.replace(' ', 'T'))
@@ -42,8 +35,9 @@ function fechaHora(s: string): string {
 }
 
 function EventoItem({ e, onOpen, last }: { e: HistorialEvento; onOpen: () => void; last: boolean }) {
-  const meta = MOMENTO_ICON[e.tipo_momento] ?? MOMENTO_ICON.SEGUIMIENTO
-  const con = CONCEPTO_META[e.concepto] ?? CONCEPTO_META.PENDIENTE
+  const meta = iconoHistorial(e)
+  const con = CONCEPTO_META[e.concepto ?? 'PENDIENTE'] ?? CONCEPTO_META.PENDIENTE
+  const momento = esMomento(e)
   return (
     <div
       onClick={onOpen}
@@ -68,14 +62,14 @@ function EventoItem({ e, onOpen, last }: { e: HistorialEvento; onOpen: () => voi
         <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           <span style={{ fontFamily: '"JetBrains Mono", monospace' }}># {e.numero_ficha}</span>
           {e.empresa_nombre ? ` · ${e.empresa_nombre}` : ''}
-          {!e.firmado && <span style={{ color: '#c2410c' }}> · firma pendiente</span>}
+          {momento && !e.firmado && <span style={{ color: '#c2410c' }}> · firma pendiente</span>}
         </div>
       </div>
       {e.tipo_momento === 'EVALUACION' && e.resultado_final ? (
         <Bdg tone={e.resultado_final === 'APROBADO' ? 'ok' : 'err'}>
           {e.resultado_final === 'APROBADO' ? 'Aprobado' : 'No aprobado'}
         </Bdg>
-      ) : e.tipo_momento !== 'PLANEACION' && (
+      ) : momento && e.tipo_momento !== 'PLANEACION' && (
         <Bdg tone={con.tone}>{con.label}</Bdg>
       )}
       <span
@@ -125,7 +119,7 @@ export function ActividadReciente({ eventos, resumen, onOpenEtapa, onVerHistoria
             Todavía no has registrado nada. Tus planeaciones, seguimientos y evaluaciones aparecerán aquí.
           </div>
         ) : eventos.map((e, i) => (
-          <EventoItem key={e.id} e={e} onOpen={() => onOpenEtapa(e.etapa_id)} last={i === eventos.length - 1}/>
+          <EventoItem key={e.key} e={e} onOpen={() => onOpenEtapa(e.etapa_id)} last={i === eventos.length - 1}/>
         ))}
       </Card>
     </div>
