@@ -4,11 +4,14 @@ import { Login } from '../screens/Login'
 import { CambiarContrasena } from '../screens/CambiarContrasena'
 import { Spinner, RootLayout, RequireAuth, RequirePrimerLogin, PublicOnly, RequireRole, DashboardRedirect } from './guards'
 import { SuperAdminDashboard, CoordinadorDashboard, InstructorDashboard } from './lazyDashboards'
+import { PortalBitacoras } from '../screens/publico/PortalBitacoras'
 import './router.css'
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 export const router = createBrowserRouter([
+  // Portal del aprendiz (sin cuenta): fuera de RootLayout, no toca /auth/me.
+  { path: '/bitacoras', element: <PortalBitacoras/> },
   {
     element: <RootLayout/>,
     children: [
@@ -35,7 +38,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RequireRole roles={['SUBDIRECTOR', 'COORD_MISIONAL', 'COORD_ACADEMICO']}/>,
+            element: <RequireRole roles={['COORD_ACADEMICO']}/>,
             children: [
               { path: '/dashboard/coordinador/*', element: <Suspense fallback={<Spinner/>}><CoordinadorDashboard/></Suspense> },
             ],

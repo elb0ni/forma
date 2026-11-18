@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { SoloLecturaCtx, useSoloLectura } from './soloLectura'
+import { useAuthStore } from '../../store/auth'
 import { Ic, Card, Btn, Tag, Bdg } from '../../components/ui'
 import type { IcName } from '../../components/ui'
 import { fd, Seg, InlineAlert, CenterState, LoadingBlock } from '../shared/parts'
@@ -8,26 +10,32 @@ import {
 } from './parts'
 import type { FirmasEstado, Firmante, FirmaFuente } from './parts'
 import { ReportePreview } from './ReportePreview'
-import { Bloque, Campo, Dato, DatoLargo, Gfpi023Head } from './Gfpi023Campos'
+import { Bloque, Campo, Dato, DatoLargo, Aviso } from './Gfpi023Campos'
 import { PlanTrabajoEditor } from './PlanTrabajoEditor'
+import { CronogramaTab } from './CronogramaTab'
+import { BitacorasTab } from './BitacorasTab'
+import { fdia } from './cronograma'
+import type { Cronograma } from './cronograma'
 import { PlanTrabajoVista } from './PlanTrabajoVista'
 import { planDesdeGuardado, planAGuardar, erroresPlan } from './planTrabajo'
 import type { PlanEstado } from './planTrabajo'
 import {
   MODALIDAD_LABEL, MODALIDAD_TIENE_EMPRESA, ESTADO_META,
   FACTORES_TECNICOS, FACTORES_ACTITUDINALES, factoresDesde, factoresAJson,
-  normalizeSeguimiento,
+  normalizeSeguimiento, MODALIDAD_FORMACION_LABEL, TIPO_DOC_LABEL,
 } from './types'
 import type {
   EtapaProductiva, SeguimientoProductivo, EstadoAprendiz, FactorItem,
-  TipoSeguimiento, ResultadoFinal, EstadoEtapaProductiva,
+  TipoSeguimiento, ResultadoFinal, FichaVentana,
 } from './types'
 import { ProgresoPracticaTarjeta } from '../shared/ProgresoPractica'
 import type { AprendizPractica } from '../shared/AprendicesPractica'
 import api from '../../lib/api'
 import { soloDigitos } from '../../lib/input'
 
-type TabId = 'general' | 'planeacion' | 'seguimientos' | 'evaluacion'
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+type TabId = 'general' | 'cronograma' | 'planeacion' | 'seguimientos' | 'evaluacion' | 'bitacoras'
 
 // El progreso de la práctica (mismo que el popover de la lista de aprendices)
 // necesita al aprendiz con su último corte de juicios; acá se arma con la
@@ -101,17 +109,32 @@ function guardarVerPreview(v: boolean) {
 
 // ─── Contenedor: carga la etapa + su estado real y enruta entre tabs ───────────
 
-export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general', backLabel = 'Etapa productiva' }: {
-  etapaId: number; onBack: () => void; initialTab?: TabId; backLabel?: string
+// `soloLectura`: sin acciones de registro/edición. Por defecto se activa para
+// el coordinador (ve la etapa, no la diligencia); ver ./soloLectura.ts.
+export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general', backLabel = 'Etapa productiva', soloLectura }: {
+  etapaId: number; onBack: () => void; initialTab?: TabId; backLabel?: string; soloLectura?: boolean
 }) {
   "use no memo"
+  const rol = useAuthStore(s => s.user?.rol)
+  const lectura = soloLectura ?? rol === 'COORD_ACADEMICO'
   const [etapa, setEtapa] = useState<EtapaConSeguimientos | null>(null)
   const [estadoCalc, setEstadoCalc] = useState<EstadoAprendiz | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<TabId>(initialTab)
   const [verPreview, setVerPreview] = useState(leerVerPreview)
 
+  // Cronograma de visitas + bitácoras: aparte para no bloquear el detalle si
+  // falla (p. ej. si la migración de bitácoras aún no se ha corrido).
+  const [crono, setCrono] = useState<Cronograma | null>(null)
+  const [cronoErr, setCronoErr] = useState<string | null>(null)
+  const pedirCrono = (id: number) =>
+    api.get<Cronograma>(`/etapas-productivas/${id}/cronograma`)
+      .then(r => { setCrono(r.data); setCronoErr(null) })
+      .catch(e => setCronoErr(e?.response?.data?.message ?? 'No se pudo cargar el cronograma.'))
+  const loadCrono = () => { void pedirCrono(etapaId) }
+
   function load() {
+    void pedirCrono(etapaId)
     api.get<EtapaConSeguimientos>(`/etapas-productivas/${etapaId}`)
       .then(r => {
         setEtapa({ ...r.data, seguimientos: (r.data.seguimientos ?? []).map(normalizeSeguimiento) })
@@ -137,14 +160,50 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
   const requiereJefe = MODALIDAD_TIENE_EMPRESA[etapa.modalidad]
   const firmaFuente = firmaFuenteDe(etapa.seguimientos)
 
-  const TABS: { id: TabId; label: string; icon: IcName; badge?: 'ok' | 'warn' | 'count' }[] = [
+  // El punto va solo en el próximo momento por diligenciar, no en todos los pendientes.
+  const seguimientoOficial = seguimientos.some(s => !s.motivo_extraordinario)
+  const proximo: TabId | null = !planeacion ? 'planeacion'
+    : !seguimientoOficial ? 'seguimientos'
+    : !evaluacion ? 'evaluacion'
+    : null
+  const porRevisar = crono?.resumen_bitacoras.por_revisar ?? 0
+  type TabDef = { id: TabId; label: string; icon: IcName; badge?: 'ok' | 'warn' | 'count'; count?: number }
+  // Los 4 tabs del formato (GFPI-F-023) van juntos; cronograma y bitácoras son
+  // herramientas de control y se muestran aparte, a la derecha.
+  const TABS: TabDef[] = [
     { id: 'general', label: 'Información general', icon: 'user' },
-    { id: 'planeacion', label: 'Planeación', icon: 'target', badge: planeacion ? 'ok' : 'warn' },
-    { id: 'seguimientos', label: 'Seguimientos', icon: 'list', badge: seguimientos.length ? 'count' : undefined },
-    { id: 'evaluacion', label: 'Evaluación', icon: 'checkCircle', badge: evaluacion ? 'ok' : 'warn' },
+    { id: 'planeacion', label: 'Planeación', icon: 'target', badge: planeacion ? 'ok' : proximo === 'planeacion' ? 'warn' : undefined },
+    { id: 'seguimientos', label: 'Seguimientos', icon: 'list', badge: proximo === 'seguimientos' ? 'warn' : seguimientos.length ? 'count' : undefined },
+    { id: 'evaluacion', label: 'Evaluación', icon: 'checkCircle', badge: evaluacion ? 'ok' : proximo === 'evaluacion' ? 'warn' : undefined },
   ]
+  const TABS_CONTROL: TabDef[] = [
+    { id: 'cronograma', label: 'Cronograma', icon: 'calendar' },
+    { id: 'bitacoras', label: 'Bitácoras', icon: 'fileText', badge: porRevisar ? 'count' : undefined, count: porRevisar },
+  ]
+  const tabBtn = (t: TabDef) => {
+    const active = tab === t.id
+    return (
+      <button key={t.id} onClick={() => setTab(t.id)} style={{
+        display: 'flex', alignItems: 'center', gap: 7, padding: '10px 4px', marginBottom: -1,
+        background: 'none', border: 'none', borderBottom: `2px solid ${active ? '#4f46e5' : 'transparent'}`,
+        color: active ? '#0a0a0b' : '#71717a', fontSize: 12.5, fontWeight: active ? 600 : 500,
+        cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+      }}>
+        <Ic n={t.icon} s={13} style={{ color: active ? '#4f46e5' : '#a1a1aa' }}/>
+        {t.label}
+        {t.badge === 'ok' && <Ic n="checkCircle" s={12} style={{ color: '#15803d' }}/>}
+        {t.badge === 'warn' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ca8a04' }}/>}
+        {t.badge === 'count' && (
+          <span style={{ fontSize: 10, fontFamily: '"JetBrains Mono", monospace', background: '#f1f1f3', borderRadius: 10, padding: '1px 6px', color: '#52525b' }}>
+            {t.count ?? seguimientos.length}
+          </span>
+        )}
+      </button>
+    )
+  }
 
   return (
+    <SoloLecturaCtx.Provider value={lectura}>
     <div style={{ maxWidth: 1400, margin: '0 auto' }}>
       {back}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
@@ -185,37 +244,31 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
       <div className={`ep-layout${verPreview ? '' : ' ep-layout--solo'}`}>
         {/* Izquierda: los 4 tabs donde el instructor va diligenciando */}
         <div className="ep-layout__editor">
-          <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid #e4e4e7', marginBottom: 24, overflowX: 'auto' }}>
-            {TABS.map(t => {
-              const active = tab === t.id
-              return (
-                <button key={t.id} onClick={() => setTab(t.id)} style={{
-                  display: 'flex', alignItems: 'center', gap: 7, padding: '10px 4px', marginBottom: -1,
-                  background: 'none', border: 'none', borderBottom: `2px solid ${active ? '#4f46e5' : 'transparent'}`,
-                  color: active ? '#0a0a0b' : '#71717a', fontSize: 12.5, fontWeight: active ? 600 : 500,
-                  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                }}>
-                  <Ic n={t.icon} s={13} style={{ color: active ? '#4f46e5' : '#a1a1aa' }}/>
-                  {t.label}
-                  {t.badge === 'ok' && <Ic n="checkCircle" s={12} style={{ color: '#15803d' }}/>}
-                  {t.badge === 'warn' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ca8a04' }}/>}
-                  {t.badge === 'count' && (
-                    <span style={{ fontSize: 10, fontFamily: '"JetBrains Mono", monospace', background: '#f1f1f3', borderRadius: 10, padding: '1px 6px', color: '#52525b' }}>
-                      {seguimientos.length}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
+          <div className="ep-tabs" style={{ display: 'flex', gap: 6, borderBottom: '1px solid #e4e4e7', marginBottom: 24, overflowX: 'auto' }}>
+            {TABS.map(tabBtn)}
+            <span style={{ flex: 1, minWidth: 16 }}/>
+            <span style={{ alignSelf: 'center', width: 1, height: 18, background: '#e4e4e7', margin: '0 6px' }}/>
+            {TABS_CONTROL.map(tabBtn)}
           </div>
 
           {tab === 'general' && <GeneralTab etapa={etapa} onSaved={load}/>}
+          {(tab === 'cronograma' || tab === 'bitacoras') && !crono && (
+            cronoErr
+              ? <InlineAlert tone="warn" icon="alert">{cronoErr}</InlineAlert>
+              : <LoadingBlock/>
+          )}
+          {tab === 'cronograma' && crono && (
+            <CronogramaTab etapaId={etapa.id} crono={crono} onChanged={setCrono} onIrA={setTab}/>
+          )}
+          {tab === 'bitacoras' && crono && (
+            <BitacorasTab etapaId={etapa.id} crono={crono} aprendizNombre={etapa.aprendiz_nombre ?? ''} onChanged={loadCrono}/>
+          )}
           {tab === 'planeacion' && <PlaneacionTab etapa={etapa} etapaId={etapa.id} requiereJefe={requiereJefe} planeacion={planeacion} firmaFuente={firmaFuente} onChanged={load}/>}
           {tab === 'seguimientos' && (
-            <SeguimientosTab etapa={etapa} etapaId={etapa.id} requiereJefe={requiereJefe} planeacion={planeacion} seguimientos={seguimientos} firmaFuente={firmaFuente} onChanged={load}/>
+            <SeguimientosTab etapa={etapa} etapaId={etapa.id} requiereJefe={requiereJefe} planeacion={planeacion} seguimientos={seguimientos} firmaFuente={firmaFuente} bloqueo={bloqueoDe(crono, 'SEGUIMIENTO')} onChanged={load}/>
           )}
           {tab === 'evaluacion' && (
-            <EvaluacionTab etapa={etapa} etapaId={etapa.id} visitas={seguimientos.length} requiereJefe={requiereJefe} planeacion={planeacion} evaluacion={evaluacion} firmaFuente={firmaFuente} onChanged={load}/>
+            <EvaluacionTab etapa={etapa} etapaId={etapa.id} visitas={seguimientos.length} requiereJefe={requiereJefe} planeacion={planeacion} evaluacion={evaluacion} firmaFuente={firmaFuente} bloqueo={bloqueoDe(crono, 'EVALUACION')} onChanged={load}/>
           )}
         </div>
 
@@ -227,15 +280,15 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
         )}
       </div>
     </div>
+    </SoloLecturaCtx.Provider>
   )
 }
 
 // ─── Tab: Información general ───────────────────────────────────────────────────
 
-const ESTADOS_MANUALES: EstadoEtapaProductiva[] = ['EN_EJECUCION', 'SUSPENDIDA', 'APLAZADA', 'CANCELADA']
-
 function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: () => void }) {
   "use no memo"
+  const soloLectura = useSoloLectura()
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -246,8 +299,6 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
   const [empresaNit, setEmpresaNit] = useState(etapa.empresa_nit ?? '')
   const [empresaDireccion, setEmpresaDireccion] = useState(etapa.empresa_direccion ?? '')
   const [empresaEmail, setEmpresaEmail] = useState(etapa.empresa_email ?? '')
-  const [empresaLat, setEmpresaLat] = useState(etapa.empresa_lat != null ? String(etapa.empresa_lat) : '')
-  const [empresaLng, setEmpresaLng] = useState(etapa.empresa_lng != null ? String(etapa.empresa_lng) : '')
   const [jefeNombre, setJefeNombre] = useState(etapa.jefe_inmediato_nombre ?? '')
   const [jefeCargo, setJefeCargo] = useState(etapa.jefe_inmediato_cargo ?? '')
   const [jefeTelefono, setJefeTelefono] = useState(etapa.jefe_inmediato_telefono ?? '')
@@ -257,18 +308,29 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
   const [asisteNombre, setAsisteNombre] = useState(etapa.asiste_nombre ?? '')
   const [asisteTipo, setAsisteTipo] = useState(etapa.asiste_tipo ?? '')
   const [asisteTelefono, setAsisteTelefono] = useState(etapa.asiste_telefono ?? '')
-  const [estado, setEstado] = useState<EstadoEtapaProductiva>(etapa.estado)
-  const [resultado, setResultado] = useState<ResultadoFinal | ''>(etapa.resultado_final ?? '')
+  const [aprEmail, setAprEmail] = useState(etapa.aprendiz_email ?? '')
+  const [aprEmailInst, setAprEmailInst] = useState(etapa.aprendiz_email_institucional ?? '')
+  const [aprTelefono, setAprTelefono] = useState(etapa.aprendiz_telefono ?? '')
+  const [aprDireccion, setAprDireccion] = useState(etapa.aprendiz_direccion ?? '')
+
+  const [ficha, setFicha] = useState<FichaVentana | null>(null)
+  useEffect(() => {
+    if (!etapa.ficha_id) return
+    let vivo = true
+    api.get<{ ficha: FichaVentana }>(`/fichas/${etapa.ficha_id}/detalle`)
+      .then(r => { if (vivo) setFicha(r.data.ficha) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [etapa.ficha_id])
 
   const tieneEmpresa = MODALIDAD_TIENE_EMPRESA[etapa.modalidad]
+  // El formato exige el teléfono del instructor de seguimiento: sin él no se guarda.
+  const sinTelefonoInstructor = !etapa.instructor_telefono?.trim()
 
-  function usarUbicacionActual() {
-    if (!navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition(pos => {
-      setEmpresaLat(String(pos.coords.latitude))
-      setEmpresaLng(String(pos.coords.longitude))
-    })
-  }
+  // La sección de discapacidad solo aparece si se registró algo; en edición
+  // queda plegada ("si aplica") como en el formulario de creación.
+  const hayApoyo = !!(etapa.asiste_nombre || etapa.asiste_tipo || etapa.asiste_telefono)
+  const [apoyoAbierto, setApoyoAbierto] = useState(hayApoyo)
 
   // Los mismos bloques se pintan en lectura y en edición: en lectura cada
   // campo es un `Dato` y en edición un input. Así el instructor no tiene que
@@ -285,7 +347,28 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
         />
       : <Dato valor={extra?.tipo === 'date' ? (valor ? fd(valor) : null) : (valor || null)} mono={extra?.soloNum}/>
 
+  // Datos del aprendiz: dirección y teléfono obligatorios, y al menos un correo.
+  const [intentado, setIntentado] = useState(false)
+  const errores: Record<string, string> = {}
+  if (!aprDireccion.trim()) errores.aprDireccion = 'Obligatoria.'
+  if (!aprTelefono.trim()) errores.aprTelefono = 'Obligatorio.'
+  if (aprEmail.trim() && !EMAIL_RE.test(aprEmail.trim())) errores.aprEmail = 'Correo no válido.'
+  if (aprEmailInst.trim() && !EMAIL_RE.test(aprEmailInst.trim())) errores.aprEmailInst = 'Correo no válido.'
+  if (!aprEmail.trim() && !aprEmailInst.trim()) {
+    errores.aprEmail = errores.aprEmailInst = 'Registra al menos un correo: personal o institucional.'
+  }
+  const ver = (k: string) => (editing && intentado ? errores[k] : undefined)
+
   async function guardar() {
+    setIntentado(true)
+    if (sinTelefonoInstructor) {
+      setErr('No se puede guardar: el instructor de seguimiento no tiene teléfono registrado.')
+      return
+    }
+    if (Object.keys(errores).length > 0) {
+      setErr('Faltan datos obligatorios del aprendiz. Revisa lo marcado en rojo.')
+      return
+    }
     setBusy(true); setErr(null)
     try {
       await api.patch(`/etapas-productivas/${etapa.id}`, {
@@ -295,8 +378,6 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
         empresa_nit: tieneEmpresa ? (empresaNit || undefined) : undefined,
         empresa_direccion: tieneEmpresa ? (empresaDireccion || undefined) : undefined,
         empresa_email: tieneEmpresa ? (empresaEmail || undefined) : undefined,
-        empresa_lat: tieneEmpresa && empresaLat ? Number(empresaLat) : undefined,
-        empresa_lng: tieneEmpresa && empresaLng ? Number(empresaLng) : undefined,
         jefe_inmediato_nombre: tieneEmpresa ? (jefeNombre || undefined) : undefined,
         jefe_inmediato_cargo: tieneEmpresa ? (jefeCargo || undefined) : undefined,
         jefe_inmediato_telefono: tieneEmpresa ? (jefeTelefono || undefined) : undefined,
@@ -306,8 +387,11 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
         asiste_nombre: asisteNombre || undefined,
         asiste_tipo: asisteTipo || undefined,
         asiste_telefono: asisteTelefono || undefined,
-        estado,
-        resultado_final: resultado || undefined,
+        // Vacío se manda como '' para poder borrar el dato del aprendiz.
+        aprendiz_email: aprEmail.trim(),
+        aprendiz_email_institucional: aprEmailInst.trim(),
+        aprendiz_telefono: aprTelefono,
+        aprendiz_direccion: aprDireccion.trim(),
       })
       setEditing(false); onSaved()
     } catch (e) {
@@ -316,42 +400,57 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
     } finally { setBusy(false) }
   }
 
-  // Avance sobre lo que el formato pide para esta etapa. Sirve igual en
-  // lectura: dice de un vistazo cuánto le falta al documento para estar
-  // completo, sin entrar a editar.
-  const requeridos = [
-    fechaInicio, fechaFin,
-    ...(tieneEmpresa
-      ? [empresaNombre, empresaNit, empresaDireccion, empresaEmail, jefeNombre, jefeCargo, jefeTelefono, jefeEmail]
-      : []),
-  ]
-  const pct = Math.round((requeridos.filter(v => v.trim() !== '').length / requeridos.length) * 100)
-
   return (
     <div className="g23">
-      <Gfpi023Head
-        nombre={etapa.aprendiz_nombre ?? '—'}
-        tipoDocumento={etapa.aprendiz_tipo_documento}
-        documento={etapa.aprendiz_documento}
-        ficha={etapa.numero_ficha}
-        pct={pct}
-      />
-
-      <Bloque n={1} titulo="Identificación" origen="del sistema" medio>
-        <Campo label="Aprendiz" ancho><Dato valor={etapa.aprendiz_nombre}/></Campo>
-        <Campo label="Documento"><Dato valor={etapa.aprendiz_documento} mono/></Campo>
-        <Campo label="Instructor de seguimiento"><Dato valor={etapa.instructor_nombre}/></Campo>
-        <Campo label="Alternativa / modalidad" ancho><Dato valor={MODALIDAD_LABEL[etapa.modalidad]}/></Campo>
-      </Bloque>
-
-      <Bloque n={2} titulo="Fechas de la etapa" medio>
+      <Bloque n={1} titulo="Información general" cols={3}>
+        <Campo label="Centro de formación" ancho><Dato valor={ficha?.centro_nombre}/></Campo>
+        <Campo label="Nivel formativo"><Dato valor={ficha?.nivel_formacion}/></Campo>
+        <Campo label="Programa de formación" ancho><Dato valor={ficha?.programa_nombre ?? etapa.programa_nombre}/></Campo>
+        <Campo label="No. grupo"><Dato valor={ficha?.numero_ficha ?? etapa.numero_ficha} mono/></Campo>
+        <Campo label="Modalidad de formación">
+          <Dato valor={ficha?.modalidad_formacion ? MODALIDAD_FORMACION_LABEL[ficha.modalidad_formacion] : null}/>
+        </Campo>
+        <Campo label="Alternativa / modalidad"><Dato valor={MODALIDAD_LABEL[etapa.modalidad]}/></Campo>
+        <Campo label="Fecha fin etapa lectiva">
+          <Dato valor={ficha?.fecha_fin_lectiva ? fd(ficha.fecha_fin_lectiva) : null} mono/>
+        </Campo>
         <Campo label="Fecha de inicio" required>{campo(fechaInicio, setFechaInicio, { tipo: 'date' })}</Campo>
         <Campo label="Fecha fin estimada" required>{campo(fechaFin, setFechaFin, { tipo: 'date' })}</Campo>
         <Campo label="Fin real"><Dato valor={etapa.fecha_fin_real ? fd(etapa.fecha_fin_real) : null}/></Campo>
       </Bloque>
 
+      <Bloque n={2} titulo="Datos del aprendiz">
+        <Campo label="Nombre completo" ancho><Dato valor={etapa.aprendiz_nombre}/></Campo>
+        <Campo label="Tipo de documento">
+          <Dato valor={etapa.aprendiz_tipo_documento ? (TIPO_DOC_LABEL[etapa.aprendiz_tipo_documento] ?? etapa.aprendiz_tipo_documento) : null}/>
+        </Campo>
+        <Campo label="N° de identificación"><Dato valor={etapa.aprendiz_documento} mono/></Campo>
+        <Campo label="Correo electrónico personal" error={ver('aprEmail')}>{campo(aprEmail, setAprEmail, { tipo: 'email', placeholder: 'correo@ejemplo.com' })}</Campo>
+        <Campo label="Contacto telefónico" required error={ver('aprTelefono')}>{campo(aprTelefono, setAprTelefono, { soloNum: true })}</Campo>
+        <Campo label="Dirección" required error={ver('aprDireccion')}>{campo(aprDireccion, setAprDireccion, { placeholder: 'Dirección de residencia' })}</Campo>
+        <Campo label="Correo electrónico institucional" error={ver('aprEmailInst')}>{campo(aprEmailInst, setAprEmailInst, { placeholder: '@sena.edu.co' })}</Campo>
+        {editing && (
+          <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a' }}>
+            Debe quedar al menos un correo: personal o institucional.
+          </span>
+        )}
+      </Bloque>
+
+      <Bloque n={3} titulo="Datos del instructor de seguimiento" origen="su perfil" cols={3}>
+        <Campo label="Nombre"><Dato valor={etapa.instructor_nombre}/></Campo>
+        <Campo label="Correo electrónico institucional"><Dato valor={etapa.instructor_email}/></Campo>
+        <Campo label="Contacto telefónico"><Dato valor={etapa.instructor_telefono} mono/></Campo>
+        {sinTelefonoInstructor && (
+          <Aviso>
+            El formato exige el teléfono del instructor de seguimiento y no está registrado.
+            Regístralo en <strong>Configuración → Perfil</strong>; hasta entonces no se puede
+            guardar la información general.
+          </Aviso>
+        )}
+      </Bloque>
+
       {tieneEmpresa && (
-        <Bloque n={3} titulo="Datos del ente co-formador">
+        <Bloque n={4} titulo="Datos del ente co-formador">
           <Campo label="Nombre empresa o entidad" ancho>{campo(empresaNombre, setEmpresaNombre)}</Campo>
           <Campo label="NIT">{campo(empresaNit, setEmpresaNit, { soloNum: true })}</Campo>
           <Campo label="Correo electrónico">{campo(empresaEmail, setEmpresaEmail)}</Campo>
@@ -362,64 +461,44 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
           <Campo label="Correo electrónico del jefe">{campo(jefeEmail, setJefeEmail)}</Campo>
           <Campo label="Nombre otro contacto">{campo(otroNombre, setOtroNombre)}</Campo>
           <Campo label="Teléfono institucional">{campo(otroTelefono, setOtroTelefono, { soloNum: true })}</Campo>
-          {editing && (
-            <>
-              <Campo label="Latitud">{campo(empresaLat, setEmpresaLat)}</Campo>
-              <Campo label="Longitud">{campo(empresaLng, setEmpresaLng)}</Campo>
-              <button
-                type="button"
-                onClick={usarUbicacionActual}
-                className="g23-col2"
-                style={{ fontSize: 11.5, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textAlign: 'left' }}
-              >
-                Usar mi ubicación actual — se usa para validar que los seguimientos se hagan en sitio
-              </button>
-            </>
-          )}
         </Bloque>
       )}
 
-      <Bloque n={tieneEmpresa ? 4 : 3} titulo="Persona en situación de discapacidad" cols={3} medio>
-        <Campo label="Nombre de quien lo asiste">{campo(asisteNombre, setAsisteNombre)}</Campo>
-        <Campo label="Tipo de asistencia">{campo(asisteTipo, setAsisteTipo, { placeholder: 'Lenguaje de señas, apoyo visual…' })}</Campo>
-        <Campo label="Contacto telefónico">{campo(asisteTelefono, setAsisteTelefono, { soloNum: true })}</Campo>
-      </Bloque>
+      {!editing && hayApoyo && (
+        <Bloque n={tieneEmpresa ? 5 : 4} titulo="Persona en situación de discapacidad" cols={3} medio>
+          <Campo label="Nombre de quien lo asiste"><Dato valor={etapa.asiste_nombre}/></Campo>
+          <Campo label="Tipo de asistencia"><Dato valor={etapa.asiste_tipo}/></Campo>
+          <Campo label="Contacto telefónico"><Dato valor={etapa.asiste_telefono} mono/></Campo>
+        </Bloque>
+      )}
+      {editing && (
+        <section className="g23-bloque">
+          <button type="button" className="g23-toggle" onClick={() => setApoyoAbierto(v => !v)}>
+            <span className="g23-bloque__n">{tieneEmpresa ? 5 : 4}</span>
+            <span className="g23-toggle__t">Persona en situación de discapacidad</span>
+            <span className="g23-toggle__hint">si aplica</span>
+            <Ic n={apoyoAbierto ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: '#a1a1aa' }}/>
+          </button>
+          {apoyoAbierto && (
+            <div className="g23-bloque__body g23-bloque__body--3" style={{ borderTop: '1px solid #f1f1f3' }}>
+              <Campo label="Nombre de quien lo asiste">{campo(asisteNombre, setAsisteNombre)}</Campo>
+              <Campo label="Tipo de asistencia">{campo(asisteTipo, setAsisteTipo, { placeholder: 'Lenguaje de señas, apoyo visual…' })}</Campo>
+              <Campo label="Contacto telefónico">{campo(asisteTelefono, setAsisteTelefono, { soloNum: true })}</Campo>
+            </div>
+          )}
+        </section>
+      )}
 
-      <Bloque n={tieneEmpresa ? 5 : 4} titulo="Estado del proceso" medio>
-        <Campo label="Estado">
-          {editing ? (
-            <select className="nx-input" value={estado} onChange={e => setEstado(e.target.value as EstadoEtapaProductiva)}>
-              <option value={etapa.estado}>{etapa.estado} (actual)</option>
-              {ESTADOS_MANUALES.filter(s2 => s2 !== etapa.estado).map(s2 => <option key={s2} value={s2}>{s2}</option>)}
-            </select>
-          ) : <Dato valor={etapa.estado} mono/>}
-        </Campo>
-        <Campo label="Resultado final">
-          {editing ? (
-            <select className="nx-input" value={resultado} onChange={e => setResultado(e.target.value as ResultadoFinal | '')}>
-              <option value="">Sin definir</option>
-              <option value="APROBADO">Aprobado</option>
-              <option value="NO_APROBADO">No aprobado</option>
-            </select>
-          ) : <Dato valor={etapa.resultado_final}/>}
-        </Campo>
-        {editing && (
-          <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a' }}>
-            El estado normalmente cambia solo al registrar la Evaluación final. Ajústalo a
-            mano únicamente para suspensiones, aplazamientos o correcciones.
-          </span>
-        )}
-      </Bloque>
 
       {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
 
       <div style={{ display: 'flex', justifyContent: editing ? 'flex-end' : 'flex-start', gap: 10 }}>
         {editing ? (
           <>
-            <Btn variant="secondary" onClick={() => setEditing(false)} disabled={busy}>Cancelar</Btn>
+            <Btn variant="secondary" onClick={() => { setEditing(false); setIntentado(false); setErr(null) }} disabled={busy}>Cancelar</Btn>
             <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>{busy ? 'Guardando…' : 'Guardar'}</Btn>
           </>
-        ) : (
+        ) : !soloLectura && (
           <Btn variant="secondary" icon="edit" onClick={() => setEditing(true)}>Editar información</Btn>
         )}
       </div>
@@ -436,7 +515,12 @@ function PlaneacionTab({ etapa, etapaId, requiereJefe, planeacion, firmaFuente, 
   firmaFuente: FirmaFuente | null; onChanged: () => void
 }) {
   "use no memo"
-  const [editing, setEditing] = useState(!planeacion)
+  const soloLectura = useSoloLectura()
+  const [editing, setEditing] = useState(!planeacion && !soloLectura)
+
+  if (soloLectura && !planeacion) {
+    return <Card style={{ padding: 24 }}><EmptyHint icon="clock" text="El instructor todavía no ha registrado la planeación."/></Card>
+  }
 
   if (!editing && planeacion) {
     const plan = planeacion.plan_trabajo
@@ -470,7 +554,7 @@ function PlaneacionTab({ etapa, etapaId, requiereJefe, planeacion, firmaFuente, 
         </Bloque>
 
         <FirmasYUbicacion seguimiento={planeacion} requiereJefe={requiereJefe} onChanged={onChanged}/>
-        <div><Btn variant="secondary" icon="edit" onClick={() => setEditing(true)}>Editar planeación</Btn></div>
+        {!soloLectura && <div><Btn variant="secondary" icon="edit" onClick={() => setEditing(true)}>Editar planeación</Btn></div>}
       </div>
     )
   }
@@ -512,6 +596,9 @@ function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente,
   // Cada actividad debe generar al menos una evidencia (lo valida el editor).
   const errores: Record<string, string> = { ...erroresPlan(plan) }
   if (esVirtual && !enlace.trim()) errores.enlace = 'Si el momento fue virtual, el formato pide el enlace de la grabación.'
+  // Sin firmas no hay planeación: de ella salen las firmas de las bitácoras.
+  // Solo al crearla -- al editar, las firmas ya quedaron registradas.
+  const faltanFirmas = !planeacion && !firmasCompletas(firmas, requiereJefe)
   const hayErrores = Object.keys(errores).length > 0
   const ver = (k: string) => (intentado ? errores[k] : undefined)
 
@@ -523,6 +610,10 @@ function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente,
     setIntentado(true)
     if (hayErrores) {
       setErr('Faltan datos obligatorios del Momento 1. Revisa lo marcado en rojo.')
+      return
+    }
+    if (faltanFirmas) {
+      setErr(`Faltan firmas. La planeación se guarda con las firmas del instructor, el aprendiz${requiereJefe ? ' y el jefe inmediato' : ''}.`)
       return
     }
     setBusy(true); setErr(null)
@@ -540,10 +631,16 @@ function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente,
       if (planeacion) {
         await api.patch(`/seguimientos-productivos/${planeacion.id}`, payload)
       } else {
-        const res = await api.post<SeguimientoProductivo>('/seguimientos-productivos', {
+        // Las firmas viajan con la planeación: el backend guarda todo junto
+        // o nada, así nunca queda una planeación sin firmar.
+        await api.post<SeguimientoProductivo>('/seguimientos-productivos', {
           etapa_productiva_id: etapaId, tipo_momento: 'PLANEACION', ...payload,
+          firmas: {
+            instructor: firmas.instructor,
+            aprendiz: firmas.aprendiz,
+            ...(requiereJefe ? { jefe: firmas.jefe } : {}),
+          },
         })
-        await subirFirmas(res.data.id, firmas, requiereJefe)
       }
       onSaved()
     } catch (e) {
@@ -554,16 +651,6 @@ function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente,
 
   return (
     <div className="g23">
-      <div className="g23-head">
-        <div style={{ minWidth: 0 }}>
-          <div className="g23-head__codigo">GFPI-F-023 V6 · MOMENTO 1</div>
-          <div className="g23-head__t">Planeación de la etapa productiva</div>
-          <div className="g23-head__sub">
-            Se realiza una única vez, al inicio. La fecha de diligenciamiento queda fijada al guardar.
-          </div>
-        </div>
-      </div>
-
       <Bloque n={1} titulo="Fechas y afiliación" cols={3}>
         <Campo label="Inicio etapa productiva"><Dato valor={fd(etapa.fecha_inicio)} mono/></Campo>
         <Campo label="Fin etapa productiva"><Dato valor={fd(etapa.fecha_fin_estimada)} mono/></Campo>
@@ -620,14 +707,25 @@ function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente,
 }
 
 
+// El seguimiento parcial y la evaluación no se pueden registrar antes de estar
+// cerca de su ventana (una semana antes; el backend también lo valida).
+// Devuelve desde cuándo se habilita, o null si ya se puede.
+interface Bloqueo { desde: string; ventana: string }
+function bloqueoDe(crono: Cronograma | null, tipo: 'SEGUIMIENTO' | 'EVALUACION'): Bloqueo | null {
+  const m = crono?.momentos.find(x => x.tipo === tipo)
+  if (!crono || !m || m.estado === 'REALIZADO' || crono.hoy >= m.habilitado_desde) return null
+  return { desde: fdia(m.habilitado_desde), ventana: `${fdia(m.ventana_desde)} – ${fdia(m.ventana_hasta)}` }
+}
+
 // ─── Tab: Seguimientos (se repite; incluye extraordinarios) ────────────────────
 
-function SeguimientosTab({ etapa, etapaId, requiereJefe, planeacion, seguimientos, firmaFuente, onChanged }: {
+function SeguimientosTab({ etapa, etapaId, requiereJefe, planeacion, seguimientos, firmaFuente, bloqueo, onChanged }: {
   etapa: EtapaConSeguimientos
   etapaId: number; requiereJefe: boolean; planeacion: SeguimientoProductivo | null
-  seguimientos: SeguimientoProductivo[]; firmaFuente: FirmaFuente | null; onChanged: () => void
+  seguimientos: SeguimientoProductivo[]; firmaFuente: FirmaFuente | null; bloqueo: Bloqueo | null; onChanged: () => void
 }) {
   "use no memo"
+  const soloLectura = useSoloLectura()
   const [creando, setCreando] = useState(false)
   const [abiertoId, setAbiertoId] = useState<number | null>(null)
 
@@ -641,11 +739,18 @@ function SeguimientosTab({ etapa, etapaId, requiereJefe, planeacion, seguimiento
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <SectionIntro title="Seguimientos a la etapa productiva" sub="Un registro por cada visita o contacto durante la ejecución; marca 'extraordinario' si ocurre por fuera del seguimiento regular."/>
-        {!creando && <Btn variant="accent" icon="plus" onClick={() => setCreando(true)}>Nuevo seguimiento</Btn>}
+        {!creando && !soloLectura && <Btn variant="accent" icon="plus" onClick={() => setCreando(true)}>Nuevo seguimiento</Btn>}
       </div>
 
+      {bloqueo && (
+        <InlineAlert tone="info" icon="lock">
+          El seguimiento parcial (momento 2) se podrá registrar desde el <strong>{bloqueo.desde}</strong> (su ventana es {bloqueo.ventana}).
+          Antes de esa fecha solo puedes registrar seguimientos extraordinarios.
+        </InlineAlert>
+      )}
+
       {creando && (
-        <SeguimientoForm etapa={etapa} etapaId={etapaId} requiereJefe={requiereJefe} firmaFuente={firmaFuente} onCancel={() => setCreando(false)} onSaved={() => { setCreando(false); onChanged() }}/>
+        <SeguimientoForm etapa={etapa} etapaId={etapaId} requiereJefe={requiereJefe} firmaFuente={firmaFuente} soloExtraordinario={!!bloqueo} onCancel={() => setCreando(false)} onSaved={() => { setCreando(false); onChanged() }}/>
       )}
 
       {items.length === 0 && !creando ? (
@@ -720,14 +825,14 @@ function SeguimientoItem({ s, requiereJefe, open, onToggle, onChanged }: {
   )
 }
 
-function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, onCancel, onSaved }: {
+function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, soloExtraordinario, onCancel, onSaved }: {
   etapa: EtapaConSeguimientos; etapaId: number; requiereJefe: boolean
-  firmaFuente: FirmaFuente | null; onCancel: () => void; onSaved: () => void
+  firmaFuente: FirmaFuente | null; soloExtraordinario: boolean; onCancel: () => void; onSaved: () => void
 }) {
   "use no memo"
   const [modalidad, setModalidad] = useState<TipoSeguimiento>('PRESENCIAL')
   const [enlace, setEnlace] = useState('')
-  const [esExtraordinario, setEsExtraordinario] = useState(false)
+  const [esExtraordinario, setEsExtraordinario] = useState(soloExtraordinario)
   const [motivo, setMotivo] = useState('')
   const [tecnicos, setTecnicos] = useState<FactorItem[]>(factoresDesde(FACTORES_TECNICOS, undefined))
   const [actitudinales, setActitudinales] = useState<FactorItem[]>(factoresDesde(FACTORES_ACTITUDINALES, undefined))
@@ -787,24 +892,6 @@ function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, onCancel, 
 
   return (
     <div className="g23">
-      <div className="g23-head">
-        <div style={{ minWidth: 0 }}>
-          <div className="g23-head__codigo">GFPI-F-023 V6 · MOMENTO 2</div>
-          <div className="g23-head__t">Seguimiento de la etapa productiva</div>
-          <div className="g23-head__sub">
-            {esExtraordinario
-              ? 'Seguimiento extraordinario: se registra igual, pero queda marcado con su motivo.'
-              : 'La fecha del momento queda fijada al guardar.'}
-          </div>
-        </div>
-        <div className="g23-prog">
-          <div style={{ textAlign: 'right' }}>
-            <div className="g23-prog__n">{13 - sinValorar}/13</div>
-            <div className="g23-prog__l">variables</div>
-          </div>
-        </div>
-      </div>
-
       <Bloque n={1} titulo="Fechas y modalidad">
         <Campo label="Inicio etapa productiva"><Dato valor={fd(etapa.fecha_inicio)} mono/></Campo>
         <Campo label="Fecha del seguimiento"><Dato valor={null}/></Campo>
@@ -815,7 +902,7 @@ function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, onCancel, 
           <input className="nx-input" placeholder={esVirtual ? 'https://…' : 'Solo si el seguimiento se hace de forma virtual'} value={enlace} onChange={e => setEnlace(e.target.value)}/>
         </Campo>
         <label className="g23-col2" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#3f3f46', cursor: 'pointer' }}>
-          <input type="checkbox" className="nx-check" checked={esExtraordinario} onChange={e => setEsExtraordinario(e.target.checked)}/>
+          <input type="checkbox" className="nx-check" checked={esExtraordinario} disabled={soloExtraordinario} onChange={e => setEsExtraordinario(e.target.checked)}/>
           Es un seguimiento extraordinario (fuera del momento 2 regular)
         </label>
         {esExtraordinario && (
@@ -856,16 +943,29 @@ function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, onCancel, 
 
 // ─── Tab: Evaluación final (única vez) ──────────────────────────────────────────
 
-function EvaluacionTab({ etapa, etapaId, visitas, requiereJefe, planeacion, evaluacion, firmaFuente, onChanged }: {
+function EvaluacionTab({ etapa, etapaId, visitas, requiereJefe, planeacion, evaluacion, firmaFuente, bloqueo, onChanged }: {
   etapa: EtapaConSeguimientos; visitas: number
   etapaId: number; requiereJefe: boolean; planeacion: SeguimientoProductivo | null
-  evaluacion: SeguimientoProductivo | null; firmaFuente: FirmaFuente | null; onChanged: () => void
+  evaluacion: SeguimientoProductivo | null; firmaFuente: FirmaFuente | null; bloqueo: Bloqueo | null; onChanged: () => void
 }) {
   "use no memo"
-  const [editing, setEditing] = useState(!evaluacion)
+  const soloLectura = useSoloLectura()
+  const [editing, setEditing] = useState(!evaluacion && !soloLectura)
 
   if (!planeacion) {
     return <Card style={{ padding: 24 }}><EmptyHint icon="lock" text="Completa primero la Planeación para habilitar la evaluación final."/></Card>
+  }
+
+  if (soloLectura && !evaluacion) {
+    return <Card style={{ padding: 24 }}><EmptyHint icon="clock" text="El instructor todavía no ha registrado la evaluación final."/></Card>
+  }
+
+  if (!evaluacion && bloqueo) {
+    return (
+      <Card style={{ padding: 24 }}>
+        <EmptyHint icon="lock" text={`La evaluación final se podrá registrar desde el ${bloqueo.desde}, una semana antes de su ventana (${bloqueo.ventana}).`}/>
+      </Card>
+    )
   }
 
   if (!editing && evaluacion) {
@@ -896,7 +996,7 @@ function EvaluacionTab({ etapa, etapaId, visitas, requiereJefe, planeacion, eval
           ))}
         </Card>
         <FirmasYUbicacion seguimiento={evaluacion} requiereJefe={requiereJefe} onChanged={onChanged}/>
-        <div><Btn variant="secondary" icon="edit" onClick={() => setEditing(true)}>Editar evaluación</Btn></div>
+        {!soloLectura && <div><Btn variant="secondary" icon="edit" onClick={() => setEditing(true)}>Editar evaluación</Btn></div>}
       </div>
     )
   }
@@ -983,22 +1083,6 @@ function EvaluacionForm({ etapa, etapaId, visitas, requiereJefe, evaluacion, fir
 
   return (
     <div className="g23">
-      <div className="g23-head">
-        <div style={{ minWidth: 0 }}>
-          <div className="g23-head__codigo">GFPI-F-023 V6 · MOMENTO 3</div>
-          <div className="g23-head__t">Evaluación de la etapa productiva</div>
-          <div className="g23-head__sub">
-            Se diligencia una única vez, al finalizar. La fecha queda fijada al guardar.
-          </div>
-        </div>
-        <div className="g23-prog">
-          <div style={{ textAlign: 'right' }}>
-            <div className="g23-prog__n">{13 - sinValorar}/13</div>
-            <div className="g23-prog__l">variables</div>
-          </div>
-        </div>
-      </div>
-
       <Bloque n={1} titulo="Fechas y visitas" cols={3}>
         <Campo label="Inicio etapa productiva"><Dato valor={fd(etapa.fecha_inicio)} mono/></Campo>
         <Campo label="Fin de la ejecución">

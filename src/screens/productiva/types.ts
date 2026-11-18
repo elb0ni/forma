@@ -17,6 +17,8 @@ export interface Aprendiz {
   nombre_completo: string
   email: string | null
   telefono: string | null
+  email_institucional?: string | null
+  direccion?: string | null
   estado_formacion: EstadoFormacionAprendiz
 }
 
@@ -72,6 +74,13 @@ export interface EtapaProductiva {
   aprendiz_nombre?: string
   aprendiz_documento?: string
   aprendiz_tipo_documento?: TipoDocumento
+  aprendiz_email?: string | null
+  aprendiz_email_institucional?: string | null
+  aprendiz_telefono?: string | null
+  aprendiz_direccion?: string | null
+  ficha_id?: number
+  instructor_email?: string | null
+  instructor_telefono?: string | null
   numero_ficha?: string
   programa_codigo?: string
   programa_version?: string | number
@@ -307,4 +316,28 @@ export function tonoEtapa(e: EtapaProductiva): { label: string; tone: 'warn' | '
     return { label: e.estado === 'SUSPENDIDA' ? 'Suspendida' : 'Aplazada', tone: 'warn', caso: e.estado }
   }
   return { label: 'En curso', tone: 'accent', caso: 'EN_CURSO' }
+}
+
+// La ventana productiva de la ficha viene de GET /fichas/:id/detalle.
+export interface FichaVentana {
+  numero_ficha: string
+  nivel_formacion: string
+  fecha_fin_lectiva: string | null       // = fecha_inicio_productiva de la ficha
+  fecha_fin_productiva: string | null
+  // Bloque "Información general" del GFPI-F-023: lo llena coordinación en la
+  // ficha y el centro, aquí solo se muestra.
+  programa_nombre?: string
+  centro_nombre?: string | null
+  regional?: string | null
+  modalidad_formacion?: 'PRESENCIAL' | 'VIRTUAL' | 'A_DISTANCIA' | null
+  estrategia_formativa?: string | null
+}
+
+export const MODALIDAD_FORMACION_LABEL: Record<string, string> = {
+  PRESENCIAL: 'Presencial', VIRTUAL: 'Virtual', A_DISTANCIA: 'A distancia',
+}
+
+export const TIPO_DOC_LABEL: Record<string, string> = {
+  CC: 'Cédula de ciudadanía', CE: 'Cédula de extranjería',
+  TI: 'Tarjeta de identidad', PP: 'Pasaporte',
 }

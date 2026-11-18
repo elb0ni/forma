@@ -8,43 +8,6 @@ import './gfpi023.css'
 // blanco, con contraste). Esa diferencia es la que hace legible el formulario:
 // de un vistazo se ve qué falta sin leer etiqueta por etiqueta.
 
-const TIPO_DOC_LABEL: Record<string, string> = {
-  CC: 'Cédula de ciudadanía', CE: 'Cédula de extranjería',
-  TI: 'Tarjeta de identidad', PP: 'Pasaporte',
-}
-
-// Encabezado del documento. Es el mismo en la creación y en el detalle a
-// propósito: el instructor debe reconocer que está en el mismo formato, no en
-// dos pantallas distintas que casualmente piden lo mismo.
-export function Gfpi023Head({ nombre, tipoDocumento, documento, ficha, pct }: {
-  nombre: string
-  tipoDocumento?: string | null
-  documento?: string | null
-  ficha?: string | null
-  pct: number
-}) {
-  const sub = [
-    documento ? `${TIPO_DOC_LABEL[tipoDocumento ?? ''] ?? tipoDocumento ?? 'Doc.'} ${documento}` : null,
-    ficha ? `Ficha ${ficha}` : null,
-  ].filter(Boolean).join(' · ')
-
-  return (
-    <div className="g23-head">
-      <div style={{ minWidth: 0 }}>
-        <div className="g23-head__codigo">GFPI-F-023 V6 · INFORMACIÓN GENERAL</div>
-        <div className="g23-head__t">{nombre}</div>
-        {sub && <div className="g23-head__sub">{sub}</div>}
-      </div>
-      <div className="g23-prog">
-        <div style={{ textAlign: 'right' }}>
-          <div className="g23-prog__n">{pct}%</div>
-          <div className="g23-prog__l">diligenciado</div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // `medio`: bloque corto que, con la pantalla libre (sin vista previa), se
 // acomoda al lado de otro en vez de ocupar una fila entera.
 export function Bloque({ n, titulo, origen, cols, medio, children }: {

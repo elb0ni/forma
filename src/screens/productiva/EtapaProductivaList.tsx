@@ -1,15 +1,18 @@
 import { useEffect, useState, Fragment } from 'react'
-import { Ic, Card, Btn, Bdg, Ava, Pager } from '../../components/ui'
+import { Ic, Card, Btn, Bdg, Ava, Pager, Tag } from '../../components/ui'
 import { fd, CenterState, LoadingBlock, Spinner, Seg } from '../shared/parts'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
 import { soloDigitos } from '../../lib/input'
 import { FiltrosBar, FiltrosResumen, FiltroGrupo, SortCaret } from '../shared/filtros'
 import type { FiltroOpcion, SortDir } from '../shared/filtros'
-import { tonoEtapa, MODALIDAD_LABEL, MODALIDAD_TIENE_EMPRESA, CASO_TONO_META, CASO_TONO_ORDER } from './types'
-import type { EtapaProductiva, Aprendiz, ModalidadEtapaProductiva, CasoTono } from './types'
+import { tonoEtapa, MODALIDAD_LABEL, MODALIDAD_TIENE_EMPRESA, CASO_TONO_META, CASO_TONO_ORDER, MODALIDAD_FORMACION_LABEL, TIPO_DOC_LABEL } from './types'
+import type { EtapaProductiva, Aprendiz, ModalidadEtapaProductiva, CasoTono, FichaVentana } from './types'
 import { Field, SectionIntro } from './parts'
-import { Bloque, Campo, Dato, Aviso, Gfpi023Head } from './Gfpi023Campos'
+import { Bloque, Campo, Dato, Aviso } from './Gfpi023Campos'
+import { ProgresoPracticaTarjeta } from '../shared/ProgresoPractica'
+import { casoBadge } from '../shared/AprendicesPractica'
+import type { AprendizPractica } from '../shared/AprendicesPractica'
 import '../shared/filtros.css'
 
 // ─── Lista de etapas productivas del instructor ─────────────────────────────────
@@ -626,30 +629,6 @@ function PasoAprendiz({ fichaId, numeroFicha, onBack, onSeleccion }: {
 // estimado de 6 meses. Siempre queda el botón "ajustar" para casos especiales.
 const MESES_ETAPA_PRODUCTIVA_DEFECTO = 6
 
-// La ventana productiva de la ficha viene de GET /fichas/:id/detalle.
-interface FichaVentana {
-  numero_ficha: string
-  nivel_formacion: string
-  fecha_fin_lectiva: string | null       // = fecha_inicio_productiva de la ficha
-  fecha_fin_productiva: string | null
-  // Bloque "Información general" del GFPI-F-023: lo llena coordinación en la
-  // ficha y el centro, aquí solo se muestra.
-  programa_nombre?: string
-  centro_nombre?: string | null
-  regional?: string | null
-  modalidad_formacion?: 'PRESENCIAL' | 'VIRTUAL' | 'A_DISTANCIA' | null
-  estrategia_formativa?: string | null
-}
-
-const MODALIDAD_FORMACION_LABEL: Record<string, string> = {
-  PRESENCIAL: 'Presencial', VIRTUAL: 'Virtual', A_DISTANCIA: 'A distancia',
-}
-
-const TIPO_DOC_LABEL: Record<string, string> = {
-  CC: 'Cédula de ciudadanía', CE: 'Cédula de extranjería',
-  TI: 'Tarjeta de identidad', PP: 'Pasaporte',
-}
-
 // Parseo en UTC para no correr el día por la zona horaria del navegador.
 function addDiasISO(iso: string, dias: number): string {
   const t = Date.parse(`${iso.slice(0, 10)}T00:00:00Z`)
@@ -687,11 +666,13 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
   const [modalidad, setModalidad] = useState<ModalidadEtapaProductiva>('CONTRATO_APRENDIZAJE')
   const [fechaInicio, setFechaInicio] = useState('')
   const [ficha, setFicha] = useState<FichaVentana | null>(null)
+  const [practica, setPractica] = useState<AprendizPractica | null>(null)
   const [ajusteManual, setAjusteManual] = useState(false)
   const [fechaFinManual, setFechaFinManual] = useState('')
 
   // Datos del aprendiz que pide el formato y que pueden no estar cargados.
   const [aprDireccion, setAprDireccion] = useState('')
+  const [aprCorreo, setAprCorreo] = useState('')
   const [aprCorreoInst, setAprCorreoInst] = useState('')
   const [aprTelefono, setAprTelefono] = useState('')
 
@@ -717,11 +698,15 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
 
   useEffect(() => {
     let vivo = true
-    api.get<{ ficha: FichaVentana }>(`/fichas/${aprendiz.ficha_id}/detalle`)
-      .then(r => { if (vivo) setFicha(r.data.ficha) })
+    api.get<{ ficha: FichaVentana; aprendices?: AprendizPractica[] }>(`/fichas/${aprendiz.ficha_id}/detalle`)
+      .then(r => {
+        if (!vivo) return
+        setFicha(r.data.ficha)
+        setPractica(r.data.aprendices?.find(x => x.aprendiz_id === aprendiz.id) ?? null)
+      })
       .catch(() => {})
     return () => { vivo = false }
-  }, [aprendiz.ficha_id])
+  }, [aprendiz.ficha_id, aprendiz.id])
 
   const tieneEmpresa = MODALIDAD_TIENE_EMPRESA[modalidad]
   const calc = finEstimada(fechaInicio, ficha)
@@ -745,21 +730,39 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
   }
   if (empresaEmail && !EMAIL_RE.test(empresaEmail.trim())) errores.empresaEmail = 'Correo no válido.'
   if (jefeEmail && !EMAIL_RE.test(jefeEmail.trim())) errores.jefeEmail = 'Correo no válido.'
+  if (aprCorreo && !EMAIL_RE.test(aprCorreo.trim())) errores.aprCorreo = 'Correo no válido.'
   if (aprCorreoInst && !EMAIL_RE.test(aprCorreoInst.trim())) errores.aprCorreoInst = 'Correo no válido.'
+  // Datos del aprendiz: dirección y teléfono obligatorios, y al menos un correo.
+  if (!aprendiz.direccion?.trim() && !aprDireccion.trim()) errores.aprDireccion = 'Obligatoria.'
+  if (!aprendiz.telefono?.trim() && !aprTelefono.trim()) errores.aprTelefono = 'Obligatorio.'
+  if (!aprendiz.email?.trim() && !aprendiz.email_institucional?.trim() && !aprCorreo.trim() && !aprCorreoInst.trim()) {
+    errores.aprCorreo ??= 'Registra al menos un correo: personal o institucional.'
+    errores.aprCorreoInst ??= 'Registra al menos un correo: personal o institucional.'
+  }
+  // Sin teléfono del instructor de seguimiento el formato queda incompleto.
+  const sinTelefonoInstructor = !user?.telefono?.trim()
 
   const hayErrores = Object.keys(errores).length > 0
   const ver = (k: string) => (intentado ? errores[k] : undefined)
 
-  // Avance de lo que de verdad hay que diligenciar (lo bloqueado no cuenta).
-  const diligenciables = [
-    fechaInicio, fechaFin,
-    ...(tieneEmpresa ? [empresaNombre, empresaNit, empresaDireccion, empresaEmail, jefeNombre, jefeCargo, jefeTelefono, jefeEmail] : []),
-  ]
-  const llenos = diligenciables.filter(v => v.trim() !== '').length
-  const pct = Math.round((llenos / diligenciables.length) * 100)
+  // Progreso de la práctica: la misma tarjeta de hitos del detalle de la
+  // etapa. Si la ficha aún no lo trae, se arma con lo mínimo (sin etapa =
+  // pendiente de elegir alternativa).
+  const progreso: AprendizPractica = practica ?? {
+    aprendiz_id: aprendiz.id, etapa_id: null,
+    numero_documento: aprendiz.numero_documento, tipo_documento: aprendiz.tipo_documento,
+    nombre_completo: aprendiz.nombre_completo,
+    modalidad: null, etapa_estado: null, resultado_final: null, etapa_instructor_nombre: null,
+    total_ra: null, ra_aprobados: null, ra_no_aprobados: null, ra_sin_evaluar: null, fecha_reporte: null,
+    caso: 'LISTO_PARA_INICIAR',
+  }
 
   async function guardar() {
     setIntentado(true)
+    if (sinTelefonoInstructor) {
+      setErr('No puedes guardar: registra tu teléfono en Configuración → Perfil primero.')
+      return
+    }
     if (hayErrores) {
       setErr('Faltan datos obligatorios del formato. Revisa lo marcado en rojo.')
       return
@@ -772,6 +775,7 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
         fecha_inicio: fechaInicio,
         fecha_fin_estimada: fechaFin,
         aprendiz_direccion: aprDireccion || undefined,
+        aprendiz_email: aprCorreo.trim() || undefined,
         aprendiz_email_institucional: aprCorreoInst || undefined,
         aprendiz_telefono: aprTelefono || undefined,
         empresa_nombre: tieneEmpresa ? empresaNombre || undefined : undefined,
@@ -795,155 +799,180 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
     } finally { setBusy(false) }
   }
 
+  const badge = casoBadge(progreso)
+
   return (
-    <div className="g23">
-      <Gfpi023Head
-        nombre={aprendiz.nombre_completo}
-        tipoDocumento={aprendiz.tipo_documento}
-        documento={aprendiz.numero_documento}
-        ficha={ficha?.numero_ficha}
-        pct={pct}
+    <div>
+      {/* Mismo encabezado + tarjeta de progreso que el detalle de la etapa:
+          crear y ver deben leerse como la misma pantalla. */}
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 600, color: '#0a0a0b' }}>{aprendiz.nombre_completo}</h2>
+        <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: '#52525b' }}>
+          <Tag>{MODALIDAD_LABEL[modalidad]}</Tag>
+          {tieneEmpresa && empresaNombre.trim() && <span>{empresaNombre.trim()}</span>}
+          <span style={{ color: '#d4d4d8' }}>·</span>
+          <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{aprendiz.numero_documento}</span>
+          <span style={{ color: '#d4d4d8' }}>·</span>
+          <Bdg tone={badge.tone}>{badge.label}</Bdg>
+        </div>
+      </div>
+
+      <ProgresoPracticaTarjeta
+        a={progreso}
+        etapa={null}
+        badge={badge}
+        modalidad={MODALIDAD_LABEL[modalidad]}
       />
 
-      <Bloque n={1} titulo="Información general" origen="de la ficha" cols={3}>
-        <Campo label="Centro de formación" ancho><Dato valor={ficha?.centro_nombre}/></Campo>
-        <Campo label="Nivel formativo"><Dato valor={ficha?.nivel_formacion}/></Campo>
-        <Campo label="Programa de formación" ancho><Dato valor={ficha?.programa_nombre}/></Campo>
-        <Campo label="No. grupo"><Dato valor={ficha?.numero_ficha} mono/></Campo>
-        <Campo label="Modalidad de formación">
-          <Dato valor={ficha?.modalidad_formacion ? MODALIDAD_FORMACION_LABEL[ficha.modalidad_formacion] : null}/>
-        </Campo>
-        <Campo label="Estrategia formativa"><Dato valor={ficha?.estrategia_formativa}/></Campo>
-        <Campo label="Fecha fin etapa lectiva">
-          <Dato valor={ficha?.fecha_fin_lectiva ? fd(ficha.fecha_fin_lectiva) : null} mono/>
-        </Campo>
-      </Bloque>
+      <div className="g23">
 
-      <Bloque n={2} titulo="Datos del aprendiz">
-        <Campo label="Nombre completo" ancho><Dato valor={aprendiz.nombre_completo}/></Campo>
-        <Campo label="Tipo de documento">
-          <Dato valor={TIPO_DOC_LABEL[aprendiz.tipo_documento] ?? aprendiz.tipo_documento}/>
-        </Campo>
-        <Campo label="N° de identificación"><Dato valor={aprendiz.numero_documento} mono/></Campo>
-        <Campo label="Correo electrónico personal"><Dato valor={aprendiz.email}/></Campo>
-        <Campo label="Contacto telefónico">
-          {aprendiz.telefono
-            ? <Dato valor={aprendiz.telefono} mono/>
-            : <input className="nx-input" inputMode="numeric" value={aprTelefono} onChange={e => setAprTelefono(soloDigitos(e.target.value))} placeholder="No registrado"/>}
-        </Campo>
-        <Campo label="Dirección">
-          <input className="nx-input" value={aprDireccion} onChange={e => setAprDireccion(e.target.value)} placeholder="Dirección de residencia"/>
-        </Campo>
-        <Campo label="Correo electrónico institucional" error={ver('aprCorreoInst')}>
-          <input className="nx-input" value={aprCorreoInst} onChange={e => setAprCorreoInst(e.target.value)} placeholder="@sena.edu.co"/>
-        </Campo>
-      </Bloque>
-
-      <Bloque n={3} titulo="Datos del instructor de seguimiento" origen="tu perfil" cols={3}>
-        <Campo label="Nombre"><Dato valor={user?.nombre_completo}/></Campo>
-        <Campo label="Correo electrónico institucional"><Dato valor={user?.email}/></Campo>
-        <Campo label="Contacto telefónico"><Dato valor={user?.telefono} mono/></Campo>
-        {!user?.telefono && (
-          <Aviso>
-            El formato pide tu teléfono y no lo tienes registrado. Guárdalo una sola vez
-            en <strong>Configuración → Perfil</strong> y saldrá aquí y en el formato impreso
-            de todos tus aprendices.
-          </Aviso>
-        )}
-      </Bloque>
-
-      <Bloque n={4} titulo="Alternativa de etapa productiva">
-        <Campo label="Alternativa / modalidad" required>
-          <select className="nx-input" value={modalidad} onChange={e => setModalidad(e.target.value as ModalidadEtapaProductiva)}>
-            {MODALIDADES.map(m => <option key={m} value={m}>{MODALIDAD_LABEL[m]}</option>)}
-          </select>
-        </Campo>
-        <Campo label="Fecha de inicio" required error={ver('fechaInicio')}>
-          <input type="date" className="nx-input" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)}/>
-        </Campo>
-        <Campo label={ajusteManual ? 'Fecha fin (a mano)' : 'Fecha fin estimada'} required ancho error={ver('fechaFin')}>
-          {ajusteManual ? (
-            <input type="date" className="nx-input" value={fechaFinManual} onChange={e => setFechaFinManual(e.target.value)}/>
-          ) : (
-            <div className="nx-input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#f7f7f9' }}>
-              <span style={{ color: calc.fecha ? '#18181b' : '#a1a1aa' }}>
-                {calc.fecha ? fd(calc.fecha) : 'Elige la fecha de inicio'}
-              </span>
-              {calc.fecha && (
-                <button type="button" onClick={() => { setFechaFinManual(calc.fecha); setAjusteManual(true) }}
-                  style={{ background: 'none', border: 'none', color: '#4f46e5', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
-                  ajustar
-                </button>
+        <Bloque n={1} titulo="Información general" cols={3}>
+          <Campo label="Centro de formación" ancho><Dato valor={ficha?.centro_nombre}/></Campo>
+          <Campo label="Nivel formativo"><Dato valor={ficha?.nivel_formacion}/></Campo>
+          <Campo label="Programa de formación" ancho><Dato valor={ficha?.programa_nombre}/></Campo>
+          <Campo label="No. grupo"><Dato valor={ficha?.numero_ficha} mono/></Campo>
+          <Campo label="Modalidad de formación">
+            <Dato valor={ficha?.modalidad_formacion ? MODALIDAD_FORMACION_LABEL[ficha.modalidad_formacion] : null}/>
+          </Campo>
+          <Campo label="Alternativa / modalidad" required>
+            <select className="nx-input" value={modalidad} onChange={e => setModalidad(e.target.value as ModalidadEtapaProductiva)}>
+              {MODALIDADES.map(m => <option key={m} value={m}>{MODALIDAD_LABEL[m]}</option>)}
+            </select>
+          </Campo>
+          <Campo label="Fecha fin etapa lectiva">
+            <Dato valor={ficha?.fecha_fin_lectiva ? fd(ficha.fecha_fin_lectiva) : null} mono/>
+          </Campo>
+          <Campo label="Fecha de inicio" required error={ver('fechaInicio')}>
+            <input type="date" className="nx-input" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)}/>
+          </Campo>
+          <Campo label={ajusteManual ? 'Fecha fin (a mano)' : 'Fecha fin estimada'} required ancho error={ver('fechaFin')}>
+            {ajusteManual ? (
+              <input type="date" className="nx-input" value={fechaFinManual} onChange={e => setFechaFinManual(e.target.value)}/>
+            ) : (
+              <div className="nx-input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#f7f7f9' }}>
+                <span style={{ color: calc.fecha ? '#18181b' : '#a1a1aa' }}>
+                  {calc.fecha ? fd(calc.fecha) : 'Elige la fecha de inicio'}
+                </span>
+                {calc.fecha && (
+                  <button type="button" onClick={() => { setFechaFinManual(calc.fecha); setAjusteManual(true) }}
+                    style={{ background: 'none', border: 'none', color: '#4f46e5', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
+                    ajustar
+                  </button>
+                )}
+              </div>
+            )}
+          </Campo>
+          {fechaInicio && (
+            <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: '#71717a', marginTop: -4 }}>
+              {ajusteManual ? (
+                <>Fecha puesta a mano.{' '}
+                  <button type="button" onClick={() => setAjusteManual(false)}
+                    style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, padding: 0 }}>
+                    volver al cálculo
+                  </button>
+                </>
+              ) : calc.desdeFicha ? (
+                <>≈ {calc.meses} meses, según la ventana productiva de la ficha {ficha?.numero_ficha}.</>
+              ) : (
+                <>Estimada en {calc.meses} meses{ficha ? ' — la ficha no tiene fechas de etapa productiva cargadas' : ''}.</>
               )}
             </div>
           )}
-        </Campo>
-        {fechaInicio && (
-          <div className="g23-col2" style={{ fontSize: 11.5, color: '#71717a', marginTop: -4 }}>
-            {ajusteManual ? (
-              <>Fecha puesta a mano.{' '}
-                <button type="button" onClick={() => setAjusteManual(false)}
-                  style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, padding: 0 }}>
-                  volver al cálculo
-                </button>
-              </>
-            ) : calc.desdeFicha ? (
-              <>≈ {calc.meses} meses, según la ventana productiva de la ficha {ficha?.numero_ficha}.</>
-            ) : (
-              <>Estimada en {calc.meses} meses{ficha ? ' — la ficha no tiene fechas de etapa productiva cargadas' : ''}.</>
-            )}
-          </div>
-        )}
-      </Bloque>
-
-      {tieneEmpresa && (
-        <Bloque n={5} titulo="Datos del ente co-formador">
-          <Campo label="Nombre empresa o entidad" required ancho error={ver('empresaNombre')}>
-            <input className="nx-input" value={empresaNombre} onChange={e => setEmpresaNombre(e.target.value)}/>
-          </Campo>
-          <Campo label="NIT" required error={ver('empresaNit')}><input className="nx-input" inputMode="numeric" value={empresaNit} onChange={e => setEmpresaNit(soloDigitos(e.target.value))}/></Campo>
-          <Campo label="Correo electrónico" error={ver('empresaEmail')}><input className="nx-input" value={empresaEmail} onChange={e => setEmpresaEmail(e.target.value)}/></Campo>
-          <Campo label="Dirección" required ancho error={ver('empresaDireccion')}>
-            <input className="nx-input" value={empresaDireccion} onChange={e => setEmpresaDireccion(e.target.value)}/>
-          </Campo>
-          <Campo label="Jefe inmediato / tutor" required error={ver('jefeNombre')}><input className="nx-input" value={jefeNombre} onChange={e => setJefeNombre(e.target.value)}/></Campo>
-          <Campo label="Cargo"><input className="nx-input" value={jefeCargo} onChange={e => setJefeCargo(e.target.value)}/></Campo>
-          <Campo label="Contacto telefónico" required error={ver('jefeTelefono')}><input className="nx-input" inputMode="numeric" value={jefeTelefono} onChange={e => setJefeTelefono(soloDigitos(e.target.value))}/></Campo>
-          <Campo label="Correo electrónico del jefe" error={ver('jefeEmail')}><input className="nx-input" value={jefeEmail} onChange={e => setJefeEmail(e.target.value)}/></Campo>
-          <Campo label="Nombre otro contacto"><input className="nx-input" value={otroNombre} onChange={e => setOtroNombre(e.target.value)}/></Campo>
-          <Campo label="Teléfono institucional"><input className="nx-input" inputMode="numeric" value={otroTelefono} onChange={e => setOtroTelefono(soloDigitos(e.target.value))}/></Campo>
         </Bloque>
-      )}
 
-      <section className="g23-bloque">
-        <button type="button" className="g23-toggle" onClick={() => setApoyoAbierto(v => !v)}>
-          <span className="g23-bloque__n">{tieneEmpresa ? 6 : 5}</span>
-          <span className="g23-toggle__t">Persona en situación de discapacidad</span>
-          <span className="g23-toggle__hint">si aplica</span>
-          <Ic n={apoyoAbierto ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: '#a1a1aa' }}/>
-        </button>
-        {apoyoAbierto && (
-          <div className="g23-bloque__body g23-bloque__body--3" style={{ borderTop: '1px solid #f1f1f3' }}>
-            <Campo label="Nombre de quien lo asiste">
-              <input className="nx-input" value={asisteNombre} onChange={e => setAsisteNombre(e.target.value)}/>
+        <Bloque n={2} titulo="Datos del aprendiz">
+          <Campo label="Nombre completo" ancho><Dato valor={aprendiz.nombre_completo}/></Campo>
+          <Campo label="Tipo de documento">
+            <Dato valor={TIPO_DOC_LABEL[aprendiz.tipo_documento] ?? aprendiz.tipo_documento}/>
+          </Campo>
+          <Campo label="N° de identificación"><Dato valor={aprendiz.numero_documento} mono/></Campo>
+          <Campo label="Correo electrónico personal" error={ver('aprCorreo')}>
+            {aprendiz.email
+              ? <Dato valor={aprendiz.email}/>
+              : <input className="nx-input" type="email" value={aprCorreo} onChange={e => setAprCorreo(e.target.value)} placeholder="correo@ejemplo.com"/>}
+          </Campo>
+          <Campo label="Contacto telefónico" required error={ver('aprTelefono')}>
+            {aprendiz.telefono
+              ? <Dato valor={aprendiz.telefono} mono/>
+              : <input className="nx-input" inputMode="numeric" value={aprTelefono} onChange={e => setAprTelefono(soloDigitos(e.target.value))} placeholder="No registrado"/>}
+          </Campo>
+          <Campo label="Dirección" required error={ver('aprDireccion')}>
+            {aprendiz.direccion
+              ? <Dato valor={aprendiz.direccion}/>
+              : <input className="nx-input" value={aprDireccion} onChange={e => setAprDireccion(e.target.value)} placeholder="Dirección de residencia"/>}
+          </Campo>
+          <Campo label="Correo electrónico institucional" error={ver('aprCorreoInst')}>
+            {aprendiz.email_institucional
+              ? <Dato valor={aprendiz.email_institucional}/>
+              : <input className="nx-input" value={aprCorreoInst} onChange={e => setAprCorreoInst(e.target.value)} placeholder="@sena.edu.co"/>}
+          </Campo>
+          <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a' }}>
+            Debe quedar al menos un correo: personal o institucional.
+          </span>
+        </Bloque>
+
+        <Bloque n={3} titulo="Datos del instructor de seguimiento" origen="tu perfil" cols={3}>
+          <Campo label="Nombre"><Dato valor={user?.nombre_completo}/></Campo>
+          <Campo label="Correo electrónico institucional"><Dato valor={user?.email}/></Campo>
+          <Campo label="Contacto telefónico"><Dato valor={user?.telefono} mono/></Campo>
+          {sinTelefonoInstructor && (
+            <Aviso>
+              El formato exige tu teléfono y no lo tienes registrado: <strong>no podrás guardar</strong> hasta
+              registrarlo. Guárdalo una sola vez en <strong>Configuración → Perfil</strong> y saldrá aquí
+              y en el formato impreso de todos tus aprendices.
+            </Aviso>
+          )}
+        </Bloque>
+
+        {tieneEmpresa && (
+          <Bloque n={4} titulo="Datos del ente co-formador">
+            <Campo label="Nombre empresa o entidad" required ancho error={ver('empresaNombre')}>
+              <input className="nx-input" value={empresaNombre} onChange={e => setEmpresaNombre(e.target.value)}/>
             </Campo>
-            <Campo label="Tipo de asistencia">
-              <input className="nx-input" value={asisteTipo} onChange={e => setAsisteTipo(e.target.value)} placeholder="Lenguaje de señas, apoyo visual…"/>
+            <Campo label="NIT" required error={ver('empresaNit')}><input className="nx-input" inputMode="numeric" value={empresaNit} onChange={e => setEmpresaNit(soloDigitos(e.target.value))}/></Campo>
+            <Campo label="Correo electrónico" error={ver('empresaEmail')}><input className="nx-input" value={empresaEmail} onChange={e => setEmpresaEmail(e.target.value)}/></Campo>
+            <Campo label="Dirección" required ancho error={ver('empresaDireccion')}>
+              <input className="nx-input" value={empresaDireccion} onChange={e => setEmpresaDireccion(e.target.value)}/>
             </Campo>
-            <Campo label="Contacto telefónico">
-              <input className="nx-input" inputMode="numeric" value={asisteTelefono} onChange={e => setAsisteTelefono(soloDigitos(e.target.value))}/>
-            </Campo>
-          </div>
+            <Campo label="Jefe inmediato / tutor" required error={ver('jefeNombre')}><input className="nx-input" value={jefeNombre} onChange={e => setJefeNombre(e.target.value)}/></Campo>
+            <Campo label="Cargo"><input className="nx-input" value={jefeCargo} onChange={e => setJefeCargo(e.target.value)}/></Campo>
+            <Campo label="Contacto telefónico" required error={ver('jefeTelefono')}><input className="nx-input" inputMode="numeric" value={jefeTelefono} onChange={e => setJefeTelefono(soloDigitos(e.target.value))}/></Campo>
+            <Campo label="Correo electrónico del jefe" error={ver('jefeEmail')}><input className="nx-input" value={jefeEmail} onChange={e => setJefeEmail(e.target.value)}/></Campo>
+            <Campo label="Nombre otro contacto"><input className="nx-input" value={otroNombre} onChange={e => setOtroNombre(e.target.value)}/></Campo>
+            <Campo label="Teléfono institucional"><input className="nx-input" inputMode="numeric" value={otroTelefono} onChange={e => setOtroTelefono(soloDigitos(e.target.value))}/></Campo>
+          </Bloque>
         )}
-      </section>
 
-      {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
+        <section className="g23-bloque">
+          <button type="button" className="g23-toggle" onClick={() => setApoyoAbierto(v => !v)}>
+            <span className="g23-bloque__n">{tieneEmpresa ? 5 : 4}</span>
+            <span className="g23-toggle__t">Persona en situación de discapacidad</span>
+            <span className="g23-toggle__hint">si aplica</span>
+            <Ic n={apoyoAbierto ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: '#a1a1aa' }}/>
+          </button>
+          {apoyoAbierto && (
+            <div className="g23-bloque__body g23-bloque__body--3" style={{ borderTop: '1px solid #f1f1f3' }}>
+              <Campo label="Nombre de quien lo asiste">
+                <input className="nx-input" value={asisteNombre} onChange={e => setAsisteNombre(e.target.value)}/>
+              </Campo>
+              <Campo label="Tipo de asistencia">
+                <input className="nx-input" value={asisteTipo} onChange={e => setAsisteTipo(e.target.value)} placeholder="Lenguaje de señas, apoyo visual…"/>
+              </Campo>
+              <Campo label="Contacto telefónico">
+                <input className="nx-input" inputMode="numeric" value={asisteTelefono} onChange={e => setAsisteTelefono(soloDigitos(e.target.value))}/>
+              </Campo>
+            </div>
+          )}
+        </section>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-        <Btn variant="secondary" onClick={onBack} disabled={busy}>Volver</Btn>
-        <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>
-          {busy ? 'Creando…' : 'Crear registro'}
-        </Btn>
+        {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+          <Btn variant="secondary" onClick={onBack} disabled={busy}>Volver</Btn>
+          <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>
+            {busy ? 'Creando…' : 'Crear registro'}
+          </Btn>
+        </div>
       </div>
     </div>
   )

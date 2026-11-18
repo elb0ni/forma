@@ -448,3 +448,8 @@
   content: ""; position: absolute; left: 8px; top: 0.6em;
   width: 5px; height: 5px; border-radius: 50%; background: #818cf8;
 }
+
+/* Barra de tabs del detalle: se puede desplazar en pantallas angostas, pero
+   sin mostrar la barra de scroll (el subrayado con margin -1 la hacía aparecer). */
+.ep-tabs { scrollbar-width: none; }
+.ep-tabs::-webkit-scrollbar { display: none; }
