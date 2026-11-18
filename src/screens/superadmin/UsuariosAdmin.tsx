@@ -48,13 +48,14 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 
 function rolGrupo(rol: string): Grupo | 'otro' {
   if (rol === 'INSTRUCTOR')  return 'instructor'
-  if (rol === 'SUPER_ADMIN') return 'admin'
+  if (rol === 'SUPER_ADMIN' || rol === 'SUBDIRECTOR') return 'admin'
   if (rol === 'COORD_ACADEMICO') return 'coordinador'
   return 'otro'
 }
 
 const ROL_LABEL: Record<string, string> = {
   SUPER_ADMIN:     'Super Admin',
+  SUBDIRECTOR:     'Subdirector',
   COORD_ACADEMICO: 'Coordinador',
   INSTRUCTOR:      'Instructor',
 }

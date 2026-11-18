@@ -374,6 +374,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
   // El coordinador no crea ni edita fichas (solo el super admin): su acción
   // sobre una ficha es asignar el instructor de práctica.
   const esCoordinador = useAuthStore(s => s.user?.rol) === 'COORD_ACADEMICO'
+  const esSubdirector = useAuthStore(s => s.user?.rol) === 'SUBDIRECTOR'
   // Por defecto se ven las fichas "activas" (en práctica + en cierre) -- lo que
   // FORMA gestiona a diario. Próximas y finalizadas quedan a un clic dentro del
   // panel de filtros.
@@ -573,7 +574,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
               {activasCount.toLocaleString('es-CO')}
             </span>
             <span style={{ fontSize: 13, color: '#52525b' }}>
-              fichas activas {scope ? 'en tu coordinación' : 'en la regional'}
+              fichas activas {scope ? 'en tu coordinación' : esSubdirector ? 'en tu centro' : 'en la regional'}
               {' · '}<span>{enPracticaCount.toLocaleString('es-CO')} en práctica</span>
               {enCierreCount > 0 && <> · <span style={{ color: '#a16207' }}>{enCierreCount.toLocaleString('es-CO')} en cierre</span></>}
               {proximasCount > 0 && <> · <span style={{ color: '#6366f1' }}>{proximasCount.toLocaleString('es-CO')} próxima{proximasCount === 1 ? '' : 's'}</span></>}
@@ -582,7 +583,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
             </span>
           </div>
         </div>
-        {!esCoordinador && <Btn variant="accent" icon="plus" onClick={() => navigate('nueva', { relative: 'path' })}>Crear ficha</Btn>}
+        {!esCoordinador && !esSubdirector && <Btn variant="accent" icon="plus" onClick={() => navigate('nueva', { relative: 'path' })}>Crear ficha</Btn>}
       </div>
 
       {/* Barra: búsqueda siempre visible + botón que despliega el panel de filtros */}

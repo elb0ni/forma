@@ -1,9 +1,12 @@
 // ─── Roles ────────────────────────────────────────────────────────────────────
 
-// FORMA maneja 3 roles: super admin (todo), coordinador (COORD_ACADEMICO:
-// ve su coordinación, asigna instructores y gestiona alertas) e instructor.
+// Roles de FORMA: super admin (la regional), subdirector (los poderes del
+// super admin dentro de su centro), coordinador (COORD_ACADEMICO: su
+// coordinación, asigna instructores y gestiona alertas) e instructor.
+// El alcance real lo aplica el backend (common/alcance.ts).
 export type UserRole =
   | 'SUPER_ADMIN'
+  | 'SUBDIRECTOR'
   | 'COORD_ACADEMICO'
   | 'INSTRUCTOR'
 

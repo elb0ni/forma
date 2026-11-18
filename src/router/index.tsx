@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/dashboard', element: <DashboardRedirect/> },
           {
-            element: <RequireRole roles={['SUPER_ADMIN']}/>,
+            element: <RequireRole roles={['SUPER_ADMIN', 'SUBDIRECTOR']}/>,
             children: [
               { path: '/dashboard/superadmin/*', element: <Suspense fallback={<Spinner/>}><SuperAdminDashboard/></Suspense> },
             ],

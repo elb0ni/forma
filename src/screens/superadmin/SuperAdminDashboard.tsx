@@ -7,6 +7,7 @@ import { CentrosCoord } from './CentrosCoord'
 import { UsuariosAdmin } from './UsuariosAdmin'
 import { ReportesAdmin } from '../shared/ReportesAdmin'
 import { Integridad } from './Integridad'
+import { useAuthStore } from '../../store/auth'
 
 const BASE = '/dashboard/superadmin'
 
@@ -60,7 +61,9 @@ export function SuperAdminDashboard() {
   const navigate = useNavigate()
   const navItem = sectionFor(pathname)
   const title = ADMIN_TITLES[navItem] ?? navItem
-  const breadcrumb = navItem === 'admin-home' ? ['Regional Atlántico'] : ['SUPER ADMIN', title]
+  const esSubdirector = useAuthStore(s => s.user?.rol) === 'SUBDIRECTOR'
+  const raiz = esSubdirector ? 'SUBDIRECCIÓN' : 'SUPER ADMIN'
+  const breadcrumb = navItem === 'admin-home' ? [esSubdirector ? 'Mi centro' : 'Regional Atlántico'] : [raiz, title]
 
   function onNav(id: string) {
     navigate(SECTION_PATH[id] ?? BASE)

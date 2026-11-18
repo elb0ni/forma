@@ -3,8 +3,9 @@ import type { ReactNode } from 'react'
 import axios from 'axios'
 import { Ic, Card, Btn } from '../../components/ui'
 import api from '../../lib/api'
+import { useAuthStore } from '../../store/auth'
 
-type Rol = 'INSTRUCTOR' | 'COORD_ACADEMICO' | 'SUPER_ADMIN'
+type Rol = 'INSTRUCTOR' | 'COORD_ACADEMICO' | 'SUBDIRECTOR' | 'SUPER_ADMIN'
 
 export interface UsuarioEdit {
   id:                        string
@@ -24,6 +25,7 @@ interface CoordOpt  { id: number; nombre: string; centro_formacion_id: number | 
 const ROL_OPCIONES: { value: Rol; label: string; icon: 'user' | 'target' | 'shield' }[] = [
   { value: 'INSTRUCTOR',      label: 'Instructor',  icon: 'user'   },
   { value: 'COORD_ACADEMICO', label: 'Coordinador', icon: 'target' },
+  { value: 'SUBDIRECTOR',     label: 'Subdirector', icon: 'shield' },
   { value: 'SUPER_ADMIN',     label: 'Admin',       icon: 'shield' },
 ]
 
@@ -83,6 +85,12 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
 }) {
   "use no memo"
   const editando = usuario !== null
+  // El subdirector gestiona usuarios de su centro y no asigna roles regionales.
+  const yo = useAuthStore(s => s.user)
+  const esSubdirector = yo?.rol === 'SUBDIRECTOR'
+  const rolOpciones = esSubdirector
+    ? ROL_OPCIONES.filter(o => o.value !== 'SUPER_ADMIN' && o.value !== 'SUBDIRECTOR')
+    : ROL_OPCIONES
 
   const [centros, setCentros] = useState<CentroOpt[]>([])
   const [coords,  setCoords]  = useState<CoordOpt[]>([])
@@ -92,7 +100,7 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
   const [numeroDoc, setNumeroDoc] = useState(usuario?.numero_documento ?? '')
   const [email,     setEmail]     = useState(usuario?.email ?? '')
   const [rol,       setRol]       = useState<Rol>((usuario?.rol as Rol) ?? 'INSTRUCTOR')
-  const [centroId,  setCentroId]  = useState<number | null>(usuario?.centro_formacion_id ?? null)
+  const [centroId,  setCentroId]  = useState<number | null>(usuario?.centro_formacion_id ?? (esSubdirector ? yo?.centro_formacion_id ?? null : null))
   const [coordId,   setCoordId]   = useState<number | null>(usuario?.coordinacion_academica_id ?? null)
   const [activo,    setActivo]    = useState<boolean>(usuario ? !!usuario.activo : true)
 
@@ -121,6 +129,10 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
     }
     if (!EMAIL_RE.test(email.trim())) {
       setError('El correo no tiene un formato válido.')
+      return
+    }
+    if (rol === 'SUBDIRECTOR' && centroId == null) {
+      setError('El subdirector debe tener un centro de formación.')
       return
     }
     if (requiereCoord && (centroId == null || coordId == null)) {
@@ -213,10 +225,10 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <Field label="Rol" required>
-                  <Seg name="rol" value={rol} onChange={v => setRol(v as Rol)} options={ROL_OPCIONES}/>
+                  <Seg name="rol" value={rol} onChange={v => setRol(v as Rol)} options={rolOpciones}/>
                 </Field>
-                <Field label="Centro" required={requiereCoord}>
-                  <select className="nx-input" value={centroId ?? ''} onChange={e => { setCentroId(e.target.value ? Number(e.target.value) : null); setCoordId(null) }}>
+                <Field label="Centro" required={requiereCoord || rol === 'SUBDIRECTOR'}>
+                  <select className="nx-input" value={centroId ?? ''} disabled={esSubdirector} onChange={e => { setCentroId(e.target.value ? Number(e.target.value) : null); setCoordId(null) }}>
                     <option value="">Sin centro</option>
                     {centros.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.nombre}</option>)}
                   </select>

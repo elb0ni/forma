@@ -37,6 +37,16 @@ const NAV: Record<UserRole, NavItem[]> = {
     { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
     { id: 'admin-integridad', label: 'Integridad', icon: 'checkCircle' },
   ],
+  // Mismas pantallas que el super admin, acotadas a su centro por el backend.
+  // Integridad (PE-04, catálogo regional) queda solo para el super admin.
+  SUBDIRECTOR: [
+    { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
+    { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
+    { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
+    { id: 'admin-centros',   label: 'Mi centro',   icon: 'shield'    },
+    { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
+    { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
+  ],
   COORD_ACADEMICO: COORD_NAV,
   INSTRUCTOR: [
     { id: 'inst-home', label: 'Inicio', icon: 'home' },
@@ -59,6 +69,7 @@ function centroSigla(nombre?: string): string {
 
 const ROL_LABEL: Record<UserRole, string> = {
   SUPER_ADMIN:     'Administración',
+  SUBDIRECTOR:     'Subdirección',
   COORD_ACADEMICO: 'Coordinador',
   INSTRUCTOR:      'Instructor',
 }

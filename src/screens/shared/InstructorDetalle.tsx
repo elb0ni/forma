@@ -164,7 +164,7 @@ function VistaAgendaInstructor({ instructorId, vista, onVerEtapa, onIrPendientes
 
   // La ficha se abre en la sección Fichas del rol que está mirando.
   const verFicha = (id: number) =>
-    navigate(`/dashboard/${rol === 'SUPER_ADMIN' ? 'superadmin' : 'coordinador'}/fichas/${id}`)
+    navigate(`/dashboard/${rol === 'SUPER_ADMIN' || rol === 'SUBDIRECTOR' ? 'superadmin' : 'coordinador'}/fichas/${id}`)
 
   if (cargando) return <LoadingBlock/>
   if (!pend) return <Card style={{ padding: 24 }}><CenterState icon="alert" title="No se pudieron cargar los pendientes" sub="Verifica la conexión con el servidor."/></Card>
@@ -331,7 +331,7 @@ function InstructorEtapaRoute() {
       key={`${etapaId}-${tab ?? ''}`}
       etapaId={Number(etapaId)}
       initialTab={tab}
-      soloLectura={rol !== 'SUPER_ADMIN'}
+      soloLectura={rol !== 'SUPER_ADMIN' && rol !== 'SUBDIRECTOR'}
       backLabel="Volver"
       onBack={() => navigate(-1)}
     />

@@ -19,7 +19,7 @@ function InstructoresList() {
   "use no memo"
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
-  const esAdmin = user?.rol === 'SUPER_ADMIN'
+  const esAdmin = user?.rol === 'SUPER_ADMIN' || user?.rol === 'SUBDIRECTOR'
   const coordId = user?.coordinacion_academica_id ?? null
   const [state, setState] = useState<ListState>({ status: 'loading' })
   const [q, setQ] = useState('')

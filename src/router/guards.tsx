@@ -70,6 +70,8 @@ export function RequireRole({ roles }: { roles: UserRole[] }) {
 // A dónde cae cada rol al entrar a "/dashboard".
 const ROLE_HOME: Record<UserRole, string> = {
   SUPER_ADMIN:     '/dashboard/superadmin',
+  // El subdirector usa las pantallas del super admin; el backend las acota a su centro.
+  SUBDIRECTOR:     '/dashboard/superadmin',
   COORD_ACADEMICO: '/dashboard/coordinador',
   INSTRUCTOR:      '/dashboard/instructor',
 }
