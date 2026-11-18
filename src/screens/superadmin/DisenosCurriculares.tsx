@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import axios from 'axios'
-import { Ic, Btn, Card, Bdg } from '../../components/ui'
+import { Ic, Btn, Bdg } from '../../components/ui'
 import type { ProgramaResumen } from '../../types'
-import { Seg, InlineAlert, CenterState, LoadingBlock } from '../shared/parts'
+import { Seg, InlineAlert, CenterState, LoadingBlock, centroLabel } from '../shared/parts'
 import api from '../../lib/api'
 import '../shared/ProgramasFormacion.css'
 import './DisenosCurriculares.css'
@@ -34,6 +34,19 @@ interface Diagnostico {
 }
 
 type Estado = 'sin' | 'ilegible' | 'error' | 'version' | 'alertas' | 'ok'
+
+// A qué coordinación pertenece cada programa (GET /integridad/programas-por-coordinacion).
+interface Agrupacion {
+  centros: { id: number; nombre: string; codigo: string }[]
+  coordinaciones: { id: number; nombre: string; centro_formacion_id: number; coordinador_nombre: string | null }[]
+  programas: { programa_id: number; centro_formacion_id: number; coordinacion_academica_id: number | null; fichas: number; vigentes: number }[]
+}
+interface Grupo {
+  key: string; nombre: string; sub: string; centro: string; orden: number
+  filas: { f: Fila; fichas: number; vigentes: number }[]
+}
+
+const coordCorta = (n: string) => n.replace(/^Coordinaci[oó]n Acad[eé]mica de /i, '')
 
 const ESTADO: Record<Estado, { label: string; tone: 'err' | 'warn' | 'ok' | 'neutral'; icon: 'x' | 'alert' | 'checkCircle' | 'fileText'; orden: number }> = {
   sin:      { label: 'Sin diseño',      tone: 'neutral', icon: 'fileText',    orden: 0 },
@@ -87,7 +100,17 @@ export function DisenosCurriculares() {
   const [subiendo, setSubiendo] = useState<number | null>(null)
   const [msg, setMsg] = useState<{ id: number; tono: 'ok' | 'err'; texto: string } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [agrupacion, setAgrupacion] = useState<Agrupacion | null>(null)
+  const [centroSel, setCentroSel] = useState<number | 'todos'>('todos')
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set())
+  const alternar = (k: string) => setAbiertos(prev => { const x = new Set(prev); if (x.has(k)) x.delete(k); else x.add(k); return x })
   const destino = useRef<Fila | null>(null)
+
+  useEffect(() => {
+    api.get<Agrupacion>('/integridad/programas-por-coordinacion')
+      .then(r => setAgrupacion(r.data))
+      .catch(() => setAgrupacion(null))
+  }, [])
 
   useEffect(() => {
     api.get<ProgramaResumen[]>('/programas')
@@ -136,6 +159,42 @@ export function DisenosCurriculares() {
       || (filtro === 'problemas' && f.estado !== 'sin' && f.estado !== 'ok'))
     && (!qn || soloAlfa(`${f.p.nombre} ${f.p.codigo}`).includes(qn)))
 
+  // Grupos por coordinación, con la misma regla del catálogo: cada programa va
+  // a la coordinación de sus fichas (puede estar en varias). Sin fichas, al final.
+  const forzarAbiertos = filtro !== 'todos' || qn !== ''
+  const grupos: Grupo[] = (() => {
+    const porId = new Map(visibles.map(f => [f.p.id, f]))
+    const coords = new Map((agrupacion?.coordinaciones ?? []).map(c => [c.id, c]))
+    const centros = new Map((agrupacion?.centros ?? []).map(c => [c.id, c]))
+    const m = new Map<string, Grupo>()
+    const conFichas = new Set<number>()
+    for (const x of agrupacion?.programas ?? []) {
+      conFichas.add(x.programa_id)
+      if (centroSel !== 'todos' && x.centro_formacion_id !== centroSel) continue
+      const f = porId.get(x.programa_id)
+      if (!f) continue
+      const co = x.coordinacion_academica_id != null ? coords.get(x.coordinacion_academica_id) : undefined
+      const key = `${x.centro_formacion_id}#${x.coordinacion_academica_id ?? 'sin'}`
+      const g = m.get(key) ?? {
+        key,
+        nombre: co ? coordCorta(co.nombre) : 'Sin coordinación',
+        sub: co ? (co.coordinador_nombre ?? 'Sin coordinador activo') : 'Sus fichas aún no tienen coordinación en el catálogo',
+        centro: centroLabel(centros.get(x.centro_formacion_id)?.nombre ?? ''),
+        orden: co ? 0 : 1,
+        filas: [],
+      }
+      const ya = g.filas.find(y => y.f.p.id === f.p.id)
+      if (ya) { ya.fichas += x.fichas; ya.vigentes += x.vigentes } else g.filas.push({ f, fichas: x.fichas, vigentes: x.vigentes })
+      m.set(key, g)
+    }
+    const lista = [...m.values()]
+    const sinFichas = centroSel === 'todos' && agrupacion ? visibles.filter(f => !conFichas.has(f.p.id)) : []
+    if (sinFichas.length) lista.push({ key: 'sin-fichas', nombre: 'Programas sin fichas', sub: 'No tienen fichas en FORMA', centro: '', orden: 2, filas: sinFichas.map(f => ({ f, fichas: 0, vigentes: 0 })) })
+    if (!agrupacion) lista.push({ key: 'todos', nombre: 'Programas', sub: '', centro: '', orden: 0, filas: visibles.map(f => ({ f, fichas: f.p.fichas_activas, vigentes: f.p.fichas_en_practica })) })
+    for (const g of lista) g.filas.sort((a, b) => ESTADO[a.f.estado].orden - ESTADO[b.f.estado].orden || b.vigentes - a.vigentes || a.f.p.nombre.localeCompare(b.f.p.nombre, 'es'))
+    return lista.sort((a, b) => a.orden - b.orden || a.centro.localeCompare(b.centro, 'es') || a.nombre.localeCompare(b.nombre, 'es'))
+  })()
+
   function elegirArchivo(f: Fila) {
     destino.current = f
     inputRef.current?.click()
@@ -168,6 +227,101 @@ export function DisenosCurriculares() {
 
   if (errProg) return <CenterState icon="alert" title={errProg}/>
   if (!programas) return <LoadingBlock/>
+
+  // Una fila de programa; fichas = las de este programa en la coordinación del grupo.
+  const renderFila = (f: Fila, fichas: number, vigentes: number) => {
+    const { p, diag } = f
+    const e = ESTADO[f.estado]
+    const nProb = diag?.problemas.length ?? 0
+    const desplegable = nProb > 0 || f.otras.length > 0 || f.estado === 'version' || msg?.id === p.id
+    const open = abierto === p.id && desplegable
+    return (
+      <Fragment key={p.id}>
+        <tr
+          className={`nx-row dis-fila${desplegable ? ' dis-fila--click' : ''}`}
+          onClick={() => desplegable && setAbierto(open ? null : p.id)}
+        >
+          <td className="prog-table__td">
+            <div className="prog-table__name">{p.nombre}</div>
+            <div className="prog-table__meta">
+              <span className="prog-code">{p.codigo} · V{numVer(p.version)}</span>
+              {p.estado === 'INACTIVO' && <Bdg tone="neutral">Inactivo</Bdg>}
+            </div>
+          </td>
+          <td className="prog-table__td--num">
+            <div>{fichas || <span className="dis-nada">—</span>}</div>
+            {vigentes > 0 && vigentes !== fichas && <div className="dis-practica">{vigentes} vigentes</div>}
+          </td>
+          <td className="prog-table__td">
+            {diag ? (
+              <>
+                <div className="dis-archivo"><Ic n="fileText" s={12}/> {diag.archivo}<span className="dis-peso">{fmtBytes(diag.bytes)}</span></div>
+                {diag.conteos && (
+                  <div className="dis-conteo">
+                    {diag.conteos.competencias} comp. · {diag.conteos.ras} RA · {diag.conteos.actividades} act.
+                    {diag.programa && <> · V{numVer(diag.programa.version)} según el PDF</>}
+                  </div>
+                )}
+              </>
+            ) : disenos ? (
+              <span className="dis-nada">Falta cargar el PDF</span>
+            ) : <span className="dis-nada">…</span>}
+          </td>
+          <td className="prog-table__td">
+            {disenos && (
+              <span className="dis-estado">
+                <Bdg tone={e.tone} icon={e.icon}>{e.label}</Bdg>
+                {nProb > 0 && <span className="dis-nprob">{nProb}</span>}
+                {desplegable && <Ic n={open ? 'chevronUp' : 'chevronDown'} s={13}/>}
+              </span>
+            )}
+          </td>
+          <td className="prog-table__td" style={{ textAlign: 'right' }} onClick={ev => ev.stopPropagation()}>
+            {disenos && (
+              <Btn
+                size="sm" variant={f.estado === 'sin' ? 'primary' : 'secondary'} icon="upload"
+                disabled={subiendo != null}
+                onClick={() => elegirArchivo(f)}
+              >
+                {subiendo === p.id ? 'Leyendo…' : f.estado === 'sin' ? 'Cargar PDF' : 'Reemplazar'}
+              </Btn>
+            )}
+          </td>
+        </tr>
+        {open && (
+          <tr className="dis-det">
+            <td colSpan={5}>
+              {msg?.id === p.id && (
+                <div className={`dis-msg dis-msg--${msg.tono}`}>
+                  <Ic n={msg.tono === 'ok' ? 'checkCircle' : 'alert'} s={13}/> {msg.texto}
+                </div>
+              )}
+              {f.estado === 'version' && diag?.programa && (
+                <div className="dis-prob dis-prob--aviso">
+                  <Ic n="alert" s={12}/>
+                  <span>
+                    El PDF es de la versión {numVer(diag.programa.version)} y el programa en FORMA es la {numVer(p.version)}.
+                    Las sugerencias pueden no coincidir. Carga el de la versión {numVer(p.version)}: se guarda como {p.codigo}-v{numVer(p.version)}.pdf sin reemplazar el actual.
+                  </span>
+                </div>
+              )}
+              {diag?.problemas.map((pr, i) => (
+                <div key={i} className={`dis-prob dis-prob--${pr.nivel}`}>
+                  <Ic n={pr.nivel === 'error' ? 'x' : 'alert'} s={12}/>
+                  <span>{pr.competencia && <span className="prog-code">{pr.competencia} </span>}{pr.mensaje}</span>
+                </div>
+              ))}
+              {f.otras.length > 0 && (
+                <div className="dis-otras">
+                  También en la carpeta, sin usarse para esta versión: {f.otras.map(o => o.archivo).join(', ')}
+                </div>
+              )}
+            </td>
+          </tr>
+        )}
+      </Fragment>
+    )
+  }
 
   return (
     <div className="dis">
@@ -214,119 +368,60 @@ export function DisenosCurriculares() {
         </label>
       </div>
 
-      <Card style={{ overflow: 'hidden' }}>
-        <div className="prog-table-scroll">
-          <table className="prog-table">
-            <thead>
-              <tr className="prog-table__head-row">
-                <th className="prog-table__th">Programa</th>
-                <th className="prog-table__th prog-table__th--num">Fichas</th>
-                <th className="prog-table__th">Diseño curricular</th>
-                <th className="prog-table__th">Estado</th>
-                <th className="prog-table__th"/>
-              </tr>
-            </thead>
-            <tbody>
-              {visibles.length === 0 && (
-                <tr><td colSpan={5} className="dis-vacio">Ningún programa en este filtro.</td></tr>
-              )}
-              {visibles.map(f => {
-                const { p, diag } = f
-                const e = ESTADO[f.estado]
-                const nProb = diag?.problemas.length ?? 0
-                const desplegable = nProb > 0 || f.otras.length > 0 || f.estado === 'version' || msg?.id === p.id
-                const open = abierto === p.id && desplegable
-                return (
-                  <Fragment key={p.id}>
-                    <tr
-                      className={`nx-row dis-fila${desplegable ? ' dis-fila--click' : ''}`}
-                      onClick={() => desplegable && setAbierto(open ? null : p.id)}
-                    >
-                      <td className="prog-table__td">
-                        <div className="prog-table__name">{p.nombre}</div>
-                        <div className="prog-table__meta">
-                          <span className="prog-code">{p.codigo} · V{numVer(p.version)}</span>
-                          {p.estado === 'INACTIVO' && <Bdg tone="neutral">Inactivo</Bdg>}
-                        </div>
-                      </td>
-                      <td className="prog-table__td--num">
-                        <div>{p.fichas_activas || <span className="dis-nada">—</span>}</div>
-                        {p.fichas_en_practica > 0 && <div className="dis-practica">{p.fichas_en_practica} en práctica</div>}
-                      </td>
-                      <td className="prog-table__td">
-                        {diag ? (
-                          <>
-                            <div className="dis-archivo"><Ic n="fileText" s={12}/> {diag.archivo}<span className="dis-peso">{fmtBytes(diag.bytes)}</span></div>
-                            {diag.conteos && (
-                              <div className="dis-conteo">
-                                {diag.conteos.competencias} comp. · {diag.conteos.ras} RA · {diag.conteos.actividades} act.
-                                {diag.programa && <> · V{numVer(diag.programa.version)} según el PDF</>}
-                              </div>
-                            )}
-                          </>
-                        ) : disenos ? (
-                          <span className="dis-nada">Falta cargar el PDF</span>
-                        ) : <span className="dis-nada">…</span>}
-                      </td>
-                      <td className="prog-table__td">
-                        {disenos && (
-                          <span className="dis-estado">
-                            <Bdg tone={e.tone} icon={e.icon}>{e.label}</Bdg>
-                            {nProb > 0 && <span className="dis-nprob">{nProb}</span>}
-                            {desplegable && <Ic n={open ? 'chevronUp' : 'chevronDown'} s={13}/>}
-                          </span>
-                        )}
-                      </td>
-                      <td className="prog-table__td" style={{ textAlign: 'right' }} onClick={ev => ev.stopPropagation()}>
-                        {disenos && (
-                          <Btn
-                            size="sm" variant={f.estado === 'sin' ? 'primary' : 'secondary'} icon="upload"
-                            disabled={subiendo != null}
-                            onClick={() => elegirArchivo(f)}
-                          >
-                            {subiendo === p.id ? 'Leyendo…' : f.estado === 'sin' ? 'Cargar PDF' : 'Reemplazar'}
-                          </Btn>
-                        )}
-                      </td>
-                    </tr>
-                    {open && (
-                      <tr className="dis-det">
-                        <td colSpan={5}>
-                          {msg?.id === p.id && (
-                            <div className={`dis-msg dis-msg--${msg.tono}`}>
-                              <Ic n={msg.tono === 'ok' ? 'checkCircle' : 'alert'} s={13}/> {msg.texto}
-                            </div>
-                          )}
-                          {f.estado === 'version' && diag?.programa && (
-                            <div className="dis-prob dis-prob--aviso">
-                              <Ic n="alert" s={12}/>
-                              <span>
-                                El PDF es de la versión {numVer(diag.programa.version)} y el programa en FORMA es la {numVer(p.version)}.
-                                Las sugerencias pueden no coincidir. Carga el de la versión {numVer(p.version)}: se guarda como {p.codigo}-v{numVer(p.version)}.pdf sin reemplazar el actual.
-                              </span>
-                            </div>
-                          )}
-                          {diag?.problemas.map((pr, i) => (
-                            <div key={i} className={`dis-prob dis-prob--${pr.nivel}`}>
-                              <Ic n={pr.nivel === 'error' ? 'x' : 'alert'} s={12}/>
-                              <span>{pr.competencia && <span className="prog-code">{pr.competencia} </span>}{pr.mensaje}</span>
-                            </div>
-                          ))}
-                          {f.otras.length > 0 && (
-                            <div className="dis-otras">
-                              También en la carpeta, sin usarse para esta versión: {f.otras.map(o => o.archivo).join(', ')}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                )
-              })}
-            </tbody>
-          </table>
+      {agrupacion && (
+        <div className="dis-centros">
+          {[{ id: 'todos' as const, nombre: 'Todos los centros' }, ...agrupacion.centros.filter(c => agrupacion.programas.some(x => x.centro_formacion_id === c.id))].map(c => (
+            <button key={c.id} type="button" className={`dis-pastilla${centroSel === c.id ? ' dis-pastilla--activa' : ''}`} onClick={() => setCentroSel(c.id)}>
+              {c.id === 'todos' ? c.nombre : centroLabel(c.nombre)}
+            </button>
+          ))}
         </div>
-      </Card>
+      )}
+
+      {grupos.length === 0 && <div className="dis-vacio">Ningún programa en este filtro.</div>}
+      {grupos.map((g, gi) => {
+        const abiertoG = forzarAbiertos || abiertos.has(g.key)
+        const ok = g.filas.filter(x => x.f.estado === 'ok').length
+        const prob = g.filas.filter(x => x.f.estado !== 'ok' && x.f.estado !== 'sin').length
+        const sin = g.filas.filter(x => x.f.estado === 'sin').length
+        return (
+          <div key={g.key} className="dis-grupo" style={{ animationDelay: `${Math.min(gi, 12) * 35}ms` }}>
+            <button type="button" className="dis-grupo__cab" aria-expanded={abiertoG} onClick={() => alternar(g.key)}>
+              <div className="dis-grupo__txt">
+                <div className="dis-grupo__nombre">{g.nombre}</div>
+                <div className="dis-grupo__sub">{[g.sub, centroSel === 'todos' ? g.centro : null].filter(Boolean).join(' · ')}</div>
+              </div>
+              <div className="dis-grupo__estado">
+                <div className="dis-grupo__barra" aria-hidden>
+                  {ok > 0 && <span className="dis-resumen__seg--ok" style={{ flexGrow: ok }}/>}
+                  {prob > 0 && <span className="dis-resumen__seg--problemas" style={{ flexGrow: prob }}/>}
+                  {sin > 0 && <span className="dis-resumen__seg--sin" style={{ flexGrow: sin }}/>}
+                </div>
+                <span className="dis-grupo__cuenta"><b>{ok}</b> de {g.filas.length} programas con diseño</span>
+              </div>
+              <Ic n={abiertoG ? 'chevronUp' : 'chevronDown'} s={15} style={{ color: '#a1a1aa', flexShrink: 0 }}/>
+            </button>
+            {abiertoG && (
+              <div className="prog-table-scroll dis-grupo__tabla">
+                <table className="prog-table">
+                  <thead>
+                    <tr className="prog-table__head-row">
+                      <th className="prog-table__th">Programa</th>
+                      <th className="prog-table__th prog-table__th--num">Fichas</th>
+                      <th className="prog-table__th">Diseño curricular</th>
+                      <th className="prog-table__th">Estado</th>
+                      <th className="prog-table__th"/>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.filas.map(x => renderFila(x.f, x.fichas, x.vigentes))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {huerfanos.length > 0 && (
         <div className="dis-huerfanos">

@@ -2,12 +2,11 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { Shell } from '../../components/Shell'
 import { DashboardHome } from './DashboardHome'
 import { ProgramasFormacion } from './ProgramasFormacion'
-import { DisenosCurriculares } from './DisenosCurriculares'
 import { FichasAdmin } from '../shared/FichasAdmin'
 import { CentrosCoord } from './CentrosCoord'
 import { UsuariosAdmin } from './UsuariosAdmin'
 import { ReportesAdmin } from '../shared/ReportesAdmin'
-import { SofiaSync } from './SofiaSync'
+import { Integridad } from './Integridad'
 
 const BASE = '/dashboard/superadmin'
 
@@ -15,40 +14,44 @@ const BASE = '/dashboard/superadmin'
 const SECTION_PATH: Record<string, string> = {
   'admin-home':      BASE,
   'admin-programas': `${BASE}/programas`,
-  'admin-disenos':   `${BASE}/disenos`,
   'admin-fichas':    `${BASE}/fichas`,
   'admin-centros':   `${BASE}/centros`,
   'admin-usuarios':  `${BASE}/usuarios`,
   'admin-reportes':  `${BASE}/reportes`,
-  'admin-sofia':     `${BASE}/sofia`,
+  'admin-integridad': `${BASE}/integridad`,
 }
 
 const SECTION_BY_SEGMENT: Record<string, string> = {
   '':          'admin-home',
   programas:   'admin-programas',
-  disenos:     'admin-disenos',
   fichas:      'admin-fichas',
+  instructores: 'admin-usuarios',
   centros:     'admin-centros',
   usuarios:    'admin-usuarios',
   reportes:    'admin-reportes',
-  sofia:       'admin-sofia',
+  integridad:  'admin-integridad',
 }
 
 const ADMIN_TITLES: Record<string, string> = {
   'admin-home':      'Dashboard',
   'admin-programas': 'Programas de formación',
-  'admin-disenos':   'Diseños curriculares',
   'admin-fichas':    'Fichas en etapa productiva',
   'admin-centros':   'Centros y coordinaciones',
   'admin-usuarios':  'Gestión de usuarios',
   'admin-reportes':  'Reportes ejecutivos',
-  'admin-sofia':     'Sincronización SofiaPlus',
+  'admin-integridad': 'Integridad de datos',
 }
 
 function sectionFor(pathname: string): string {
   const rest = pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname
   const seg = rest.replace(/^\/+/, '').split('/')[0]
   return SECTION_BY_SEGMENT[seg] ?? 'admin-home'
+}
+
+// Las rutas viejas de SofiaPlus (/sofia, /sofia/:id) viven ahora dentro de Integridad.
+function SofiaRedirect() {
+  const { pathname } = useLocation()
+  return <Navigate to={pathname.replace(`${BASE}/sofia`, `${BASE}/integridad/sofia`)} replace/>
 }
 
 export function SuperAdminDashboard() {
@@ -73,12 +76,15 @@ export function SuperAdminDashboard() {
           />
         }/>
         <Route path="programas/*" element={<ProgramasFormacion/>}/>
-        <Route path="disenos" element={<DisenosCurriculares/>}/>
+        <Route path="disenos" element={<Navigate to={`${BASE}/integridad/disenos`} replace/>}/>
         <Route path="fichas/*" element={<FichasAdmin/>}/>
+        {/* Los instructores se ven ahora en Usuarios (con su actividad y detalle). */}
+        <Route path="instructores/*" element={<Navigate to={`${BASE}/usuarios`} replace/>}/>
         <Route path="centros/*" element={<CentrosCoord/>}/>
         <Route path="usuarios/*" element={<UsuariosAdmin/>}/>
         <Route path="reportes" element={<ReportesAdmin/>}/>
-        <Route path="sofia/*" element={<SofiaSync/>}/>
+        <Route path="integridad/*" element={<Integridad/>}/>
+        <Route path="sofia/*" element={<SofiaRedirect/>}/>
         <Route path="*" element={<Navigate to={BASE} replace/>}/>
       </Routes>
     </Shell>

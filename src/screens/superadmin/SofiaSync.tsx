@@ -14,7 +14,7 @@ import './SofiaSync.css'
 // aplica aquí. Lo que es de FORMA (coordinación, instructores, práctica)
 // nunca se modifica, y nada se borra: lo que deja de venir solo se marca.
 
-const BASE = '/dashboard/superadmin/sofia'
+const BASE = '/dashboard/superadmin/integridad/sofia'
 
 type Accion = 'APLICAR' | 'REVISAR' | 'BLOQUEADO' | 'IGNORADO'
 type EstadoCarga = 'PREVISUALIZADA' | 'APLICADA' | 'REVERTIDA' | 'DESCARTADA'
@@ -38,6 +38,8 @@ interface Cambio {
   campo: string | null; valor_anterior: string | null; valor_nuevo: string | null
   accion: Accion; motivo: string | null; alerta: string | null
   resultado: 'PENDIENTE' | 'APLICADO' | 'DESCARTADO' | 'REVERTIDO'; resultado_nota: string | null
+  // Solo fichas NUEVA: a qué coordinación la manda el catálogo al aplicar.
+  coordinacion_sugerida?: { tipo: string; coordinacion_academica_id: number | null; coordinacion_nombre: string | null } | null
 }
 
 interface FichaAlerta {
@@ -132,18 +134,38 @@ export function SofiaSync() {
   )
 }
 
-// ─── Inicio: subir el reporte + historial + alertas ─────────────────────────
+// ─── Inicio: estado del reporte, subida, historial y novedades ──────────────
+
+const DIA = 86_400_000
+const diasDesde = (iso: string) => Math.max(0, Math.round((Date.parse(hoy()) - Date.parse(iso)) / DIA))
+
+// Semáforo del reporte: se sube cada semana.
+function frescura(dias: number | null): { tono: 'ok' | 'warn' | 'err'; titulo: string } {
+  if (dias == null) return { tono: 'err', titulo: 'Todavía no hay datos de SofiaPlus' }
+  if (dias <= 7) return { tono: 'ok', titulo: 'Datos al día' }
+  if (dias <= 14) return { tono: 'warn', titulo: 'Toca subir el reporte de esta semana' }
+  return { tono: 'err', titulo: 'El reporte está atrasado' }
+}
 
 function SofiaInicio() {
   "use no memo"
   const navigate = useNavigate()
   const [cargas, setCargas] = useState<Carga[] | null>(null)
   const [alertas, setAlertas] = useState<Alertas | null>(null)
+  const [pendientes, setPendientes] = useState<number | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [vista, setVista] = useState<'cargas' | 'alertas'>('cargas')
 
   useEffect(() => {
-    api.get<Carga[]>('/sofia-sync/cargas').then(r => setCargas(r.data))
+    api.get<Carga[]>('/sofia-sync/cargas')
+      .then(r => {
+        setCargas(r.data)
+        // Revisiones que quedaron pendientes en la carga vigente.
+        const vig = r.data.find(c => c.estado === 'APLICADA')
+        if (vig) api.get<Cambio[]>(`/sofia-sync/cargas/${vig.id}/cambios`, { params: { accion: 'REVISAR' } })
+          .then(x => setPendientes(x.data.filter(c => c.resultado === 'PENDIENTE').length))
+          .catch(() => setPendientes(null))
+      })
       .catch(e => setErr(mensajeError(e, 'No se pudo cargar el historial.').texto))
     api.get<Alertas>('/sofia-sync/alertas').then(r => setAlertas(r.data)).catch(() => {})
   }, [])
@@ -153,78 +175,100 @@ function SofiaInicio() {
 
   const vigente = cargas.find(c => c.estado === 'APLICADA')
   const abierta = cargas.find(c => c.estado === 'PREVISUALIZADA')
+  const dias = vigente ? diasDesde(vigente.fecha_corte) : null
+  const f = frescura(dias)
   const nAlertas = alertas
     ? alertas.practica_sin_instructor.length + alertas.ausentes_en_sofia.length + alertas.alertas_ultima_carga.length
     : 0
+  const paso = abierta ? 3 : f.tono === 'ok' ? 0 : 1
 
   return (
-    <div className="sofia">
-      <div className="sofia-top">
-        <SubirPe04 onSubida={id => navigate(`${BASE}/${id}`)}/>
-        <Card style={{ padding: 18 }}>
-          <div className="sofia-vigente__label">Datos vigentes en FORMA</div>
+    <div className="sofia sp">
+      <section className="sp-hero">
+        <div className={`sp-estado sp-estado--${f.tono}`}>
+          <div className="sp-estado__cab">
+            <span className="sp-semaforo"/>
+            <span>{f.titulo}</span>
+          </div>
           {vigente ? (
             <>
-              <div className="sofia-vigente__valor">Corte del {fd(vigente.fecha_corte)}</div>
-              <div className="sofia-vigente__sub">
-                Periodo {vigente.periodo} · {vigente.resumen.filas_titulada} fichas de titulada · carga #{vigente.id}
+              <div className="sp-estado__corte">Corte del {fd(vigente.fecha_corte)}</div>
+              <div className="sp-estado__sub">
+                {dias === 0 ? 'Hoy' : `Hace ${dias} día${dias === 1 ? '' : 's'}`} · periodo {vigente.periodo} · {vigente.resumen.filas_titulada.toLocaleString('es-CO')} fichas de titulada
+              </div>
+              <div className="sp-estado__accesos">
+                <button type="button" className="sp-acceso" onClick={() => navigate(`${BASE}/${vigente.id}`)}>
+                  <Ic n="fileText" s={13}/> Ver carga #{vigente.id}
+                </button>
+                {pendientes != null && pendientes > 0 && (
+                  <button type="button" className="sp-acceso sp-acceso--warn" onClick={() => navigate(`${BASE}/${vigente.id}`)}>
+                    <Ic n="clock" s={13}/> {pendientes} revisiones pendientes
+                  </button>
+                )}
               </div>
             </>
           ) : (
-            <div className="sofia-vigente__sub">Todavía no se ha aplicado ningún reporte.</div>
+            <div className="sp-estado__sub">Sube el primer PE-04 para que FORMA tenga las fichas de SofiaPlus.</div>
           )}
-          {abierta && (
-            <button type="button" className="sofia-pendiente" onClick={() => navigate(`${BASE}/${abierta.id}`)}>
-              <Ic n="eye" s={13}/> Hay una carga por revisar (#{abierta.id}, corte {fd(abierta.fecha_corte)})
-              <Ic n="chevronRight" s={13}/>
-            </button>
-          )}
-        </Card>
+        </div>
+        <SubirPe04 onSubida={id => navigate(`${BASE}/${id}`)}/>
+      </section>
+
+      {abierta && (
+        <button type="button" className="sp-abierta" onClick={() => navigate(`${BASE}/${abierta.id}`)}>
+          <Ic n="eye" s={15}/>
+          <span><b>Tienes una carga por revisar</b> · corte del {fd(abierta.fecha_corte)}. Nada se aplica hasta que la confirmes.</span>
+          <span className="sp-abierta__ir">Revisar <Ic n="chevronRight" s={13}/></span>
+        </button>
+      )}
+
+      <ol className="sp-pasos">
+        {[
+          ['Descarga', 'el PE-04 de SofiaPlus (Programación específica de cursos)'],
+          ['Súbelo', 'aquí: FORMA lo compara con lo que ya tiene'],
+          ['Revisa y aplica', 'los cambios: nada se toca hasta que confirmes'],
+        ].map(([t, d], i) => (
+          <li key={t} className={i + 1 === paso ? 'sp-paso--actual' : ''}>
+            <span className="sp-pasos__n">{i + 1}</span>
+            <span><b>{t}</b> {d}</span>
+          </li>
+        ))}
+      </ol>
+
+      <div className="sp-barra">
+        <Seg name="sofia-vista" value={vista} onChange={v => setVista(v as 'cargas' | 'alertas')} options={[
+          { value: 'cargas', label: `Historial ${cargas.length}`, icon: 'clock' },
+          { value: 'alertas', label: `Novedades ${nAlertas}`, icon: 'bell' },
+        ]}/>
       </div>
 
-      <Seg name="sofia-vista" value={vista} onChange={v => setVista(v as 'cargas' | 'alertas')} options={[
-        { value: 'cargas', label: `Historial de cargas ${cargas.length}`, icon: 'clock' },
-        { value: 'alertas', label: `Alertas ${nAlertas}`, icon: 'bell' },
-      ]}/>
-
       {vista === 'cargas' ? (
-        <Card style={{ overflow: 'hidden' }}>
-          <div className="prog-table-scroll">
-            <table className="prog-table">
-              <thead>
-                <tr className="prog-table__head-row">
-                  <th className="prog-table__th">Carga</th>
-                  <th className="prog-table__th">Corte</th>
-                  <th className="prog-table__th">Estado</th>
-                  <th className="prog-table__th">Resultado</th>
-                  <th className="prog-table__th"/>
-                </tr>
-              </thead>
-              <tbody>
-                {cargas.length === 0 && (
-                  <tr><td colSpan={5} className="sofia-vacio">Aún no se ha subido ningún PE-04.</td></tr>
-                )}
-                {cargas.map(c => (
-                  <tr key={c.id} className="nx-row sofia-fila" onClick={() => navigate(`${BASE}/${c.id}`)}>
-                    <td className="prog-table__td">
-                      <div className="prog-table__name">#{c.id} · {c.archivo_nombre}</div>
-                      <div className="prog-table__meta"><span className="prog-code">Periodo {c.periodo}{c.hoja ? ` · hoja ${c.hoja}` : ''}</span></div>
-                    </td>
-                    <td className="prog-table__td">{fd(c.fecha_corte)}</td>
-                    <td className="prog-table__td">
-                      <Bdg tone={ESTADO_CARGA[c.estado].tone}>{ESTADO_CARGA[c.estado].label}</Bdg>
-                      {c.bloqueada && <span className="sofia-bloq"><Ic n="lock" s={11}/> bloqueada</span>}
-                    </td>
-                    <td className="prog-table__td sofia-chips">
-                      <ResumenChips r={c.resumen}/>
-                    </td>
-                    <td className="prog-table__td" style={{ textAlign: 'right' }}><Ic n="chevronRight" s={14} style={{ color: '#a1a1aa' }}/></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        cargas.length === 0 ? (
+          <div className="sofia-vacio">Aún no se ha subido ningún PE-04.</div>
+        ) : (
+          <ol className="sp-linea">
+            {cargas.map((c, i) => (
+              <li key={c.id} style={{ animationDelay: `${Math.min(i, 10) * 40}ms` }}>
+                <button type="button" className={`sp-carga sp-carga--${c.estado.toLowerCase()}`} onClick={() => navigate(`${BASE}/${c.id}`)}>
+                  <span className="sp-carga__punto"/>
+                  <span className="sp-carga__fecha">
+                    <b>{fd(c.fecha_corte)}</b>
+                    <small>carga #{c.id}</small>
+                  </span>
+                  <span className="sp-carga__cuerpo">
+                    <span className="sp-carga__archivo">{c.archivo_nombre}</span>
+                    <span className="sofia-chips"><ResumenChips r={c.resumen}/></span>
+                  </span>
+                  <span className="sp-carga__estado">
+                    <Bdg tone={ESTADO_CARGA[c.estado].tone}>{ESTADO_CARGA[c.estado].label}</Bdg>
+                    {c.bloqueada && <span className="sofia-bloq"><Ic n="lock" s={11}/> bloqueada</span>}
+                  </span>
+                  <Ic n="chevronRight" s={14} className="sp-carga__ir"/>
+                </button>
+              </li>
+            ))}
+          </ol>
+        )
       ) : (
         <AlertasPanel alertas={alertas}/>
       )}
@@ -238,11 +282,10 @@ function ResumenChips({ r }: { r: Resumen }) {
     ['con cambios', r.modificadas, ''],
     ['ya no vienen', r.desaparecidas, 'sofia-chip--warn'],
     ['por revisar', r.por_accion.REVISAR, 'sofia-chip--warn'],
-    ['alertas', r.alertas, 'sofia-chip--err'],
   ]
   const visibles = chips.filter(([, n]) => n > 0)
   if (!visibles.length) return <span className="sofia-nada">Sin cambios</span>
-  return <>{visibles.map(([l, n, cls]) => <span key={l} className={`sofia-chip ${cls}`}><b>{n}</b> {l}</span>)}</>
+  return <>{visibles.map(([l, n, cls]) => <span key={l} className={`sofia-chip ${cls}`}><b>{n.toLocaleString('es-CO')}</b> {l}</span>)}</>
 }
 
 // ─── Subida del archivo ──────────────────────────────────────────────────────
@@ -279,39 +322,45 @@ function SubirPe04({ onSubida }: { onSubida: (cargaId: number) => void }) {
   }
 
   return (
-    <Card style={{ padding: 18 }}>
-      <div className="sofia-subir__titulo"><Ic n="upload" s={15}/> Subir el PE-04 de la semana</div>
-      <p className="sofia-subir__txt">
-        Se guarda la foto del reporte y se calculan los cambios. <b>No se modifica ninguna ficha</b> hasta que revises y apliques.
-      </p>
+    <div className="sp-subir">
       <div
-        className={`sofia-drop${arrastrando ? ' sofia-drop--on' : ''}${archivo ? ' sofia-drop--ok' : ''}`}
+        className={`sp-drop${arrastrando ? ' sp-drop--on' : ''}${archivo ? ' sp-drop--ok' : ''}`}
+        role="button" tabIndex={0}
         onClick={() => input.current?.click()}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.current?.click() } }}
         onDragOver={e => { e.preventDefault(); setArrastrando(true) }}
         onDragLeave={() => setArrastrando(false)}
         onDrop={e => { e.preventDefault(); setArrastrando(false); elegir(e.dataTransfer.files?.[0]) }}
       >
         <input ref={input} type="file" accept=".xlsx" hidden onChange={e => { elegir(e.target.files?.[0]); e.target.value = '' }}/>
-        <Ic n={archivo ? 'fileText' : 'upload'} s={18}/>
-        {archivo
-          ? <span><b>{archivo.name}</b> · {Math.round(archivo.size / 1024)} KB</span>
-          : <span>Arrastra el archivo aquí o <u>haz clic para elegirlo</u></span>}
+        <span className="sp-drop__icono"><Ic n={archivo ? 'fileText' : 'upload'} s={22}/></span>
+        {archivo ? (
+          <>
+            <b>{archivo.name}</b>
+            <span>{Math.round(archivo.size / 1024).toLocaleString('es-CO')} KB · toca para cambiarlo</span>
+          </>
+        ) : (
+          <>
+            <b>Arrastra aquí el PE-04 de esta semana</b>
+            <span>o haz clic para elegir el .xlsx</span>
+          </>
+        )}
       </div>
-      <div className="sofia-subir__fila">
+      <div className="sp-subir__fila">
         <label className="sofia-campo">
           <span>Fecha de corte</span>
           <input type="date" value={fecha} max={hoy()} onChange={e => setFecha(e.target.value)}/>
         </label>
         <Btn icon="refresh" disabled={!archivo || !fecha || subiendo} onClick={() => void subir()}>
-          {subiendo ? 'Procesando…' : 'Subir y comparar'}
+          {subiendo ? 'Comparando…' : 'Subir y comparar'}
         </Btn>
       </div>
       {error && (
-        <InlineAlert tone="crit" icon="alert" style={{ marginTop: 12 }} title={error.texto}>
+        <InlineAlert tone="crit" icon="alert" style={{ marginTop: 10 }} title={error.texto}>
           {error.detalle.length > 0 && <ul className="sofia-errores">{error.detalle.map(d => <li key={d}>{d}</li>)}</ul>}
         </InlineAlert>
       )}
-    </Card>
+    </div>
   )
 }
 
@@ -333,29 +382,24 @@ function AlertasPanel({ alertas }: { alertas: Alertas | null }) {
       sub: 'No vinieron en el último reporte. No se borró nada: revisa si es un error del export.',
       filas: alertas.ausentes_en_sofia, extra: f => f.sofia_ausente_desde ? `desde ${fd(f.sofia_ausente_desde)}` : '',
     },
-    {
-      titulo: 'Creadas desde SofiaPlus sin coordinación', icon: 'users', tone: 'neutral',
-      sub: 'Hay que asignarles coordinación para que aparezcan en los tableros de coordinación.',
-      filas: alertas.creadas_sin_coordinacion, extra: f => f.sofia_etapa === 'PRACTICA' ? 'en práctica' : '',
-    },
   ]
 
   return (
     <div className="sofia-alertas">
+      {alertas.creadas_sin_coordinacion.length > 0 && (
+        <button type="button" className="sp-a-catalogo" onClick={() => navigate('/dashboard/superadmin/integridad/catalogo')}>
+          <Ic n="users" s={15}/>
+          <span><b>{alertas.creadas_sin_coordinacion.length.toLocaleString('es-CO')}</b> fichas de SofiaPlus sin coordinación: se asignan definiendo las reglas del catálogo de su centro.</span>
+          <span className="sp-abierta__ir">Ir al catálogo <Ic n="chevronRight" s={13}/></span>
+        </button>
+      )}
       {alertas.alertas_ultima_carga.length > 0 && (
         <Card style={{ padding: 16 }}>
           <div className="sofia-grupo__cab">
             <Ic n="bell" s={14}/> <b>Novedades del último reporte</b>
             <span className="sofia-grupo__n">{alertas.alertas_ultima_carga.length}</span>
           </div>
-          <div className="sofia-lista">
-            {alertas.alertas_ultima_carga.map((a, i) => (
-              <button key={i} type="button" className="sofia-lista__item" onClick={() => abrir(a.ficha_id)}>
-                <span className="prog-code">{a.numero_ficha}</span>
-                <span>{a.alerta}</span>
-              </button>
-            ))}
-          </div>
+          <NovedadesLista items={alertas.alertas_ultima_carga} onAbrir={abrir}/>
         </Card>
       )}
       {grupos.map(g => (
@@ -372,6 +416,28 @@ function AlertasPanel({ alertas }: { alertas: Alertas | null }) {
           )}
         </Card>
       ))}
+    </div>
+  )
+}
+
+function NovedadesLista({ items, onAbrir }: {
+  items: Alertas['alertas_ultima_carga']; onAbrir: (id: number) => void
+}) {
+  const [todas, setTodas] = useState(false)
+  const visibles = todas ? items : items.slice(0, 8)
+  return (
+    <div className="sofia-lista">
+      {visibles.map((a, i) => (
+        <button key={i} type="button" className="sofia-lista__item" onClick={() => onAbrir(a.ficha_id)}>
+          <span className="prog-code">{a.numero_ficha}</span>
+          <span>{a.alerta}</span>
+        </button>
+      ))}
+      {items.length > 8 && (
+        <button type="button" className="sofia-mas" onClick={() => setTodas(!todas)}>
+          {todas ? 'Ver menos' : `Ver las ${items.length}`}
+        </button>
+      )}
     </div>
   )
 }
@@ -401,7 +467,7 @@ function ListaFichas({ filas, extra, onAbrir }: {
 
 // ─── Detalle de una carga: revisar y aplicar ────────────────────────────────
 
-type Filtro = 'todos' | 'aplicar' | 'revisar' | 'alertas' | 'nuevas' | 'otros'
+type Filtro = 'todos' | 'aplicar' | 'revisar' | 'alertas' | 'nuevas' | 'otros' | 'pendientes' | 'aplicados' | 'descartados'
 const POR_PAGINA = 40
 
 function CargaDetalle() {
@@ -413,7 +479,7 @@ function CargaDetalle() {
   const [cambios, setCambios] = useState<Cambio[] | null>(null)
   const [esUltima, setEsUltima] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const [filtro, setFiltro] = useState<Filtro>('todos')
+  const [filtroElegido, setFiltro] = useState<Filtro | null>(null)
   const [q, setQ] = useState('')
   const [pagina, setPagina] = useState(0)
   const [aprobar, setAprobar] = useState<Set<number>>(new Set())
@@ -436,6 +502,12 @@ function CargaDetalle() {
   }
   useEffect(cargar, [cargaId])
 
+  // Sin elección: en la vista previa, todo; ya aplicada, lo que quedó pendiente
+  // (o lo aplicado si no queda nada), no el historial completo.
+  const filtro: Filtro = filtroElegido ?? (!carga || carga.estado === 'PREVISUALIZADA'
+    ? 'todos'
+    : (cambios ?? []).some(c => c.resultado === 'PENDIENTE') ? 'pendientes' : 'aplicados')
+
   const cuenta = useMemo(() => {
     const cs = cambios ?? []
     return {
@@ -445,6 +517,9 @@ function CargaDetalle() {
       alertas: cs.filter(c => c.alerta).length,
       nuevas: cs.filter(c => c.tipo === 'NUEVA').length,
       otros: cs.filter(c => c.accion === 'IGNORADO' || c.accion === 'BLOQUEADO').length,
+      pendientes: cs.filter(c => c.resultado === 'PENDIENTE').length,
+      aplicados: cs.filter(c => c.resultado === 'APLICADO').length,
+      descartados: cs.filter(c => c.resultado === 'DESCARTADO' || c.resultado === 'REVERTIDO').length,
     }
   }, [cambios])
 
@@ -456,7 +531,10 @@ function CargaDetalle() {
         || (filtro === 'revisar' && c.accion === 'REVISAR')
         || (filtro === 'alertas' && c.alerta)
         || (filtro === 'nuevas' && c.tipo === 'NUEVA')
-        || (filtro === 'otros' && (c.accion === 'IGNORADO' || c.accion === 'BLOQUEADO')))
+        || (filtro === 'otros' && (c.accion === 'IGNORADO' || c.accion === 'BLOQUEADO'))
+        || (filtro === 'pendientes' && c.resultado === 'PENDIENTE')
+        || (filtro === 'aplicados' && c.resultado === 'APLICADO')
+        || (filtro === 'descartados' && (c.resultado === 'DESCARTADO' || c.resultado === 'REVERTIDO')))
       && (!qn || c.numero_ficha.includes(qn)))
   }, [cambios, filtro, q])
 
@@ -498,6 +576,22 @@ function CargaDetalle() {
       setAviso({ tone: 'crit', texto: mensajeError(e, 'La operación no se pudo completar.').texto })
     } finally {
       setOcupado(false); setConfirmar(null)
+    }
+  }
+
+  async function resolverLote(ids: number[], decision: 'APLICAR' | 'DESCARTAR', que: string) {
+    if (!confirm(`${decision === 'APLICAR' ? 'Aprobar' : 'Rechazar'} ${ids.length} ${que}?`)) return
+    setOcupado(true); setAviso(null)
+    try {
+      const res = await api.post<{ aplicados: number; descartados: number }>(`/sofia-sync/cargas/${cargaId}/resolver`, { cambios: ids, decision })
+      setAviso({ tone: 'ok', texto: decision === 'APLICAR'
+        ? `${res.data.aplicados} cambios aplicados${res.data.descartados ? `, ${res.data.descartados} no se pudieron aplicar` : ''}.`
+        : `${res.data.descartados} cambios rechazados.` })
+      cargar()
+    } catch (e) {
+      setAviso({ tone: 'crit', texto: mensajeError(e, 'No se pudieron resolver los cambios.').texto })
+    } finally {
+      setOcupado(false)
     }
   }
 
@@ -552,12 +646,42 @@ function CargaDetalle() {
           si no, quedan pendientes y puedes resolverlos después. Coordinación, instructores y práctica nunca se tocan.
         </InlineAlert>
       )}
-      {carga.estado === 'APLICADA' && esUltima && pendientes > 0 && (
-        <InlineAlert tone="warn" icon="clock">
-          <b>{pendientes}</b> cambios quedaron pendientes de revisión. Apruébalos o recházalos en el filtro <b>Revisar</b>;
-          los que sigan pendientes se vuelven a proponer con el próximo reporte.
+      {carga.estado === 'APLICADA' && (
+        <InlineAlert tone="ok" icon="checkCircle" title={`Carga aplicada${carga.aplicada_at ? ` el ${new Date(carga.aplicada_at).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}`}>
+          Se aplicaron <b>{cuenta.aplicados}</b> cambios en FORMA
+          {cuenta.descartados > 0 && <> y <b>{cuenta.descartados}</b> se descartaron</>}.
+          {pendientes > 0
+            ? <> Quedan <b>{pendientes}</b> revisiones pendientes: abajo solo ves esas. El historial completo está en <b>Todos</b>.</>
+            : <> No quedan revisiones pendientes.</>}
         </InlineAlert>
       )}
+      {carga.estado === 'APLICADA' && esUltima && pendientes > 0 && (() => {
+        const pend = cambios.filter(c => c.accion === 'REVISAR' && c.resultado === 'PENDIENTE')
+        const nuevasFin = pend.filter(c => c.tipo === 'NUEVA')
+        const otras = pend.filter(c => c.tipo !== 'NUEVA')
+        return (
+          <div className="sofia-lote">
+            <div className="sofia-lote__txt">
+              <b>Resolver pendientes</b>
+              <span>
+                {nuevasFin.length > 0 && <>{nuevasFin.length} fichas nuevas que ya terminaron en SofiaPlus (histórico)</>}
+                {nuevasFin.length > 0 && otras.length > 0 && ' · '}
+                {otras.length > 0 && <>{otras.length} cambios en fichas existentes (programa, estado o centro): mejor uno por uno</>}
+              </span>
+            </div>
+            {nuevasFin.length > 0 && (
+              <>
+                <Btn size="sm" icon="check" disabled={ocupado} onClick={() => void resolverLote(nuevasFin.map(c => c.id), 'APLICAR', 'fichas finalizadas (se crean como histórico)')}>
+                  Crear las {nuevasFin.length} fichas finalizadas
+                </Btn>
+                <Btn size="sm" variant="secondary" icon="x" disabled={ocupado} onClick={() => void resolverLote(nuevasFin.map(c => c.id), 'DESCARTAR', 'fichas finalizadas (no se crean)')}>
+                  No crearlas
+                </Btn>
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       <div className="sofia-metricas">
         {([
@@ -577,7 +701,13 @@ function CargaDetalle() {
       </div>
 
       <div className="sofia-barra">
-        <Seg name="sofia-filtro" value={filtro} onChange={v => { setFiltro(v as Filtro); setPagina(0) }} options={[
+        <Seg name="sofia-filtro" value={filtro} onChange={v => { setFiltro(v as Filtro); setPagina(0) }} options={!previa ? [
+          { value: 'pendientes', label: `Pendientes ${cuenta.pendientes}` },
+          { value: 'aplicados', label: `Aplicados ${cuenta.aplicados}` },
+          { value: 'descartados', label: `Descartados ${cuenta.descartados}` },
+          { value: 'alertas', label: `Alertas ${cuenta.alertas}` },
+          { value: 'todos', label: `Todos ${cuenta.todos}` },
+        ] : [
           { value: 'todos', label: `Todos ${cuenta.todos}` },
           { value: 'aplicar', label: `Aplicar ${cuenta.aplicar}` },
           { value: 'revisar', label: `Revisar ${cuenta.revisar}` },
@@ -639,7 +769,12 @@ function CargaDetalle() {
                       </td>
                       <td className="prog-table__td sofia-valores">
                         {c.tipo === 'NUEVA'
-                          ? <span className="sofia-nuevo">{c.valor_nuevo?.replace('|v', ' · v')}</span>
+                          ? <>
+                              <span className="sofia-nuevo">{c.valor_nuevo?.replace('|v', ' · v')}</span>
+                              {c.coordinacion_sugerida?.coordinacion_nombre
+                                ? <div className="sofia-coord sofia-coord--ok"><Ic n="users" s={11}/> {c.coordinacion_sugerida.coordinacion_nombre.replace(/^Coordinaci[oó]n Acad[eé]mica de /i, '')}</div>
+                                : <div className="sofia-coord">{c.coordinacion_sugerida?.tipo === 'AMBIGUA' ? 'Catálogo ambiguo: ' : ''}Queda por asignar coordinación</div>}
+                            </>
                           : c.tipo === 'SOLO_EN_FORMA' ? <span className="sofia-nada">—</span>
                           : <><span className="sofia-antes">{valor(c.campo, c.valor_anterior)}</span><Ic n="arrowRight" s={12}/><span className="sofia-despues">{valor(c.campo, c.valor_nuevo)}</span></>}
                       </td>
@@ -682,14 +817,18 @@ function CargaDetalle() {
             {confirmar === 'aplicar' && <>
               <p>Se escriben en FORMA <b>{nAplicar}</b> cambios en una sola operación: si algo falla, no se aplica nada.</p>
               <ul>
-                {r.nuevas > 0 && <li>Se crean hasta <b>{r.nuevas - cambios.filter(c => c.tipo === 'NUEVA' && ((c.accion === 'APLICAR' && excluir.has(c.id)) || (c.accion === 'REVISAR' && !aprobar.has(c.id)))).length}</b> fichas nuevas, sin coordinación.</li>}
+                {r.nuevas > 0 && (() => {
+                  const creadas = cambios.filter(c => c.tipo === 'NUEVA' && !((c.accion === 'APLICAR' && excluir.has(c.id)) || (c.accion === 'REVISAR' && !aprobar.has(c.id))) && c.accion !== 'BLOQUEADO' && c.accion !== 'IGNORADO')
+                  const conCoord = creadas.filter(c => c.coordinacion_sugerida?.coordinacion_academica_id != null).length
+                  return <li>Se crean hasta <b>{creadas.length}</b> fichas nuevas: <b>{conCoord}</b> quedan en su coordinación según el catálogo{creadas.length - conCoord > 0 && <> y <b>{creadas.length - conCoord}</b> quedan en Integridad › Por asignar</>}.</li>
+                })()}
                 {aprobar.size > 0 && <li>Incluye <b>{aprobar.size}</b> cambios de revisión que aprobaste.</li>}
                 {excluir.size > 0 && <li>Excluiste <b>{excluir.size}</b> cambios.</li>}
                 <li>Se puede revertir mientras sea la última carga aplicada.</li>
               </ul>
             </>}
             {confirmar === 'revertir' && (
-              <p>Se deshacen los cambios de esta carga. Lo que se haya editado después en FORMA se conserva, y las fichas creadas solo se eliminan si todavía no tienen coordinación, aprendices ni práctica.</p>
+              <p>Se deshacen los cambios de esta carga. Lo que se haya editado después en FORMA se conserva, y las fichas creadas solo se eliminan si todavía no tienen aprendices ni práctica y nadie les cambió la coordinación que puso el catálogo.</p>
             )}
             {confirmar === 'descartar' && <p>La carga queda en el historial como descartada y no se aplica nada.</p>}
           </div>
