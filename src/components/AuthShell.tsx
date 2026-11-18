@@ -1,19 +1,17 @@
-import type { ReactNode } from 'react'
-import { BrandMark, Ic } from './ui'
-import { Forma3D } from './Forma3D'
-import './AuthShell.css'
+import type { ReactNode } from "react";
+import { Ic } from "./ui";
+import { Forma3D } from "./Forma3D";
+import "./AuthShell.css";
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="auth-shell">
-
       {/* ── Panel izquierdo ── */}
       <div className="auth-shell__left">
-
         {/* Logo */}
         <div className="auth-shell__logo">
           <div className="auth-shell__logo-inner">
-            <BrandMark size={24}/>
+            <img src="/iconos/icon_uno.svg" style={{ height: 30 }} />
             <div>
               <div className="auth-shell__brand-name">FORMA</div>
               <div className="auth-shell__brand-sub">
@@ -25,9 +23,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
 
         {/* Contenido centrado */}
         <div className="auth-shell__content">
-          <div className="auth-shell__content-inner screen-in">
-            {children}
-          </div>
+          <div className="auth-shell__content-inner screen-in">{children}</div>
         </div>
 
         {/* Pie */}
@@ -40,20 +36,18 @@ export function AuthShell({ children }: { children: ReactNode }) {
       {/* ── Panel derecho 3D ── */}
       <div className="auth-shell__right">
         {/* Halos de fondo */}
-        <div className="auth-shell__halo-top"/>
-        <div className="auth-shell__halo-bottom"/>
+        <div className="auth-shell__halo-top" />
+        <div className="auth-shell__halo-bottom" />
 
         {/* Canvas Three.js — ocupa todo el panel */}
-        <Forma3D/>
+        <Forma3D />
 
         {/* Overlay UI (encima del canvas, pointer-events none para no bloquear mouse) */}
         <div className="auth-shell__overlay">
           {/* Badge superior */}
           <div className="auth-shell__badge">
-            <span className="auth-shell__badge-dot"/>
-            <span className="auth-shell__badge-text">
-              FORMA · 3D
-            </span>
+            <span className="auth-shell__badge-dot" />
+            <span className="auth-shell__badge-text">FORMA · 3D</span>
           </div>
 
           {/* Texto inferior */}
@@ -67,12 +61,16 @@ export function AuthShell({ children }: { children: ReactNode }) {
 
             {/* Seguridad */}
             <div className="auth-shell__security">
-              <Ic n="shield" s={12} style={{ color: 'rgba(255,255,255,.25)' }}/>
+              <Ic
+                n="shield"
+                s={12}
+                style={{ color: "rgba(255,255,255,.25)" }}
+              />
               Conexión cifrada · Acceso restringido por rol
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
