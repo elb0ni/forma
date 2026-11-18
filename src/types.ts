@@ -1,9 +1,9 @@
 // ─── Roles ────────────────────────────────────────────────────────────────────
 
+// FORMA maneja 3 roles: super admin (todo), coordinador (COORD_ACADEMICO:
+// ve su coordinación, asigna instructores y gestiona alertas) e instructor.
 export type UserRole =
   | 'SUPER_ADMIN'
-  | 'SUBDIRECTOR'
-  | 'COORD_MISIONAL'
   | 'COORD_ACADEMICO'
   | 'INSTRUCTOR'
 

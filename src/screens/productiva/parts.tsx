@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { useSoloLectura } from './soloLectura'
 import { useState, useEffect } from 'react'
 import { Ic, Card, Bdg, Btn } from '../../components/ui'
 import type { IcName } from '../../components/ui'
@@ -204,6 +205,7 @@ function FirmaSlot({ seguimientoId, firmante, label, rutaActual, onUploaded }: {
   seguimientoId: number; firmante: Firmante; label: string; rutaActual: string | null; onUploaded: () => void
 }) {
   "use no memo"
+  const soloLectura = useSoloLectura()
   const [abierto, setAbierto] = useState(false)
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -248,9 +250,11 @@ function FirmaSlot({ seguimientoId, firmante, label, rutaActual, onUploaded }: {
         <span style={{ fontSize: 12, fontWeight: 600, color: '#27272a', display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
           <Ic n={rutaActual ? 'checkCircle' : 'clock'} s={13} style={{ color: rutaActual ? '#15803d' : '#a1a1aa', flexShrink: 0 }}/>{label}
         </span>
-        <button onClick={() => setAbierto(true)} style={{ fontSize: 11, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, whiteSpace: 'nowrap' }}>
-          {rutaActual ? 'Volver a firmar' : 'Firmar'}
-        </button>
+        {!soloLectura && (
+          <button onClick={() => setAbierto(true)} style={{ fontSize: 11, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, whiteSpace: 'nowrap' }}>
+            {rutaActual ? 'Volver a firmar' : 'Firmar'}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -406,6 +410,7 @@ function UbicacionSlot({ seguimientoId, lat, lng, precision, distancia, alerta, 
   onCaptured: () => void
 }) {
   "use no memo"
+  const soloLectura = useSoloLectura()
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -456,12 +461,14 @@ function UbicacionSlot({ seguimientoId, lat, lng, precision, distancia, alerta, 
 
   return (
     <div>
+      {!soloLectura && (
       <button onClick={capturar} disabled={busy} style={{
         display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit', padding: 0,
       }}>
         <Ic n="pin" s={14} style={{ color: '#a1a1aa' }}/>
         <span style={{ fontSize: 12, color: '#3f3f46' }}>{busy ? 'Obteniendo ubicación…' : 'Capturar ubicación'}</span>
       </button>
+      )}
       {err && <div style={{ fontSize: 11.5, color: '#b91c1c', marginTop: 6 }}>{err}</div>}
     </div>
   )

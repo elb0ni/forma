@@ -18,7 +18,7 @@ interface NavItem {
   badge?: string | number
 }
 
-// Nav compartido por los roles de coordinación (subdirector / misional / académico)
+// Nav del coordinador (COORD_ACADEMICO)
 const COORD_NAV: NavItem[] = [
   { id: 'coord-home',         label: 'Dashboard',              icon: 'home'   },
   { id: 'coord-fichas',       label: 'Fichas en práctica',     icon: 'folder' },
@@ -31,21 +31,18 @@ const NAV: Record<UserRole, NavItem[]> = {
   SUPER_ADMIN: [
     { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
     { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
-    { id: 'admin-disenos',   label: 'Diseños',     icon: 'fileText'  },
     { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
     { id: 'admin-centros',   label: 'Centros',     icon: 'shield'    },
     { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
     { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
-    { id: 'admin-sofia',     label: 'SofiaPlus',   icon: 'refresh'   },
+    { id: 'admin-integridad', label: 'Integridad', icon: 'checkCircle' },
   ],
-  SUBDIRECTOR:     COORD_NAV,
-  COORD_MISIONAL:  COORD_NAV,
   COORD_ACADEMICO: COORD_NAV,
   INSTRUCTOR: [
     { id: 'inst-home', label: 'Inicio', icon: 'home' },
-    { id: 'inst-agenda', label: 'Agenda', icon: 'calendar' },
+    { id: 'inst-agenda', label: 'Pendientes', icon: 'bell' },
     { id: 'inst-fichas', label: 'Mis fichas', icon: 'folder' },
-    { id: 'inst-etapa-productiva', label: 'Etapa productiva', icon: 'briefcase' },
+    { id: 'inst-etapa-productiva', label: 'Aprendices', icon: 'users' },
     { id: 'inst-historial', label: 'Historial', icon: 'clock' },
     { id: 'inst-reportes', label: 'Reportes', icon: 'trend' },
   ],
@@ -62,9 +59,7 @@ function centroSigla(nombre?: string): string {
 
 const ROL_LABEL: Record<UserRole, string> = {
   SUPER_ADMIN:     'Administración',
-  SUBDIRECTOR:     'Subdirección',
-  COORD_MISIONAL:  'Coord. Misional',
-  COORD_ACADEMICO: 'Coord. Académico',
+  COORD_ACADEMICO: 'Coordinador',
   INSTRUCTOR:      'Instructor',
 }
 

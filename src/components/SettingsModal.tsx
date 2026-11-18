@@ -13,9 +13,7 @@ type Tab = 'perfil' | 'firma' | 'apariencia' | 'seguridad'
 
 const ROL_LABEL: Record<string, string> = {
   SUPER_ADMIN: 'Administración',
-  SUBDIRECTOR: 'Subdirección',
-  COORD_MISIONAL: 'Coordinación misional',
-  COORD_ACADEMICO: 'Coordinación académica',
+  COORD_ACADEMICO: 'Coordinador',
   INSTRUCTOR: 'Instructor',
 }
 

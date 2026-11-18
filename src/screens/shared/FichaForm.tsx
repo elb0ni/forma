@@ -2,6 +2,7 @@ import { useState, useEffect, Fragment } from 'react'
 import type { ReactNode } from 'react'
 import axios from 'axios'
 import { Ic, Card, Btn } from '../../components/ui'
+import { useAuthStore } from '../../store/auth'
 import type { ProgramaResumen } from '../../types'
 import api from '../../lib/api'
 import { AprendicesAsignacion } from './AprendicesAsignacion'
@@ -221,10 +222,11 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
   // Una vez creada la ficha (o si ya editamos), bloqueamos lo que el backend no deja cambiar.
   const locked = editando || savedId != null
 
-  // El coordinador solo asigna el instructor de práctica y hace seguimiento --
-  // no toca fechas ni datos sensibles de una ficha que ya existe (esos vienen
-  // de la fuente oficial). El Super Admin conserva edición completa.
-  const soloAsignacionCoord = !!lockScope && locked
+  // El coordinador solo asigna instructores (a la ficha y a aprendices
+  // sueltos): los datos de la ficha quedan de solo lectura y no hay botón de
+  // guardar la ficha (el backend tampoco se lo permite). El Super Admin
+  // conserva edición completa.
+  const soloAsignacionCoord = useAuthStore(s => s.user?.rol) === 'COORD_ACADEMICO'
 
   useEffect(() => {
     api.get<ProgramaResumen[]>('/programas')
@@ -314,7 +316,7 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
       </button>
 
       <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>
-        {editando ? `Editar ficha ${ficha!.numero_ficha}` : 'Crear ficha de formación'}
+        {soloAsignacionCoord ? `Asignar instructores · ficha ${ficha?.numero_ficha ?? ''}` : editando ? `Editar ficha ${ficha!.numero_ficha}` : 'Crear ficha de formación'}
       </h2>
       <div style={{ fontSize: 13, color: '#52525b', marginBottom: 24 }}>
         Define el grupo, el programa y el instructor de práctica que hará seguimiento a sus aprendices en etapa productiva.
@@ -424,10 +426,17 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Btn variant="ghost" onClick={onCancel} disabled={saving}>Cancelar</Btn>
-            <Btn variant="accent" icon={editando ? 'check' : 'plus'} onClick={handleSave} disabled={saving}>
-              {saving ? 'Guardando…' : editando ? 'Guardar cambios' : 'Crear ficha'}
-            </Btn>
+            {soloAsignacionCoord ? (
+              // Cada asignación se guarda sola en su bloque; aquí solo se vuelve.
+              <Btn variant="accent" icon="check" onClick={onSaved}>Listo</Btn>
+            ) : (
+              <>
+                <Btn variant="ghost" onClick={onCancel} disabled={saving}>Cancelar</Btn>
+                <Btn variant="accent" icon={editando ? 'check' : 'plus'} onClick={handleSave} disabled={saving}>
+                  {saving ? 'Guardando…' : editando ? 'Guardar cambios' : 'Crear ficha'}
+                </Btn>
+              </>
+            )}
           </div>
         </div>
 

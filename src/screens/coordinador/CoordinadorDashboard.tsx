@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/auth'
 import { FichasAdmin } from '../shared/FichasAdmin'
 import { ReportesAdmin } from '../shared/ReportesAdmin'
 import { CoordinadorHome } from './CoordinadorHome'
-import { CoordInstructores } from './CoordInstructores'
+import { InstructoresPractica } from '../shared/InstructoresPractica'
 import { CoordAlertas } from './CoordAlertas'
 
 const BASE = '/dashboard/coordinador'
@@ -94,7 +94,7 @@ export function CoordinadorDashboard() {
           />
         }/>
         <Route path="fichas/*" element={<CoordFichas/>}/>
-        <Route path="instructores/*" element={<CoordInstructores/>}/>
+        <Route path="instructores/*" element={<InstructoresPractica/>}/>
         <Route path="reportes" element={<CoordReportes/>}/>
         <Route path="alertas" element={
           <CoordAlertas onOpenFicha={id => navigate(`${BASE}/fichas/${id}`)}/>
