@@ -98,3 +98,11 @@
 .pan-tabla-inst [data-tono='atraso'] { color: var(--fx-atraso); }
 .pan-carga { display: inline-flex; flex-direction: column; gap: 3px; }
 .pan-carga .pan-medidor { width: 90px; }
+
+/* Datos */
+.pan-cifras-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 760px) { .pan-cifras-3 { grid-template-columns: 1fr; } }
+.pan-sub { margin: 14px 0 4px; }
+.pan-fichas { font-size: 12.5px; line-height: 1.8; margin: 6px 0 0; }
+.hoy-enlace { background: none; border: 0; padding: 0; font: inherit; color: var(--fx-morado-tinta); font-weight: 600; cursor: pointer; text-decoration: underline; }
+.pan-mes-nombre.pan-tal-cual { text-transform: none; }

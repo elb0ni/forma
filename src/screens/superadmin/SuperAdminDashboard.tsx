@@ -9,6 +9,8 @@ import { ReportesAdmin } from '../shared/ReportesAdmin'
 import { Integridad } from './Integridad'
 import { Asignacion } from '../panorama/Asignacion'
 import { Panorama } from '../panorama/Panorama'
+import { Datos } from '../panorama/Datos'
+import { Catalogo } from './CatalogoVista'
 import { useAuthStore } from '../../store/auth'
 
 const BASE = '/dashboard/superadmin'
@@ -24,6 +26,8 @@ const SECTION_PATH: Record<string, string> = {
   'admin-usuarios':  `${BASE}/usuarios`,
   'admin-reportes':  `${BASE}/reportes`,
   'admin-integridad': `${BASE}/integridad`,
+  'admin-datos':     `${BASE}/datos`,
+  'admin-catalogo':  `${BASE}/catalogo`,
 }
 
 const SECTION_BY_SEGMENT: Record<string, string> = {
@@ -37,6 +41,8 @@ const SECTION_BY_SEGMENT: Record<string, string> = {
   usuarios:    'admin-usuarios',
   reportes:    'admin-reportes',
   integridad:  'admin-integridad',
+  datos:       'admin-datos',
+  catalogo:    'admin-catalogo',
 }
 
 const ADMIN_TITLES: Record<string, string> = {
@@ -49,6 +55,8 @@ const ADMIN_TITLES: Record<string, string> = {
   'admin-usuarios':  'Gestión de usuarios',
   'admin-reportes':  'Reportes ejecutivos',
   'admin-integridad': 'Integridad de datos',
+  'admin-datos':     'Datos',
+  'admin-catalogo':  'Catálogo del centro',
 }
 
 function sectionFor(pathname: string): string {
@@ -99,6 +107,8 @@ export function SuperAdminDashboard() {
         <Route path="usuarios/*" element={<UsuariosAdmin/>}/>
         <Route path="reportes" element={<ReportesAdmin/>}/>
         <Route path="integridad/*" element={<Integridad/>}/>
+        <Route path="datos" element={<Datos rutaIntegridad={esSubdirector ? undefined : `${BASE}/integridad`}/>}/>
+        <Route path="catalogo" element={<Catalogo deCentro/>}/>
         <Route path="sofia/*" element={<SofiaRedirect/>}/>
         <Route path="*" element={<Navigate to={BASE} replace/>}/>
       </Routes>

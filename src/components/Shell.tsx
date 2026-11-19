@@ -42,6 +42,7 @@ const NAV: Record<UserRole, NavItem[]> = {
     { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
     { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
     { id: 'admin-integridad', label: 'Integridad', icon: 'checkCircle' },
+    { id: 'admin-datos',     label: 'Datos',       icon: 'list'      },
   ],
   // Mismas pantallas que el super admin, acotadas a su centro por el backend.
   // Integridad (PE-04, catálogo regional) queda solo para el super admin.
@@ -54,6 +55,8 @@ const NAV: Record<UserRole, NavItem[]> = {
     { id: 'admin-centros',   label: 'Mi centro',   icon: 'shield'    },
     { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
     { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
+    { id: 'admin-catalogo',  label: 'Catálogo',    icon: 'checkCircle', seccion: 'Datos' },
+    { id: 'admin-datos',     label: 'Salud de los datos', icon: 'list' },
   ],
   COORD_ACADEMICO: COORD_NAV,
   // Rediseño: lo del día a día arriba; el resto, en "Más".

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Ic, Btn, Bdg, Modal } from '../../components/ui'
 import { InlineAlert, CenterState, LoadingBlock, Seg, fd, centroLabel } from '../shared/parts'
@@ -111,8 +111,35 @@ function Numero({ valor }: { valor: number }) {
 
 // ─── Vista ───────────────────────────────────────────────────────────────────
 
-export function Catalogo() {
+// Rutas del catálogo: la regional (Integridad) o la de un centro, para el
+// subdirector (/catalogo-centro, acotada a su centro en el backend).
+const RUTAS = {
+  regional: {
+    catalogo: '/integridad/catalogo',
+    porDefinir: '/integridad/por-asignar/reglas',
+    asignar: '/integridad/catalogo/asignar',
+    regla: (id: number) => `/integridad/catalogo/${id}`,
+  },
+  centro: {
+    catalogo: '/catalogo-centro',
+    porDefinir: '/catalogo-centro/por-asignar/reglas',
+    asignar: '/catalogo-centro/asignar',
+    regla: (id: number) => `/catalogo-centro/${id}`,
+  },
+}
+const RutasCatalogo = createContext(RUTAS.regional)
+
+export function Catalogo({ deCentro = false }: { deCentro?: boolean }) {
+  return (
+    <RutasCatalogo.Provider value={deCentro ? RUTAS.centro : RUTAS.regional}>
+      <CatalogoInterno deCentro={deCentro}/>
+    </RutasCatalogo.Provider>
+  )
+}
+
+function CatalogoInterno({ deCentro }: { deCentro: boolean }) {
   "use no memo"
+  const rutas = useContext(RutasCatalogo)
   const [data, setData] = useState<CatalogoData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [alcance, setAlcance] = useState<Alcance>('vigentes')
@@ -123,13 +150,15 @@ export function Catalogo() {
   const [aviso, setAviso] = useState<{ tono: 'ok' | 'crit'; texto: string } | null>(null)
 
   function cargar() {
-    api.get<CatalogoData>('/integridad/catalogo')
+    api.get<CatalogoData>(rutas.catalogo)
       .then(r => setData(r.data))
       .catch(e => setError(mensajeError(e, 'No se pudo cargar el catálogo.')))
-    api.get<{ reglas: ReglaPorDefinir[] }>('/integridad/por-asignar/reglas')
+    api.get<{ reglas: ReglaPorDefinir[] }>(rutas.porDefinir)
       .then(r => setPendientes(r.data.reglas))
       .catch(() => setPendientes([]))
   }
+  // Las rutas no cambian mientras la vista está montada.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(cargar, [])
 
   if (error) return <CenterState icon="alert" title={error}/>
@@ -153,9 +182,16 @@ export function Catalogo() {
     setAplicando(true); setAviso(null)
     try {
       const incluir_historico = alcance === 'total'
-      const a = await api.post<{ asignadas: number }>('/integridad/catalogo/aplicar', { incluir_historico })
-      const b = await api.post<{ corregidas: number }>('/integridad/catalogo/corregir', { incluir_historico })
-      setAviso({ tono: 'ok', texto: `${n(a.data.asignadas + b.data.corregidas)} fichas quedaron en la coordinación del catálogo.` })
+      let total: number
+      if (deCentro) {
+        const r = await api.post<{ asignadas: number; corregidas: number }>('/catalogo-centro/aplicar', { incluir_historico })
+        total = r.data.asignadas + r.data.corregidas
+      } else {
+        const a = await api.post<{ asignadas: number }>('/integridad/catalogo/aplicar', { incluir_historico })
+        const b = await api.post<{ corregidas: number }>('/integridad/catalogo/corregir', { incluir_historico })
+        total = a.data.asignadas + b.data.corregidas
+      }
+      setAviso({ tono: 'ok', texto: `${n(total)} fichas quedaron en la coordinación del catálogo.` })
       cargar()
     } catch (e) {
       setAviso({ tono: 'crit', texto: mensajeError(e, 'No se pudo aplicar el catálogo.') })
@@ -176,8 +212,8 @@ export function Catalogo() {
             { value: 'vigentes', label: `Vigentes` },
             { value: 'total', label: 'Todas' },
           ]}/>
-          <Btn size="sm" variant="ghost" icon="upload" onClick={() => setImportar(true)}>Importar</Btn>
-          <Btn size="sm" variant="ghost" icon="download" onClick={() => void descargarCatalogo()}>Excel</Btn>
+          {!deCentro && <Btn size="sm" variant="ghost" icon="upload" onClick={() => setImportar(true)}>Importar</Btn>}
+          {!deCentro && <Btn size="sm" variant="ghost" icon="download" onClick={() => void descargarCatalogo()}>Excel</Btn>}
         </div>
       </header>
 
@@ -185,7 +221,7 @@ export function Catalogo() {
         <div className="cv-hero__num">
           <span className="cv-hero__pct"><Numero valor={pct(t.con, t.fichas)}/><small>%</small></span>
           <span className="cv-hero__txt">
-            de las {n(t.fichas)} fichas {alcance === 'vigentes' ? 'vigentes ' : ''}de la regional tienen coordinación
+            de las {n(t.fichas)} fichas {alcance === 'vigentes' ? 'vigentes ' : ''}{deCentro ? 'de tu centro' : 'de la regional'} tienen coordinación
             {alcance === 'vigentes' && <em> · desde {fd(data.forma_inicio)}</em>}
           </span>
         </div>
@@ -375,6 +411,7 @@ interface ReglaPorDefinir {
 function PorDefinir({ pendientes, coordinaciones, onCambio }: {
   pendientes: ReglaPorDefinir[]; coordinaciones: Coordinacion[]; onCambio: () => void
 }) {
+  const rutas = useContext(RutasCatalogo)
   const [eleccion, setEleccion] = useState<Map<number, number>>(new Map())
   const [q, setQ] = useState('')
   const [soloVigentes, setSoloVigentes] = useState(true)
@@ -397,7 +434,7 @@ function PorDefinir({ pendientes, coordinaciones, onCambio }: {
   async function guardar() {
     setGuardando(true); setMsg(null)
     try {
-      const r = await api.post<{ reglas: number; fichas: number }>('/integridad/catalogo/asignar', {
+      const r = await api.post<{ reglas: number; fichas: number }>(rutas.asignar, {
         items: [...eleccion].map(([regla_id, coordinacion_academica_id]) => ({ regla_id, coordinacion_academica_id })),
       })
       setMsg({ tono: 'ok', texto: `${r.data.reglas} regla${r.data.reglas === 1 ? '' : 's'} definida${r.data.reglas === 1 ? '' : 's'}; ${n(r.data.fichas)} fichas quedaron en su coordinación.` })
@@ -475,6 +512,7 @@ function PorDefinir({ pendientes, coordinaciones, onCambio }: {
 function ReglasCentro({ reglas, coords, opciones, onCambio }: {
   reglas: Regla[]; coords: { id: number; nombre: string }[]; opciones: Coordinacion[]; onCambio: () => void
 }) {
+  const rutas = useContext(RutasCatalogo)
   const [q, setQ] = useState('')
   const [soloSin, setSoloSin] = useState(false)
   const [guardando, setGuardando] = useState<number | null>(null)
@@ -491,7 +529,7 @@ function ReglasCentro({ reglas, coords, opciones, onCambio }: {
   async function cambiar(r: Regla, coordId: number | null) {
     setGuardando(r.id)
     try {
-      await api.patch(`/integridad/catalogo/${r.id}`, { coordinacion_academica_id: coordId })
+      await api.patch(rutas.regla(r.id), { coordinacion_academica_id: coordId })
       onCambio()
     } catch (e) {
       alert(mensajeError(e, 'No se pudo cambiar la coordinación.'))
@@ -501,7 +539,7 @@ function ReglasCentro({ reglas, coords, opciones, onCambio }: {
   }
   async function eliminar(r: Regla) {
     if (!confirm(`¿Quitar del catálogo "${r.programa_nombre}" (${r.jornada}, ${r.modalidad_formacion}${r.municipio ? `, ${r.municipio}` : ''})?`)) return
-    await api.delete(`/integridad/catalogo/${r.id}`).then(onCambio).catch(e => alert(mensajeError(e, 'No se pudo eliminar.')))
+    await api.delete(rutas.regla(r.id)).then(onCambio).catch(e => alert(mensajeError(e, 'No se pudo eliminar.')))
   }
 
   return (

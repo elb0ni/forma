@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Ic, Card, Prog } from '../../components/ui'
 import type { IcName } from '../../components/ui'
 import api from '../../lib/api'
+import { useAuthStore } from '../../store/auth'
 import { centroLabel } from '../shared/parts'
 import type { FichaRow } from '../shared/FichasAdmin'
 import { faseFicha, FORMA_INICIO } from '../shared/fichaFase'
@@ -580,6 +581,8 @@ const TABS: { id: TabId; label: string; icon: IcName }[] = [
 
 export function DashboardHome({ onNav, onOpenFicha }: { onNav?: (id: string) => void; onOpenFicha?: (id: number) => void }) {
   "use no memo"
+  // El subdirector ve su centro, no la regional.
+  const yo = useAuthStore(st => st.user)
   const [centros, setCentros] = useState<CentroResumen[] | null>(null)
   const [fichas,  setFichas]  = useState<FichaRow[] | null>(null)
   const [estadoFilt, setEstadoFilt] = useState<EstadoFilt>('')
@@ -624,7 +627,7 @@ export function DashboardHome({ onNav, onOpenFicha }: { onNav?: (id: string) => 
     <div>
       <div className="dash-header">
         <div>
-          <div className="dash-header__eyebrow">Dirección Regional Atlántico</div>
+          <div className="dash-header__eyebrow">{yo?.rol === 'SUBDIRECTOR' ? `Subdirección · ${yo.centro_formacion ?? 'tu centro'}` : 'Dirección Regional Atlántico'}</div>
           <h2 className="dash-header__title">Operación de la etapa práctica</h2>
         </div>
       </div>
