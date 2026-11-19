@@ -1,19 +1,20 @@
 import { Routes, Route, Navigate, Outlet, useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
-import { InstructorHome } from './InstructorHome'
 import { InstFichas } from './InstFichas'
-import type { FichaInstructor, TabEtapa } from './types'
+import type { TabEtapa } from './types'
 import { InstReportes } from './InstReportes'
 import { InstHistorial } from './InstHistorial'
 import { InstAgenda } from './InstAgenda'
-import { EtapaProductivaList, NuevoRegistro } from '../productiva/EtapaProductivaList'
+import { NuevoRegistro } from '../productiva/EtapaProductivaList'
+import { Hoy } from '../hoy/Hoy'
+import { Aprendices } from '../hoy/Aprendices'
 import { Expediente } from '../expediente/Expediente'
 
 const BASE = '/dashboard/instructor'
 
 const SECTION_PATH: Record<string, string> = {
   'inst-home':             BASE,
-  'inst-agenda':           `${BASE}/agenda`,
+  'inst-agenda':           `${BASE}/agenda?vista=calendario`,
   'inst-fichas':           `${BASE}/fichas`,
   'inst-etapa-productiva': `${BASE}/etapa-productiva`,
   'inst-historial':        `${BASE}/historial`,
@@ -23,7 +24,7 @@ const SECTION_PATH: Record<string, string> = {
 // Sección activa + título de página según la URL actual: cada patrón
 // corresponde a una pantalla real.
 const TITLE_RULES: { re: RegExp; title: string; section: string }[] = [
-  { re: /^\/agenda\/?$/,                   title: 'Pendientes',        section: 'inst-agenda' },
+  { re: /^\/agenda\/?$/,                   title: 'Calendario',        section: 'inst-agenda' },
   { re: /^\/fichas\/[^/]+\/etapa\/[^/]+$/, title: 'Etapa productiva',  section: 'inst-fichas' },
   { re: /^\/fichas(\/[^/]+)?$/,            title: 'Mis fichas',        section: 'inst-fichas' },
   { re: /^\/etapa-productiva\/nueva$/,     title: 'Nuevo registro',    section: 'inst-etapa-productiva' },
@@ -37,7 +38,7 @@ const TITLE_RULES: { re: RegExp; title: string; section: string }[] = [
 function headerFor(pathname: string): { title: string; section: string } {
   const rest = pathname.slice(BASE.length) || '/'
   const rule = TITLE_RULES.find(r => r.re.test(rest))
-  return rule ?? { title: 'Inicio', section: 'inst-home' }
+  return rule ?? { title: 'Hoy', section: 'inst-home' }
 }
 
 export function InstructorDashboard() {
@@ -50,20 +51,20 @@ export function InstructorDashboard() {
     navigate(SECTION_PATH[id] ?? BASE)
   }
 
-  function openFicha(f: FichaInstructor) {
-    navigate(`${BASE}/fichas/${f.id}`)
-  }
+  // Al expediente, recordando de dónde se vino para el botón "volver".
+  const abrirEtapa = (desde: 'hoy' | 'aprendices' | 'agenda') => (id: number, tab?: TabEtapa | null) =>
+    navigate(`${BASE}/etapa-productiva/${id}${tab ? `?tab=${tab}` : ''}`, { state: { desde } })
 
   return (
     <Shell current={section} onNav={onNav} title={title} breadcrumb={['Instructor', title]}>
       <Routes>
         <Route index element={
-          <InstructorHome
-            onOpenFicha={openFicha}
-            onVerFichas={() => navigate(`${BASE}/fichas`)}
-            onVerEtapaProductiva={id => navigate(`${BASE}/etapa-productiva/${id}`)}
-            onVerAgenda={() => navigate(`${BASE}/agenda?vista=calendario`)}
-            onVerHistorial={() => navigate(`${BASE}/historial`)}
+          <Hoy
+            onAbrir={abrirEtapa('hoy')}
+            onFicha={id => navigate(`${BASE}/fichas/${id}`)}
+            onNuevo={() => navigate(`${BASE}/etapa-productiva/nueva`)}
+            onCalendario={() => navigate(`${BASE}/agenda?vista=calendario`)}
+            onAprendices={() => navigate(`${BASE}/etapa-productiva`)}
           />
         }/>
 
@@ -71,7 +72,7 @@ export function InstructorDashboard() {
 
         <Route path="etapa-productiva" element={<Outlet/>}>
           <Route index element={
-            <EtapaProductivaList onOpen={id => navigate(String(id))} onNuevo={() => navigate('nueva')}/>
+            <Aprendices onAbrir={abrirEtapa('aprendices')} onNuevo={() => navigate('nueva')} onHistorial={() => navigate(`${BASE}/historial`)}/>
           }/>
           <Route path="nueva" element={
             <NuevoRegistro onCancel={() => navigate('..')} onCreated={id => navigate(`../${id}`, { replace: true })}/>
@@ -81,7 +82,7 @@ export function InstructorDashboard() {
 
         <Route path="agenda" element={
           <InstAgenda
-            onVerEtapaProductiva={(id, tab) => navigate(`${BASE}/etapa-productiva/${id}${tab ? `?tab=${tab}` : ''}`, { state: { desde: 'agenda' } })}
+            onVerEtapaProductiva={abrirEtapa('agenda')}
             onVerFicha={id => navigate(`${BASE}/fichas/${id}`)}
           />
         }/>
@@ -106,16 +107,17 @@ function EtapaProductivaDetalleRoute() {
   const navigate = useNavigate()
   const location = useLocation()
   const tab = TABS_ETAPA.find(t => t === params.get('tab'))
-  // Si se llegó desde Pendientes, "volver" regresa ahí (con su vista).
-  const desdeAgenda = (location.state as { desde?: string } | null)?.desde === 'agenda'
+  // "Volver" regresa a donde se vino: Hoy, el calendario o la lista.
+  const desde = (location.state as { desde?: string } | null)?.desde
+  const VOLVER: Record<string, string> = { hoy: 'Hoy', agenda: 'Calendario', aprendices: 'Aprendices' }
   // La key remonta el detalle si cambia la pestaña pedida en la URL.
   return (
     <Expediente
       key={`${etapaId}-${tab ?? ''}`}
       etapaId={Number(etapaId)}
       abrir={tab}
-      backLabel={desdeAgenda ? 'Pendientes' : 'Aprendices'}
-      onBack={() => (desdeAgenda ? navigate(-1) : navigate('..'))}
+      backLabel={VOLVER[desde ?? ''] ?? 'Aprendices'}
+      onBack={() => (desde ? navigate(-1) : navigate('..'))}
     />
   )
 }

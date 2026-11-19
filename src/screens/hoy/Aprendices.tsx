@@ -1,0 +1,160 @@
+// "Aprendices" del instructor: una sola lista agrupada por ficha, con la línea
+// mini de cada aprendiz (3 momentos y sus bitácoras) y su próximo paso.
+import { useEffect, useMemo, useState } from 'react'
+import api from '../../lib/api'
+import { Lienzo, Frase, Estado, Boton, LineaMini } from '../../ui'
+import { fdia } from '../../ui/estados'
+import type { EstadoAprendiz, PendientesInstructor, TabEtapa } from '../instructor/types'
+import { SITUACION, lineaMiniDe, plural, resumenBitacoras } from './comun'
+import './hoy.css'
+
+type Filtro = 'TODOS' | 'ATRASADO' | 'LE_TOCA' | 'POR_LEER' | 'AL_DIA'
+const FILTROS: { id: Filtro; texto: string }[] = [
+  { id: 'TODOS', texto: 'Todos' },
+  { id: 'ATRASADO', texto: 'Atrasados' },
+  { id: 'LE_TOCA', texto: 'Les toca algo' },
+  { id: 'POR_LEER', texto: 'Bitácoras por leer' },
+  { id: 'AL_DIA', texto: 'Al día' },
+]
+
+const porLeer = (a: EstadoAprendiz) => (a.bitacoras ?? []).some((b) => b.estado === 'SIN_LEER')
+const cumple = (a: EstadoAprendiz, f: Filtro) =>
+  f === 'TODOS' ? true
+    : f === 'POR_LEER' ? porLeer(a)
+    : f === 'AL_DIA' ? a.situacion === 'AL_DIA' || a.situacion === 'COMPLETO'
+    : a.situacion === f
+
+export function Aprendices({ onAbrir, onNuevo, onHistorial }: {
+  onAbrir: (etapaId: number, tab?: TabEtapa | null) => void
+  onNuevo: () => void
+  onHistorial: () => void
+}) {
+  const [d, setD] = useState<PendientesInstructor | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [filtro, setFiltro] = useState<Filtro>('TODOS')
+  const [buscar, setBuscar] = useState('')
+
+  useEffect(() => {
+    let vivo = true
+    api.get<PendientesInstructor>('/instructores/mi/pendientes')
+      .then((r) => { if (vivo) setD(r.data) })
+      .catch((e) => { if (vivo) setErr(e?.response?.data?.message ?? 'No se pudieron cargar tus aprendices.') })
+    return () => { vivo = false }
+  }, [])
+
+  const lista = useMemo(() => {
+    const q = buscar.trim().toLowerCase()
+    return (d?.aprendices ?? []).filter((a) => cumple(a, filtro) && (!q
+      || a.aprendiz_nombre.toLowerCase().includes(q)
+      || a.numero_ficha.includes(q)
+      || (a.empresa_nombre ?? '').toLowerCase().includes(q)))
+  }, [d, filtro, buscar])
+
+  const fichas = useMemo(() => {
+    const m = new Map<string, EstadoAprendiz[]>()
+    for (const a of lista) m.set(a.numero_ficha, [...(m.get(a.numero_ficha) ?? []), a])
+    return [...m].sort(([x], [y]) => x.localeCompare(y))
+  }, [lista])
+
+  if (err) return <Lienzo><Frase tono="atraso">{err}</Frase></Lienzo>
+  if (!d) return <Lienzo><p className="fx-texto-3">Cargando tus aprendices…</p></Lienzo>
+
+  const todos = d.aprendices
+  const nFichas = new Set(todos.map((a) => a.numero_ficha)).size
+  const atrasados = todos.filter((a) => a.situacion === 'ATRASADO').length
+  const leTocan = todos.filter((a) => a.situacion === 'LE_TOCA').length
+  const conLectura = todos.filter(porLeer).length
+  const listos = d.pendientes.filter((p) => p.id.endsWith('-LISTOS'))
+
+  const partes = [
+    atrasados && plural(atrasados, 'está atrasado', 'están atrasados'),
+    leTocan && `a ${plural(leTocan, 'le toca', 'les toca')} algo ya`,
+    conLectura && `${plural(conLectura, 'tiene', 'tienen')} bitácoras por leer`,
+  ].filter(Boolean) as string[]
+
+  return (
+    <Lienzo className="apr">
+      <header className="hoy-cab">
+        <div>
+          <div className="fx-eyebrow">{plural(todos.length, 'aprendiz', 'aprendices')} en etapa productiva · {plural(nFichas, 'ficha', 'fichas')}</div>
+          <h1 className="fx-titulo">Aprendices</h1>
+        </div>
+        <div className="hoy-acciones">
+          <Boton tipo="suave" onClick={onHistorial}>Etapas terminadas</Boton>
+          <Boton tipo="principal" onClick={onNuevo}>Registrar etapa</Boton>
+        </div>
+      </header>
+
+      {todos.length > 0 && (
+        <Frase tono={atrasados ? 'atraso' : partes.length ? undefined : 'ok'}>
+          {partes.length ? `De tus ${todos.length}: ${partes.join(', ').replace(/, ([^,]*)$/, ' y $1')}.` : 'Todos tus aprendices están al día.'}
+        </Frase>
+      )}
+      {listos.length > 0 && (
+        <p className="hoy-nota">
+          {listos.map((p) => p.texto.replace(/\.$/, '') + ` (ficha ${p.numero_ficha})`).join('. ')}.{' '}
+          <button type="button" className="hoy-enlace" onClick={onNuevo}>Registrar su etapa</button>
+        </p>
+      )}
+
+      <div className="apr-filtros">
+        <div className="apr-chips" role="tablist">
+          {FILTROS.map((f) => (
+            <button
+              key={f.id} type="button" role="tab" aria-selected={filtro === f.id}
+              className="apr-chip" data-activo={filtro === f.id || undefined}
+              onClick={() => setFiltro(f.id)}
+            >
+              {f.texto}
+              <span className="fx-num">{todos.filter((a) => cumple(a, f.id)).length}</span>
+            </button>
+          ))}
+        </div>
+        <input
+          className="apr-buscar" type="search" placeholder="Buscar aprendiz, ficha o empresa"
+          value={buscar} onChange={(e) => setBuscar(e.target.value)}
+        />
+      </div>
+
+      <div className="fx-panel">
+        <div className="fx-tabla-envoltura">
+          <table className="fx-tabla apr-tabla">
+            <thead>
+              <tr><th>Aprendiz</th><th>Momentos y bitácoras</th><th>Próximo paso</th><th>Bitácoras</th><th>Termina</th></tr>
+            </thead>
+            <tbody>
+              {fichas.length === 0 && (
+                <tr><td colSpan={5} className="fx-texto-3" style={{ padding: 20 }}>
+                  {todos.length ? 'Nadie cumple ese filtro.' : 'Aún no tienes aprendices en etapa productiva.'}
+                </td></tr>
+              )}
+              {fichas.map(([ficha, l]) => [
+                <tr key={`g-${ficha}`} className="fx-grupo">
+                  <td colSpan={5}>Ficha {ficha}{l[0].programa_nombre ? ` · ${l[0].programa_nombre}` : ''} · {plural(l.length, 'aprendiz', 'aprendices')}</td>
+                </tr>,
+                ...l.map((a) => {
+                  const s = SITUACION[a.situacion]
+                  const b = resumenBitacoras(a)
+                  const mini = lineaMiniDe(a)
+                  return (
+                    <tr key={a.etapa_id} className="fx-fila" onClick={() => onAbrir(a.etapa_id, a.tab)} tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter') onAbrir(a.etapa_id, a.tab) }}>
+                      <td>
+                        <div className="apr-nombre">{a.aprendiz_nombre}</div>
+                        {a.empresa_nombre && <div className="fx-texto-3">{a.empresa_nombre}</div>}
+                      </td>
+                      <td><LineaMini momentos={mini.momentos} bitacoras={mini.bitacoras}/></td>
+                      <td><Estado tono={s.tono}>{a.resumen}</Estado></td>
+                      <td>{b.tono === 'neutro' ? <span className="fx-texto-3">{b.texto}</span> : <Estado tono={b.tono}>{b.texto}</Estado>}</td>
+                      <td className="fx-num fx-texto-2">{fdia(a.fin)}</td>
+                    </tr>
+                  )
+                }),
+              ])}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Lienzo>
+  )
+}

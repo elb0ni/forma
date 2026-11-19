@@ -173,7 +173,31 @@ export interface PendientesInstructor {
   pendientes: Pendiente[]
   conteos:    { urgente: number; te_toca: number; vigilar: number }
   aprendices: EstadoAprendiz[]
+  // Señales de bitácoras (por leer, aprendiz que no entrega). Rediseño.
+  bitacoras?: SenalBitacora[]
   fallos:     string[]
+}
+
+export interface SenalBitacora {
+  id:              string
+  tipo:            'POR_LEER' | 'SIN_ENTREGAR'
+  grupo:           'URGENTE' | 'TE_TOCA'
+  etapa_id:        number
+  aprendiz_nombre: string
+  numero_ficha:    string
+  texto:           string
+  numeros:         number[]
+  dificultades:    boolean
+}
+
+export type EstadoCasilla = 'LEIDA' | 'SIN_LEER' | 'CORRECCION' | 'ATRASADA' | 'POR_ENTREGAR' | 'ABIERTA' | 'FUTURA'
+export interface CasillaBitacora {
+  numero:       number
+  estado:       EstadoCasilla
+  fin:          string
+  limite:       string
+  entregada:    string | null
+  dificultades: number
 }
 
 // Vista Calendario: en qué va cada aprendiz y en qué fechas cae su ciclo.
@@ -204,6 +228,8 @@ export interface EstadoAprendiz {
   situacion:       SituacionAprendiz
   resumen:         string
   tab:             TabEtapa | null
+  programa_nombre?: string | null
+  bitacoras?:      CasillaBitacora[]
 }
 
 // Ícono y color de cada registro del historial (Historial y Home).

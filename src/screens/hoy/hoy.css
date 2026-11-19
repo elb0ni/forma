@@ -1,0 +1,51 @@
+/* "Hoy" y "Aprendices" del instructor. Solo variables de src/ui/tokens.css. */
+
+.hoy, .apr { display: flex; flex-direction: column; gap: 16px; max-width: 1280px; margin: 0 auto; }
+.hoy-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.hoy-cab .fx-eyebrow::first-letter { text-transform: uppercase; }
+.hoy-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.hoy-nota { margin: 0; font-size: 13px; color: var(--fx-tinta-2); padding: 8px 12px; border-radius: var(--fx-radio-chico); background: var(--fx-morado-suave); }
+.hoy-enlace { background: none; border: 0; padding: 0; font: inherit; color: var(--fx-morado-tinta); font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+.hoy-rejilla { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+@media (max-width: 1000px) { .hoy-rejilla { grid-template-columns: 1fr; } }
+.hoy-col, .hoy-lado { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.hoy-fichas { display: flex; flex-direction: column; gap: 14px; }
+.hoy-ficha { display: flex; flex-direction: column; gap: 2px; }
+.hoy-ficha .fx-eyebrow { margin-bottom: 4px; }
+.hoy-senales { display: flex; flex-direction: column; gap: 2px; }
+.hoy-item {
+  display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: start; width: 100%;
+  padding: 9px 8px; margin: 0 -8px; width: calc(100% + 16px);
+  background: none; border: 0; border-radius: var(--fx-radio-chico); cursor: pointer; font: inherit; text-align: left; color: var(--fx-tinta);
+}
+.hoy-senales .hoy-item { grid-template-columns: 92px 1fr; }
+.hoy-item:hover { background: var(--fx-morado-suave); }
+.hoy-item:focus-visible { outline: 2px solid var(--fx-morado); outline-offset: 0; }
+.hoy-item .fx-estado { justify-self: start; margin-top: 1px; }
+.hoy-item-txt { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; min-width: 0; }
+.hoy-item-txt strong { font-weight: 600; }
+.hoy-item-fecha { white-space: nowrap; padding-top: 2px; }
+@media (max-width: 560px) {
+  .hoy-item, .hoy-senales .hoy-item { grid-template-columns: 1fr; gap: 4px; }
+  .hoy-item-fecha { display: none; }
+}
+
+/* Aprendices */
+.apr-filtros { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.apr-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.apr-chip {
+  display: inline-flex; gap: 6px; align-items: center; padding: 6px 11px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 13px; border: 1px solid var(--fx-linea-2); background: var(--fx-superficie); color: var(--fx-tinta-2);
+}
+.apr-chip .fx-num { font-size: 11.5px; color: var(--fx-tinta-3); }
+.apr-chip[data-activo] { background: var(--fx-morado-suave); border-color: var(--fx-morado); color: var(--fx-morado-tinta); font-weight: 600; }
+.apr-buscar {
+  font: inherit; font-size: 13.5px; padding: 7px 11px; min-width: 260px; border-radius: var(--fx-radio-chico);
+  border: 1px solid var(--fx-linea-2); background: var(--fx-superficie); color: var(--fx-tinta);
+}
+@media (max-width: 560px) { .apr-buscar { min-width: 0; width: 100%; } }
+.apr-buscar:focus { outline: 2px solid var(--fx-morado); outline-offset: 0; }
+.apr-tabla { min-width: 820px; }
+.apr-nombre { font-weight: 600; }

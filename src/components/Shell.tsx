@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Ic, BrandMark, Ava } from './ui'
@@ -16,6 +16,8 @@ interface NavItem {
   label: string
   icon: IcName
   badge?: string | number
+  // Primera opción de un grupo secundario: se pinta un título antes.
+  seccion?: string
 }
 
 // Nav del coordinador (COORD_ACADEMICO)
@@ -48,11 +50,12 @@ const NAV: Record<UserRole, NavItem[]> = {
     { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
   ],
   COORD_ACADEMICO: COORD_NAV,
+  // Rediseño: lo del día a día arriba; el resto, en "Más".
   INSTRUCTOR: [
-    { id: 'inst-home', label: 'Inicio', icon: 'home' },
-    { id: 'inst-agenda', label: 'Pendientes', icon: 'bell' },
-    { id: 'inst-fichas', label: 'Mis fichas', icon: 'folder' },
+    { id: 'inst-home', label: 'Hoy', icon: 'home' },
     { id: 'inst-etapa-productiva', label: 'Aprendices', icon: 'users' },
+    { id: 'inst-agenda', label: 'Calendario', icon: 'calendar', seccion: 'Más' },
+    { id: 'inst-fichas', label: 'Mis fichas', icon: 'folder' },
     { id: 'inst-historial', label: 'Historial', icon: 'clock' },
     { id: 'inst-reportes', label: 'Reportes', icon: 'trend' },
   ],
@@ -123,8 +126,9 @@ function Sidebar({ current, onNav }: SidebarProps) {
           {items.map(it => {
             const active = current === it.id
             return (
+              <Fragment key={it.id}>
+              {it.seccion && <div className="sidebar__nav-section" style={{ paddingTop: 18 }}>{it.seccion}</div>}
               <button
-                key={it.id}
                 onClick={() => onNav(it.id)}
                 className={`sidebar__nav-btn${active ? ' sidebar__nav-btn--active' : ''}`}
               >
@@ -136,6 +140,7 @@ function Sidebar({ current, onNav }: SidebarProps) {
                   </span>
                 )}
               </button>
+              </Fragment>
             )
           })}
 
@@ -176,9 +181,10 @@ interface HeaderProps {
   subtitle?: string
   breadcrumb?: string[]
   actions?: ReactNode
+  onMenu?: () => void
 }
 
-function Header({ title, subtitle, breadcrumb, actions }: HeaderProps) {
+function Header({ title, subtitle, breadcrumb, actions, onMenu }: HeaderProps) {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)!
   const clearUser = useAuthStore(s => s.clearUser)
@@ -193,6 +199,11 @@ function Header({ title, subtitle, breadcrumb, actions }: HeaderProps) {
 
   return (
     <header className="shell-header">
+      {onMenu && (
+        <button type="button" className="shell-header__menu" onClick={onMenu} aria-label="Abrir el menú">
+          <Ic n="list" s={16} />
+        </button>
+      )}
       <div className="shell-header__info">
         {breadcrumb && (
           <div className="shell-header__breadcrumb">
@@ -268,11 +279,14 @@ export interface ShellProps {
 }
 
 export function Shell({ current, onNav, title, subtitle, breadcrumb, actions, children }: ShellProps) {
+  // En celular el menú lateral se esconde y se abre con el botón "Menú".
+  const [menu, setMenu] = useState(false)
   return (
-    <div className="shell dash-in">
-      <Sidebar current={current} onNav={onNav} />
+    <div className={`shell dash-in${menu ? ' shell--menu' : ''}`}>
+      <Sidebar current={current} onNav={(id) => { setMenu(false); onNav(id) }} />
+      <div className="shell__velo" onClick={() => setMenu(false)} />
       <main className="shell__main">
-        <Header title={title} subtitle={subtitle} breadcrumb={breadcrumb} actions={actions} />
+        <Header title={title} subtitle={subtitle} breadcrumb={breadcrumb} actions={actions} onMenu={() => setMenu(true)} />
         <div className="shell__content screen-in">
           {children}
         </div>

@@ -379,3 +379,23 @@
   color: #27272a;
   font-family: Inter, sans-serif;
 }
+
+/* ─── Celular: el menú lateral se vuelve un cajón ───────────────────── */
+.shell-header__menu { display: none; }
+.shell__velo { display: none; }
+@media (max-width: 760px) {
+  .sidebar {
+    position: fixed; left: 0; top: 0; z-index: 120;
+    transform: translateX(-100%); transition: transform 180ms ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.18);
+  }
+  .shell--menu .sidebar { transform: none; }
+  .shell--menu .shell__velo { display: block; position: fixed; inset: 0; z-index: 110; background: rgba(0, 0, 0, 0.3); }
+  .shell-header__menu {
+    display: inline-grid; place-items: center; width: 34px; height: 34px; margin-right: 10px; flex: none;
+    border: 1px solid #e4e4e7; border-radius: 8px; background: #fff; color: #3f3f46; cursor: pointer;
+  }
+  .shell-header { padding-left: 12px; padding-right: 12px; }
+  .shell-header__profile-name, .shell-header__profile-role, .shell-header__divider, .shell-header__breadcrumb { display: none; }
+  .shell__content { padding: 4px 0 0; }
+}
