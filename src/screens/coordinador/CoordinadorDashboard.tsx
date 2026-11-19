@@ -6,6 +6,7 @@ import { ReportesAdmin } from '../shared/ReportesAdmin'
 import { CoordinadorHome } from './CoordinadorHome'
 import { InstructoresPractica } from '../shared/InstructoresPractica'
 import { CoordAlertas } from './CoordAlertas'
+import { Asignacion } from '../panorama/Asignacion'
 
 const BASE = '/dashboard/coordinador'
 
@@ -13,6 +14,7 @@ const SECTION_PATH: Record<string, string> = {
   'coord-home':         BASE,
   'coord-fichas':       `${BASE}/fichas`,
   'coord-instructores': `${BASE}/instructores`,
+  'coord-asignacion':   `${BASE}/asignacion`,
   'coord-reportes':     `${BASE}/reportes`,
   'coord-alertas':      `${BASE}/alertas`,
 }
@@ -21,6 +23,7 @@ const SECTION_BY_SEGMENT: Record<string, string> = {
   '':            'coord-home',
   fichas:        'coord-fichas',
   instructores:  'coord-instructores',
+  asignacion:    'coord-asignacion',
   reportes:      'coord-reportes',
   alertas:       'coord-alertas',
 }
@@ -29,6 +32,7 @@ const COORD_TITLES: Record<string, string> = {
   'coord-home':         'Dashboard',
   'coord-fichas':       'Fichas en práctica',
   'coord-instructores': 'Instructores de práctica',
+  'coord-asignacion':   'Asignación',
   'coord-reportes':     'Reportes',
   'coord-alertas':      'Alertas',
 }
@@ -95,6 +99,7 @@ export function CoordinadorDashboard() {
         }/>
         <Route path="fichas/*" element={<CoordFichas/>}/>
         <Route path="instructores/*" element={<InstructoresPractica/>}/>
+        <Route path="asignacion" element={<Asignacion rutaFicha={id => `${BASE}/fichas/${id}`}/>}/>
         <Route path="reportes" element={<CoordReportes/>}/>
         <Route path="alertas" element={
           <CoordAlertas onOpenFicha={id => navigate(`${BASE}/fichas/${id}`)}/>

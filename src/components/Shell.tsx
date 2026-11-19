@@ -25,6 +25,7 @@ const COORD_NAV: NavItem[] = [
   { id: 'coord-home',         label: 'Dashboard',              icon: 'home'   },
   { id: 'coord-fichas',       label: 'Fichas en práctica',     icon: 'folder' },
   { id: 'coord-instructores', label: 'Instructores de práctica', icon: 'users'  },
+  { id: 'coord-asignacion',   label: 'Asignación',             icon: 'layers' },
   { id: 'coord-reportes',     label: 'Reportes',               icon: 'trend'  },
   { id: 'coord-alertas',      label: 'Alertas',                icon: 'bell'   },
 ]
@@ -34,6 +35,7 @@ const NAV: Record<UserRole, NavItem[]> = {
     { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
     { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
     { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
+    { id: 'admin-asignacion', label: 'Asignación', icon: 'layers'    },
     { id: 'admin-centros',   label: 'Centros',     icon: 'shield'    },
     { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
     { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
@@ -45,6 +47,7 @@ const NAV: Record<UserRole, NavItem[]> = {
     { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
     { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
     { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
+    { id: 'admin-asignacion', label: 'Asignación', icon: 'layers'    },
     { id: 'admin-centros',   label: 'Mi centro',   icon: 'shield'    },
     { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
     { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },

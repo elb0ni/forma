@@ -7,6 +7,7 @@ import { CentrosCoord } from './CentrosCoord'
 import { UsuariosAdmin } from './UsuariosAdmin'
 import { ReportesAdmin } from '../shared/ReportesAdmin'
 import { Integridad } from './Integridad'
+import { Asignacion } from '../panorama/Asignacion'
 import { useAuthStore } from '../../store/auth'
 
 const BASE = '/dashboard/superadmin'
@@ -16,6 +17,7 @@ const SECTION_PATH: Record<string, string> = {
   'admin-home':      BASE,
   'admin-programas': `${BASE}/programas`,
   'admin-fichas':    `${BASE}/fichas`,
+  'admin-asignacion': `${BASE}/asignacion`,
   'admin-centros':   `${BASE}/centros`,
   'admin-usuarios':  `${BASE}/usuarios`,
   'admin-reportes':  `${BASE}/reportes`,
@@ -26,6 +28,7 @@ const SECTION_BY_SEGMENT: Record<string, string> = {
   '':          'admin-home',
   programas:   'admin-programas',
   fichas:      'admin-fichas',
+  asignacion:  'admin-asignacion',
   instructores: 'admin-usuarios',
   centros:     'admin-centros',
   usuarios:    'admin-usuarios',
@@ -37,6 +40,7 @@ const ADMIN_TITLES: Record<string, string> = {
   'admin-home':      'Dashboard',
   'admin-programas': 'Programas de formación',
   'admin-fichas':    'Fichas en etapa productiva',
+  'admin-asignacion': 'Asignación de instructores',
   'admin-centros':   'Centros y coordinaciones',
   'admin-usuarios':  'Gestión de usuarios',
   'admin-reportes':  'Reportes ejecutivos',
@@ -81,6 +85,7 @@ export function SuperAdminDashboard() {
         <Route path="programas/*" element={<ProgramasFormacion/>}/>
         <Route path="disenos" element={<Navigate to={`${BASE}/integridad/disenos`} replace/>}/>
         <Route path="fichas/*" element={<FichasAdmin/>}/>
+        <Route path="asignacion" element={<Asignacion rutaFicha={id => `${BASE}/fichas/${id}`}/>}/>
         {/* Los instructores se ven ahora en Usuarios (con su actividad y detalle). */}
         <Route path="instructores/*" element={<Navigate to={`${BASE}/usuarios`} replace/>}/>
         <Route path="centros/*" element={<CentrosCoord/>}/>
