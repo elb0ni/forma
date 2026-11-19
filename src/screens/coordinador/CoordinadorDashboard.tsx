@@ -7,11 +7,13 @@ import { CoordinadorHome } from './CoordinadorHome'
 import { InstructoresPractica } from '../shared/InstructoresPractica'
 import { CoordAlertas } from './CoordAlertas'
 import { Asignacion } from '../panorama/Asignacion'
+import { Panorama } from '../panorama/Panorama'
 
 const BASE = '/dashboard/coordinador'
 
 const SECTION_PATH: Record<string, string> = {
   'coord-home':         BASE,
+  'coord-resumen':      `${BASE}/resumen`,
   'coord-fichas':       `${BASE}/fichas`,
   'coord-instructores': `${BASE}/instructores`,
   'coord-asignacion':   `${BASE}/asignacion`,
@@ -21,6 +23,7 @@ const SECTION_PATH: Record<string, string> = {
 
 const SECTION_BY_SEGMENT: Record<string, string> = {
   '':            'coord-home',
+  resumen:       'coord-resumen',
   fichas:        'coord-fichas',
   instructores:  'coord-instructores',
   asignacion:    'coord-asignacion',
@@ -29,7 +32,8 @@ const SECTION_BY_SEGMENT: Record<string, string> = {
 }
 
 const COORD_TITLES: Record<string, string> = {
-  'coord-home':         'Dashboard',
+  'coord-home':         'Mi coordinación',
+  'coord-resumen':      'Dashboard',
   'coord-fichas':       'Fichas en práctica',
   'coord-instructores': 'Instructores de práctica',
   'coord-asignacion':   'Asignación',
@@ -92,6 +96,13 @@ export function CoordinadorDashboard() {
     <Shell current={navItem} onNav={onNav} title={title} breadcrumb={['Coordinación', title]}>
       <Routes>
         <Route index element={
+          <Panorama
+            rutaEtapa={(f, e) => `${BASE}/fichas/${f}/etapa/${e}`}
+            rutaAsignacion={`${BASE}/asignacion`}
+            rutaAlertas={`${BASE}/alertas`}
+          />
+        }/>
+        <Route path="resumen" element={
           <CoordinadorHome
             onNav={onNav}
             onOpenFicha={id => navigate(`${BASE}/fichas/${id}`)}

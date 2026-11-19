@@ -3,13 +3,16 @@
 // aprendices habrá en práctica los próximos 3 meses contra los cupos, qué
 // fichas no tienen instructor y, para cada una, a quién conviene asignarla.
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import { useAuthStore } from '../../store/auth'
 import { Lienzo, Frase, Estado, Panel, Boton, PanelLateral } from '../../ui'
 import { fdia } from '../../ui/estados'
+import { MesesCapacidad, Medidor } from './comun'
+import { miles } from './formato'
+import type { Mes } from './formato'
 import './panorama.css'
 
-interface Mes { mes: string; nombre: string; entran: number; en_practica: number; capacidad: number; faltan: number; frase: string }
 interface InstructorCap {
   id: string; nombre: string; coordinacion_id: number | null; coordinacion: string | null
   cupo: number; cupo_propio: boolean; etapas: number; por_iniciar: number; carga: number; libre: number
@@ -29,7 +32,7 @@ interface Sugerencia { id: string; nombre: string; coordinacion: string | null; 
 interface Sugerencias { ficha: { id: number; numero_ficha: string; programa: string | null; aprendices: number }; sugerencias: Sugerencia[] }
 interface Opcion { id: number; nombre: string }
 
-const miles = (n: number) => n.toLocaleString('es-CO')
+
 const msg = (e: unknown, d: string) => (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? d
 
 export function Asignacion({ rutaFicha }: { rutaFicha: (fichaId: number) => string }) {
@@ -85,7 +88,6 @@ export function Asignacion({ rutaFicha }: { rutaFicha: (fichaId: number) => stri
     d.cola.length ? `${miles(cola.enCurso.length)} fichas ya en práctica y ${miles(cola.porEntrar.length)} por entrar no tienen instructor${pronto ? ` (${pronto} empiezan en 15 días o menos)` : ''}.` : 'Todas las fichas tienen instructor.',
     sobre.length ? `${sobre.length} ${sobre.length === 1 ? 'instructor está' : 'instructores están'} por encima de su cupo.` : '',
   ].filter(Boolean).join(' ')
-  const escala = Math.max(1, ...d.meses.map((m) => Math.max(m.en_practica, m.capacidad)))
   const lista = verTodas ? d.cola : d.cola.slice(0, 25)
 
   return (
@@ -114,30 +116,7 @@ export function Asignacion({ rutaFicha }: { rutaFicha: (fichaId: number) => stri
       <Frase tono={peor || pronto ? 'atraso' : 'ok'}>{frase}</Frase>
 
       <Panel titulo="Los próximos 3 meses" accion={<span className="fx-texto-3">{d.instructores.length} instructores · {miles(d.capacidad)} cupos</span>}>
-        <div className="pan-meses" role="table" aria-label="Aprendices en práctica contra cupos, por mes">
-          {d.meses.map((m) => {
-            const cubiertos = Math.min(m.en_practica, m.capacidad)
-            return (
-              <div key={m.mes} className="pan-mes" role="row" title={m.frase}>
-                <span className="pan-mes-nombre" role="cell">{m.nombre}</span>
-                <span className="pan-barra" role="cell" aria-label={m.frase}>
-                  <i className="pan-cubierto" style={{ width: `${(cubiertos / escala) * 100}%` }}/>
-                  {m.faltan > 0 && <i className="pan-faltan" style={{ width: `${(m.faltan / escala) * 100}%` }}/>}
-                  <b className="pan-cupo" style={{ left: `${(m.capacidad / escala) * 100}%` }}/>
-                </span>
-                <span className="pan-mes-cifras fx-num" role="cell">
-                  {miles(m.en_practica)} en práctica · entran {miles(m.entran)}
-                  {m.faltan > 0 ? <Estado tono="atraso">faltan {miles(m.faltan)}</Estado> : <Estado tono="hecho">alcanza</Estado>}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-        <div className="pan-leyenda">
-          <span><i className="pan-cubierto"/>Con cupo</span>
-          <span><i className="pan-faltan"/>Sin cupo</span>
-          <span><b className="pan-cupo-mini"/>Total de cupos</span>
-        </div>
+        <MesesCapacidad meses={d.meses}/>
         <CupoCentro cupo={d.cupo_defecto} centroId={rol === 'SUBDIRECTOR' ? user?.centro_formacion_id ?? null : centro ? Number(centro) : null} onCambio={cargar}/>
       </Panel>
 
@@ -237,16 +216,6 @@ function CupoCentro({ cupo, centroId, onCambio }: { cupo: number | null; centroI
         </>
       )}
     </div>
-  )
-}
-
-function Medidor({ carga, cupo }: { carga: number; cupo: number }) {
-  const escala = Math.max(cupo, carga, 1)
-  return (
-    <span className="pan-medidor" title={`${carga} de ${cupo}`}>
-      <i style={{ width: `${(Math.min(carga, cupo) / escala) * 100}%` }}/>
-      {carga > cupo && <i className="pan-faltan" style={{ width: `${((carga - cupo) / escala) * 100}%` }}/>}
-    </span>
   )
 }
 
@@ -356,7 +325,7 @@ function Asistente({ ficha, hoy, rutaFicha, onAsignada }: { ficha: FichaCola; ho
       ))}
       <p className="fx-texto-3 pan-nota">
         ¿Nadie tiene cupo para todos? Reparte la ficha entre varios instructores, aprendiz por aprendiz, desde{' '}
-        <a href={rutaFicha}>el detalle de la ficha</a>.
+        <Link to={rutaFicha}>el detalle de la ficha</Link>.
       </p>
     </div>
   )

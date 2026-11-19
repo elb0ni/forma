@@ -8,6 +8,7 @@ import { UsuariosAdmin } from './UsuariosAdmin'
 import { ReportesAdmin } from '../shared/ReportesAdmin'
 import { Integridad } from './Integridad'
 import { Asignacion } from '../panorama/Asignacion'
+import { Panorama } from '../panorama/Panorama'
 import { useAuthStore } from '../../store/auth'
 
 const BASE = '/dashboard/superadmin'
@@ -15,6 +16,7 @@ const BASE = '/dashboard/superadmin'
 // id de nav (para resaltar el sidebar) ↔ segmento de URL
 const SECTION_PATH: Record<string, string> = {
   'admin-home':      BASE,
+  'admin-panorama':  `${BASE}/panorama`,
   'admin-programas': `${BASE}/programas`,
   'admin-fichas':    `${BASE}/fichas`,
   'admin-asignacion': `${BASE}/asignacion`,
@@ -26,6 +28,7 @@ const SECTION_PATH: Record<string, string> = {
 
 const SECTION_BY_SEGMENT: Record<string, string> = {
   '':          'admin-home',
+  panorama:    'admin-panorama',
   programas:   'admin-programas',
   fichas:      'admin-fichas',
   asignacion:  'admin-asignacion',
@@ -38,6 +41,7 @@ const SECTION_BY_SEGMENT: Record<string, string> = {
 
 const ADMIN_TITLES: Record<string, string> = {
   'admin-home':      'Dashboard',
+  'admin-panorama':  'Panorama',
   'admin-programas': 'Programas de formación',
   'admin-fichas':    'Fichas en etapa productiva',
   'admin-asignacion': 'Asignación de instructores',
@@ -81,6 +85,9 @@ export function SuperAdminDashboard() {
             onNav={onNav}
             onOpenFicha={id => navigate(`${BASE}/fichas/${id}`)}
           />
+        }/>
+        <Route path="panorama" element={
+          <Panorama rutaEtapa={(f, e) => `${BASE}/fichas/${f}/etapa/${e}`} rutaAsignacion={`${BASE}/asignacion`}/>
         }/>
         <Route path="programas/*" element={<ProgramasFormacion/>}/>
         <Route path="disenos" element={<Navigate to={`${BASE}/integridad/disenos`} replace/>}/>

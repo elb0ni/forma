@@ -22,17 +22,19 @@ interface NavItem {
 
 // Nav del coordinador (COORD_ACADEMICO)
 const COORD_NAV: NavItem[] = [
-  { id: 'coord-home',         label: 'Dashboard',              icon: 'home'   },
+  { id: 'coord-home',         label: 'Mi coordinación',        icon: 'home'   },
   { id: 'coord-fichas',       label: 'Fichas en práctica',     icon: 'folder' },
   { id: 'coord-instructores', label: 'Instructores de práctica', icon: 'users'  },
   { id: 'coord-asignacion',   label: 'Asignación',             icon: 'layers' },
   { id: 'coord-reportes',     label: 'Reportes',               icon: 'trend'  },
   { id: 'coord-alertas',      label: 'Alertas',                icon: 'bell'   },
+  { id: 'coord-resumen',      label: 'Dashboard anterior',     icon: 'trend', seccion: 'Más' },
 ]
 
 const NAV: Record<UserRole, NavItem[]> = {
   SUPER_ADMIN: [
     { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
+    { id: 'admin-panorama',  label: 'Panorama',    icon: 'trend'     },
     { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
     { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
     { id: 'admin-asignacion', label: 'Asignación', icon: 'layers'    },
@@ -45,6 +47,7 @@ const NAV: Record<UserRole, NavItem[]> = {
   // Integridad (PE-04, catálogo regional) queda solo para el super admin.
   SUBDIRECTOR: [
     { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
+    { id: 'admin-panorama',  label: 'Panorama',    icon: 'trend'     },
     { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
     { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
     { id: 'admin-asignacion', label: 'Asignación', icon: 'layers'    },
