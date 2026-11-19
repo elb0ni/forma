@@ -4,8 +4,11 @@ import axios from 'axios'
 import { Ic, Btn, Bdg, BrandMark } from '../../components/ui'
 import { ESTADO_BITACORA_META, fdia, mensajeError } from '../productiva/cronograma'
 import type {
-  ActividadBitacora, Bitacora, DocumentoBitacora, ResumenBitacoras,
+  ActividadBitacora, Bitacora, DocumentoBitacora, ResumenBitacoras, TipoMomentoCron,
 } from '../productiva/cronograma'
+import { Boton, Estado, Frase, Lienzo, LineaMini, Panel } from '../../ui'
+import { NOMBRE_MOMENTO, NUM_MOMENTO, estadoBitacora, fdia as fdiaN } from '../../ui/estados'
+import type { BitacoraVista } from '../../ui/estados'
 import { BitacoraDocumentoModal } from '../productiva/BitacoraDocumento'
 import './portal.css'
 
@@ -44,8 +47,30 @@ interface Portal {
     fecha_fin_estimada: string
   }
   hoy: string
-  bitacoras: Bitacora[]
-  resumen: ResumenBitacoras
+  bitacoras: BitacoraVista[]
+  resumen: ResumenBitacoras & { entregadas?: number; leidas?: number }
+  momentos?: { tipo: TipoMomentoCron; desde: string; hasta: string }[]
+  momentos_hechos?: { tipo: string; fecha: string }[]
+  visitas?: { fecha: string; hora: string | null; modalidad: string; tipo: string }[]
+}
+
+// "Mi etapa": lo primero que ve el aprendiz es qué le toca, en una frase.
+function fraseDelDia(d: Portal): { texto: string; tono?: 'atraso' | 'ok' } {
+  const devuelta = d.bitacoras.find(b => b.estado === 'DEVUELTA')
+  if (devuelta) return { texto: `Tu instructor te pidió corregir la bitácora ${devuelta.numero}. Ábrela, ajusta lo que te indica y vuelve a entregarla.`, tono: 'atraso' }
+  const atrasadas = d.bitacoras.filter(b => b.vencida)
+  if (atrasadas.length) {
+    return {
+      texto: `Tienes ${atrasadas.length === 1 ? 'la bitácora ' + atrasadas[0].numero : atrasadas.length + ' bitácoras'} sin entregar y ya pasó el plazo. Todavía puedes entregar${atrasadas.length === 1 ? 'la' : 'las'}; quedará${atrasadas.length === 1 ? '' : 'n'} marcada${atrasadas.length === 1 ? '' : 's'} como tarde.`,
+      tono: 'atraso',
+    }
+  }
+  const toca = d.bitacoras.find(b => b.estado !== 'FUTURA' && b.estado !== 'ENTREGADA' && b.estado !== 'APROBADA')
+  if (toca) return { texto: `Te toca la bitácora ${toca.numero} (quincena del ${fdiaN(toca.periodo_inicio)} al ${fdiaN(toca.periodo_fin)}). Puedes entregarla hasta el ${fdiaN(toca.fecha_limite)}.` }
+  const proxima = d.bitacoras.find(b => b.estado === 'FUTURA')
+  return proxima
+    ? { texto: `Vas al día. La bitácora ${proxima.numero} abre el ${fdiaN(proxima.periodo_inicio)}.`, tono: 'ok' }
+    : { texto: 'Entregaste todas tus bitácoras.', tono: 'ok' }
 }
 
 export function PortalBitacoras() {
@@ -86,11 +111,9 @@ export function PortalBitacoras() {
 
   if (!data) {
     return (
-      <div className="ptl">
-        <div className="ptl-card ptl-centro">
-          {err ?? <><Ic n="refresh" s={18} className="spin"/> Cargando…</>}
-        </div>
-      </div>
+      <Lienzo className="mi-etapa">
+        <p className="fx-texto-2">{err ?? 'Cargando tu etapa…'}</p>
+      </Lienzo>
     )
   }
 
@@ -107,78 +130,105 @@ export function PortalBitacoras() {
     }
   }
   const e = data.etapa
+  const hoy = data.hoy
+  const frase = fraseDelDia(data)
+  const entregadas = data.bitacoras.filter(b => b.estado === 'ENTREGADA' || b.estado === 'APROBADA').length
+  const leidas = data.bitacoras.filter(b => b.leida_at || b.estado === 'APROBADA').length
+  const hechos = new Map((data.momentos_hechos ?? []).map(m => [m.tipo, m.fecha]))
 
-  return (
-    <div className="ptl">
-      <header className="ptl-top">
-        <div className="ptl-marca"><BrandMark size={22}/> <span>FORMA</span></div>
-        <button className="ptl-salir" onClick={() => salir()}><Ic n="logout" s={14}/> Salir</button>
-      </header>
-
-      <section className="ptl-card">
-        <div className="ptl-nombre">{e.aprendiz_nombre}</div>
-        <div className="ptl-meta">
-          {e.programa_nombre} · Ficha {e.numero_ficha}
-          {e.empresa_nombre && <> · {e.empresa_nombre}</>}
-        </div>
-        <div className="ptl-meta">
-          Instructor: {e.instructor_nombre} · Etapa: {fdia(e.fecha_inicio)} – {fdia(e.fecha_fin_estimada)}
-        </div>
-        <div className="ptl-progreso">
-          <div className="ptl-progreso__barra">
-            <span style={{ width: `${(data.resumen.aprobadas / Math.max(data.resumen.total, 1)) * 100}%` }}/>
-          </div>
-          <span>{data.resumen.aprobadas} de {data.resumen.total} bitácoras aprobadas</span>
-        </div>
-        {data.resumen.vencidas > 0 && (
-          <div className="ptl-aviso ptl-aviso--err">
-            Tienes {data.resumen.vencidas} bitácora{data.resumen.vencidas > 1 ? 's' : ''} vencida{data.resumen.vencidas > 1 ? 's' : ''} sin entregar.
-          </div>
-        )}
-      </section>
-
-      {actual ? (
+  if (actual) {
+    return (
+      <div className="ptl">
         <Editor
           key={actual.numero}
           b={actual}
           auth={auth}
           onVolver={() => setSel(null)}
           onDescargar={() => void descargar(actual.numero)}
-          onGuardado={p => setData(p)}
+          onGuardado={p => setData(p as Portal)}
           onSesionVencida={() => salir('Tu sesión venció. Ingresa de nuevo.')}
         />
-      ) : (
-        <section className="ptl-lista">
+        {doc && <BitacoraDocumentoModal doc={doc} onClose={() => setDoc(null)}/>}
+      </div>
+    )
+  }
+
+  return (
+    <Lienzo className="mi-etapa">
+      <header className="mi-etapa__top">
+        <span className="fx-eyebrow">FORMA · Mi etapa productiva</span>
+        <Boton tipo="suave" onClick={() => salir()}>Salir</Boton>
+      </header>
+
+      <h1 className="fx-titulo">{e.aprendiz_nombre}</h1>
+      <p className="fx-texto-3" style={{ margin: '4px 0 16px' }}>
+        {e.programa_nombre} · Ficha {e.numero_ficha}{e.empresa_nombre ? ` · ${e.empresa_nombre}` : ''}<br/>
+        Tu instructor: {e.instructor_nombre} · del {fdiaN(e.fecha_inicio)} al {fdiaN(e.fecha_fin_estimada)}
+      </p>
+
+      <Frase tono={frase.tono}>{frase.texto}</Frase>
+
+      <Panel titulo="Tus bitácoras" accion={<span className="fx-texto-3">{entregadas} de {data.bitacoras.length} entregadas · {leidas} leídas por tu instructor</span>} sinCuerpo>
+        <div className="mi-etapa__casillas">
+          <LineaMini momentos={[]} bitacoras={data.bitacoras.map(b => ({ numero: b.numero, ...estadoBitacora(b, hoy) }))}/>
+        </div>
+        <ul className="mi-etapa__lista">
           {data.bitacoras.map(b => {
-            const meta = ESTADO_BITACORA_META[b.estado]
+            const est = estadoBitacora(b, hoy)
             const habilitada = b.estado !== 'FUTURA'
             return (
-              <div
-                key={b.numero}
-                className={`ptl-bit${b.vencida ? ' ptl-bit--vencida' : ''}${habilitada ? '' : ' ptl-bit--off'}`}
-                style={{ borderLeftColor: b.vencida ? '#dc2626' : meta.color }}
-              >
-                <button className="ptl-bit__abrir" disabled={!habilitada} onClick={() => setSel(b.numero)}>
-                  <div className="ptl-bit__n">Bitácora {b.numero}</div>
-                  <div className="ptl-bit__p">{fdia(b.periodo_inicio, false)} – {fdia(b.periodo_fin)}</div>
-                  {habilitada
-                    ? !['ENTREGADA', 'APROBADA'].includes(b.estado) && <div className="ptl-bit__p">Entrega hasta el {fdia(b.fecha_limite)}</div>
-                    : <div className="ptl-bit__p">Se habilita el {fdia(b.periodo_inicio)}</div>}
+              <li key={b.numero}>
+                <button type="button" className="mi-etapa__bit fx-clicable" disabled={!habilitada} onClick={() => setSel(b.numero)}>
+                  <span className="mi-etapa__bit-n">Bitácora {b.numero}</span>
+                  <span className="fx-texto-3">{fdiaN(b.periodo_inicio)} – {fdiaN(b.periodo_fin)}</span>
                 </button>
-                <Bdg tone={b.vencida ? 'err' : meta.tone}>{b.vencida ? 'Vencida' : meta.label}</Bdg>
-                {habilitada && (
-                  <button className="ptl-descargar" title="Descargar" onClick={() => void descargar(b.numero)}>
-                    <Ic n="download" s={15}/>
-                  </button>
+                <Estado tono={est.tono} title={est.texto}>{est.corto}</Estado>
+                {habilitada && <Boton tipo="suave" onClick={() => void descargar(b.numero)} title="Descargar">Descargar</Boton>}
+                {b.observacion_instructor && (
+                  <p className="mi-etapa__comentario"><strong>Tu instructor:</strong> {b.observacion_instructor}</p>
                 )}
-              </div>
+              </li>
             )
           })}
-        </section>
-      )}
-      {err && data && <div className="ptl-aviso ptl-aviso--err">{err}</div>}
+        </ul>
+      </Panel>
+
+      <div className="mi-etapa__dos">
+        <Panel titulo="Tus momentos con el instructor">
+          <ul className="mi-etapa__simple">
+            {(data.momentos ?? []).map(m => {
+              const hecho = hechos.get(m.tipo)
+              return (
+                <li key={m.tipo}>
+                  <span>{NUM_MOMENTO[m.tipo]}. {NOMBRE_MOMENTO[m.tipo]}</span>
+                  {hecho
+                    ? <Estado tono="hecho">Hecho el {fdiaN(hecho)}</Estado>
+                    : hoy > m.hasta
+                      ? <Estado tono="aviso">Pendiente</Estado>
+                      : <Estado tono={hoy >= m.desde ? 'toca' : 'futuro'}>{fdiaN(m.desde)} – {fdiaN(m.hasta)}</Estado>}
+                </li>
+              )
+            })}
+          </ul>
+        </Panel>
+        <Panel titulo="Próximas visitas">
+          {(data.visitas ?? []).length === 0
+            ? <p className="fx-texto-3" style={{ margin: 0 }}>Tu instructor todavía no ha agendado visitas.</p>
+            : (
+              <ul className="mi-etapa__simple">
+                {(data.visitas ?? []).map(v => (
+                  <li key={v.fecha + v.tipo}>
+                    <span>{fdiaN(v.fecha)}{v.hora ? `, ${v.hora}` : ''}</span>
+                    <Estado tono="info">{v.modalidad === 'VIRTUAL' ? 'Virtual' : 'Presencial'}</Estado>
+                  </li>
+                ))}
+              </ul>
+            )}
+        </Panel>
+      </div>
+      {err && <p className="fx-frase" data-tono="atraso">{err}</p>}
       {doc && <BitacoraDocumentoModal doc={doc} onClose={() => setDoc(null)}/>}
-    </div>
+    </Lienzo>
   )
 }
 
@@ -321,7 +371,7 @@ function Editor({ b, auth, onVolver, onDescargar, onGuardado, onSesionVencida }:
   async function guardar(entregar: boolean) {
     const v = validar(entregar)
     if (v) { setErr(v); return }
-    if (entregar && !confirm('Al entregarla ya no podrás editarla hasta que tu instructor la revise. ¿Entregar?')) return
+    if (entregar && !confirm('Al entregarla ya no podrás editarla, salvo que tu instructor te pida una corrección. ¿Entregar?')) return
     setBusy(true); setErr(null); setOk(null)
     try {
       const r = await http.put<Portal>(`/${b.numero}`, {

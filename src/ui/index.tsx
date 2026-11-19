@@ -7,7 +7,6 @@ import './ui.css'
 import type { Tono } from './estados'
 
 export { LineaEtapa, LineaMini } from './LineaEtapa'
-export * from './estados'
 
 // Envuelve cada pantalla nueva: aplica la paleta y el modo oscuro real.
 export function Lienzo({ children, className }: { children: ReactNode; className?: string }) {
