@@ -341,3 +341,6 @@ export const TIPO_DOC_LABEL: Record<string, string> = {
   CC: 'Cédula de ciudadanía', CE: 'Cédula de extranjería',
   TI: 'Tarjeta de identidad', PP: 'Pasaporte',
 }
+
+// La etapa con todos sus momentos registrados (lo que trae GET /etapas-productivas/:id).
+export type EtapaConSeguimientos = EtapaProductiva & { seguimientos: SeguimientoProductivo[] }

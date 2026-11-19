@@ -6,7 +6,7 @@ import api from '../../lib/api'
 import { fd, LoadingBlock, CenterState } from './parts'
 import { MODALIDAD_LABEL } from '../productiva/types'
 import type { ModalidadEtapaProductiva } from '../productiva/types'
-import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
+import { Expediente } from '../expediente/Expediente'
 import { useAuthStore } from '../../store/auth'
 import { AgendaPendientes } from '../instructor/AgendaPendientes'
 import { AgendaCalendario } from '../instructor/AgendaCalendario'
@@ -327,10 +327,10 @@ function InstructorEtapaRoute() {
   const rol = useAuthStore(s => s.user?.rol)
   const tab = TABS_ETAPA.find(t => t === params.get('tab'))
   return (
-    <EtapaProductivaDetalle
+    <Expediente
       key={`${etapaId}-${tab ?? ''}`}
       etapaId={Number(etapaId)}
-      initialTab={tab}
+      abrir={tab}
       soloLectura={rol !== 'SUPER_ADMIN' && rol !== 'SUBDIRECTOR'}
       backLabel="Volver"
       onBack={() => navigate(-1)}

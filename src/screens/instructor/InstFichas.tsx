@@ -6,7 +6,7 @@ import { LoadingBlock, CenterState } from '../shared/parts'
 import type { FichaInstructor } from './types'
 import { FichasInstructorTable } from './FichasInstructorTable'
 import { InstFichaPractica } from './InstFichaPractica'
-import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
+import { Expediente } from '../expediente/Expediente'
 import { CrearEtapaProductivaForm } from '../productiva/EtapaProductivaList'
 import type { Aprendiz } from '../productiva/types'
 import './instructor.css'
@@ -154,5 +154,5 @@ function FichaEtapaRoute() {
   "use no memo"
   const { etapaId } = useParams()
   const navigate = useNavigate()
-  return <EtapaProductivaDetalle etapaId={Number(etapaId)} onBack={() => navigate('..')}/>
+  return <Expediente etapaId={Number(etapaId)} onBack={() => navigate('..')}/>
 }

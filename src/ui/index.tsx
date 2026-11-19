@@ -74,8 +74,8 @@ export function Boton({ children, tipo, onClick, disabled, title }: {
 
 // Detalle a un clic: panel que entra por la derecha. Se portalea a <body> para
 // no quedar atrapado por el transform del Shell.
-export function PanelLateral({ abierto, titulo, sub, onCerrar, children }: {
-  abierto: boolean; titulo: ReactNode; sub?: ReactNode; onCerrar: () => void; children: ReactNode
+export function PanelLateral({ abierto, titulo, sub, onCerrar, children, ancho }: {
+  abierto: boolean; titulo: ReactNode; sub?: ReactNode; onCerrar: () => void; children: ReactNode; ancho?: number
 }) {
   useEffect(() => {
     if (!abierto) return
@@ -87,7 +87,7 @@ export function PanelLateral({ abierto, titulo, sub, onCerrar, children }: {
   return createPortal(
     <div data-ui="nuevo" className="portal-flotante">
       <div className="fx-lateral-fondo" onClick={onCerrar} />
-      <aside className="fx-lateral" role="dialog" aria-modal="true">
+      <aside className="fx-lateral" role="dialog" aria-modal="true" style={ancho ? { width: `min(${ancho}px, 100vw)` } : undefined}>
         <div className="fx-lateral-cab">
           <div>
             <h3 className="fx-subtitulo">{titulo}</h3>

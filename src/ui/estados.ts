@@ -54,7 +54,7 @@ export function estadoMomento(m: MomentoCronograma, hoy: string): Estado {
 }
 
 // Bitácora tal como se ve en todos lados. El instructor no aprueba: la lee.
-export type BitacoraVista = Bitacora & { leida_at?: string | null }
+export type BitacoraVista = Bitacora & { leida_at?: string | null; dificultades?: number; entregada_tarde?: boolean | number }
 
 export function estadoBitacora(b: BitacoraVista, hoy: string): Estado & { corto: string } {
   if (b.estado === 'APROBADA' || b.leida_at) {

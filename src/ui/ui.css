@@ -126,3 +126,13 @@
 }
 .fx-mini-b { display: inline-flex; gap: 2px; }
 .fx-mini-b i { width: 6px; height: 14px; border-radius: 2px; display: block; }
+
+/* Formularios de la versión anterior dentro de una pantalla nueva: en oscuro
+   recuperan la inversión global que el lienzo deshace. */
+html[data-theme='dark'] [data-ui='nuevo'] .fx-legado {
+  filter: invert(0.92) hue-rotate(180deg);
+  background: white; color: black; color-scheme: light;
+  border-radius: var(--fx-radio-chico);
+}
+html[data-theme='dark'] [data-ui='nuevo'] .fx-legado img,
+html[data-theme='dark'] [data-ui='nuevo'] .fx-legado canvas { filter: invert(1) hue-rotate(180deg); }

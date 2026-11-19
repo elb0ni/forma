@@ -102,7 +102,7 @@ export function BitacorasTab({ etapaId, crono, aprendizNombre, onChanged }: {
 // correo registrado (vale 5 minutos). El instructor no tiene que generar nada;
 // solo compartir el enlace y asegurarse de que el aprendiz tenga correo.
 
-function AccesoAprendiz({ crono, aprendizNombre }: { crono: Cronograma; aprendizNombre: string }) {
+export function AccesoAprendiz({ crono, aprendizNombre }: { crono: Cronograma; aprendizNombre: string }) {
   const [copiado, setCopiado] = useState(false)
   const url = `${window.location.origin}/bitacoras`
   const acceso = crono.acceso

@@ -9,12 +9,13 @@ import {
   FirmasCaptura, firmasVacias, firmasCompletas, subirFirma,
 } from './parts'
 import type { FirmasEstado, Firmante, FirmaFuente } from './parts'
+import { bloqueoDe, firmaFuenteDe } from './momentos'
+import type { Bloqueo } from './momentos'
 import { ReportePreview } from './ReportePreview'
 import { Bloque, Campo, Dato, DatoLargo, Aviso } from './Gfpi023Campos'
 import { PlanTrabajoEditor } from './PlanTrabajoEditor'
 import { CronogramaTab } from './CronogramaTab'
 import { BitacorasTab } from './BitacorasTab'
-import { fdia } from './cronograma'
 import type { Cronograma } from './cronograma'
 import { PlanTrabajoVista } from './PlanTrabajoVista'
 import { planDesdeGuardado, planAGuardar, erroresPlan } from './planTrabajo'
@@ -85,16 +86,6 @@ async function subirFirmas(seguimientoId: number, firmas: FirmasEstado, requiere
 // Momento del que se pueden reutilizar las firmas: el más reciente ya firmado
 // por completo dentro de la misma etapa -- así el instructor no vuelve a
 // dibujar las mismas 3 firmas en cada momento.
-function firmaFuenteDe(seguimientos: SeguimientoProductivo[]): FirmaFuente | null {
-  const firmados = seguimientos.filter(s => s.firmado_at)
-  if (firmados.length === 0) return null
-  const s = [...firmados].sort((a, b) => (b.firmado_at ?? '').localeCompare(a.firmado_at ?? ''))[0]
-  const etiqueta = s.tipo_momento === 'PLANEACION' ? 'la planeación'
-    : s.tipo_momento === 'EVALUACION' ? 'la evaluación'
-    : `el seguimiento N.º ${s.numero_seguimiento}`
-  return { seguimientoId: s.id, fecha: s.fecha_realizada, etiqueta }
-}
-
 // La vista previa es opcional: el trabajo es diligenciar el formato. Se
 // recuerda por navegador si el instructor prefiere tenerla abierta.
 const PREVIEW_KEY = 'forma.ep.verPreview'
@@ -286,7 +277,7 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
 
 // ─── Tab: Información general ───────────────────────────────────────────────────
 
-function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: () => void }) {
+export function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: () => void }) {
   "use no memo"
   const soloLectura = useSoloLectura()
   const [editing, setEditing] = useState(false)
@@ -509,7 +500,7 @@ function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; onSaved: 
 
 // ─── Tab: Planeación (única vez) ────────────────────────────────────────────────
 
-function PlaneacionTab({ etapa, etapaId, requiereJefe, planeacion, firmaFuente, onChanged }: {
+export function PlaneacionTab({ etapa, etapaId, requiereJefe, planeacion, firmaFuente, onChanged }: {
   etapa: EtapaConSeguimientos; etapaId: number; requiereJefe: boolean
   planeacion: SeguimientoProductivo | null
   firmaFuente: FirmaFuente | null; onChanged: () => void
@@ -710,16 +701,9 @@ function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente,
 // El seguimiento parcial y la evaluación no se pueden registrar antes de estar
 // cerca de su ventana (una semana antes; el backend también lo valida).
 // Devuelve desde cuándo se habilita, o null si ya se puede.
-interface Bloqueo { desde: string; ventana: string }
-function bloqueoDe(crono: Cronograma | null, tipo: 'SEGUIMIENTO' | 'EVALUACION'): Bloqueo | null {
-  const m = crono?.momentos.find(x => x.tipo === tipo)
-  if (!crono || !m || m.estado === 'REALIZADO' || crono.hoy >= m.habilitado_desde) return null
-  return { desde: fdia(m.habilitado_desde), ventana: `${fdia(m.ventana_desde)} – ${fdia(m.ventana_hasta)}` }
-}
-
 // ─── Tab: Seguimientos (se repite; incluye extraordinarios) ────────────────────
 
-function SeguimientosTab({ etapa, etapaId, requiereJefe, planeacion, seguimientos, firmaFuente, bloqueo, onChanged }: {
+export function SeguimientosTab({ etapa, etapaId, requiereJefe, planeacion, seguimientos, firmaFuente, bloqueo, onChanged }: {
   etapa: EtapaConSeguimientos
   etapaId: number; requiereJefe: boolean; planeacion: SeguimientoProductivo | null
   seguimientos: SeguimientoProductivo[]; firmaFuente: FirmaFuente | null; bloqueo: Bloqueo | null; onChanged: () => void
@@ -943,7 +927,7 @@ function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, soloExtrao
 
 // ─── Tab: Evaluación final (única vez) ──────────────────────────────────────────
 
-function EvaluacionTab({ etapa, etapaId, visitas, requiereJefe, planeacion, evaluacion, firmaFuente, bloqueo, onChanged }: {
+export function EvaluacionTab({ etapa, etapaId, visitas, requiereJefe, planeacion, evaluacion, firmaFuente, bloqueo, onChanged }: {
   etapa: EtapaConSeguimientos; visitas: number
   etapaId: number; requiereJefe: boolean; planeacion: SeguimientoProductivo | null
   evaluacion: SeguimientoProductivo | null; firmaFuente: FirmaFuente | null; bloqueo: Bloqueo | null; onChanged: () => void

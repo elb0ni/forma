@@ -1,0 +1,105 @@
+/* Expediente de la etapa productiva. Solo variables de src/ui/tokens.css. */
+
+.ex { display: flex; flex-direction: column; gap: 16px; max-width: 1380px; margin: 0 auto; }
+.ex > .fx-boton:first-child { align-self: flex-start; margin-left: -6px; }
+
+.ex-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.ex-sub { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 13px; }
+.ex-sub span + span::before { content: '·'; margin-right: 14px; color: var(--fx-tinta-3); }
+.ex-acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ex-hab { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+.ex-nota { margin: 0; font-size: 13px; color: var(--fx-tinta-2); padding: 8px 12px; border-radius: var(--fx-radio-chico); background: var(--fx-aviso-suave); }
+
+.ex-linea { padding: 8px 10px 4px; }
+
+.ex-rejilla { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .ex-rejilla { grid-template-columns: 1fr; } }
+.ex-columna { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ex-titulo-col { margin: 4px 0 2px; font-weight: 500; }
+.ex-lado { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 12px; }
+@media (max-width: 1100px) { .ex-lado { position: static; } }
+
+/* Momentos: la columna vertebral */
+.ex-momento {
+  background: var(--fx-superficie); border: 1px solid var(--fx-linea); border-radius: var(--fx-radio);
+  scroll-margin-top: 12px;
+}
+.ex-momento[data-actual] { border-color: var(--fx-morado-linea); }
+.ex-momento-cab {
+  width: 100%; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 14px 16px; background: none; border: 0; cursor: pointer; font: inherit; text-align: left; color: var(--fx-tinta);
+}
+.ex-momento-cab:focus-visible { outline: 2px solid var(--fx-morado); outline-offset: -2px; border-radius: var(--fx-radio); }
+.ex-momento-num {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  font-family: var(--fx-letra-num); font-size: 13px; font-weight: 700;
+  border: 1.5px solid var(--fx-linea-2); color: var(--fx-tinta-2);
+}
+.ex-momento-num[data-tono='hecho'] { background: var(--fx-ok); border-color: var(--fx-ok); color: var(--fx-superficie); }
+.ex-momento-num[data-tono='aviso'] { background: var(--fx-aviso); border-color: var(--fx-aviso); color: var(--fx-superficie); }
+.ex-momento-num[data-tono='toca'], .ex-momento-num[data-tono='info'] { border-color: var(--fx-morado); color: var(--fx-morado-tinta); background: var(--fx-morado-suave); }
+.ex-momento-num[data-tono='atraso'] { border-color: var(--fx-atraso); color: var(--fx-atraso); background: var(--fx-atraso-suave); }
+.ex-momento-nombre { font-size: 15px; font-weight: 600; }
+.ex-momento-nota { margin-left: 2px; }
+.ex-momento-flecha { margin-left: auto; font-size: 18px; color: var(--fx-tinta-3); width: 20px; text-align: center; }
+.ex-momento-cuerpo { padding: 4px 16px 18px; border-top: 1px solid var(--fx-linea); padding-top: 16px; }
+
+/* Bitácoras: una casilla por quincena */
+.ex-bits { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; }
+.ex-bit {
+  position: relative; height: 38px; border-radius: var(--fx-radio-chico); cursor: pointer; font: inherit;
+  font-size: 12px; font-weight: 600; border: 1px solid transparent; color: var(--fx-superficie);
+}
+.ex-bit[data-tono='hecho'] { background: var(--fx-ok); }
+.ex-bit[data-tono='info'] { background: var(--fx-info); }
+.ex-bit[data-tono='aviso'] { background: var(--fx-aviso); }
+.ex-bit[data-tono='atraso'] { background: var(--fx-atraso); }
+.ex-bit[data-tono='toca'] { background: var(--fx-morado-suave); border-color: var(--fx-morado); color: var(--fx-morado-tinta); }
+.ex-bit[data-tono='neutro'] { background: var(--fx-superficie); border-color: var(--fx-linea-2); color: var(--fx-tinta-2); }
+.ex-bit[data-tono='futuro'] { background: var(--fx-superficie-2); border: 1px dashed var(--fx-linea-2); color: var(--fx-tinta-3); }
+.ex-bit:hover { outline: 2px solid var(--fx-morado); outline-offset: 1px; }
+.ex-bit-marca { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--fx-superficie); }
+.ex-leyenda { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 11.5px; color: var(--fx-tinta-3); }
+.ex-leyenda span { display: inline-flex; align-items: center; gap: 5px; }
+.ex-leyenda i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+/* Visitas */
+.ex-visitas { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fx-tinta); }
+.ex-visita { display: flex; gap: 10px; align-items: baseline; }
+.ex-visita-dia { min-width: 92px; color: var(--fx-tinta-2); font-size: 12px; }
+
+/* Análisis */
+.ex-factores { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.ex-factor-cab { display: flex; justify-content: space-between; font-size: 13px; color: var(--fx-tinta); margin-bottom: 4px; }
+.ex-barra { height: 6px; border-radius: 3px; background: var(--fx-superficie-2); overflow: hidden; }
+.ex-barra i { display: block; height: 100%; background: var(--fx-ok); border-radius: 3px; }
+
+/* Lo que pasó y eventos de SofiaPlus */
+.ex-eventos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ex-eventos li { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 7px 0; border-top: 1px solid var(--fx-linea); font-size: 13px; color: var(--fx-tinta); }
+.ex-eventos li:first-child { border-top: 0; }
+.ex-hab-detalle { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.ex-hab-detalle .ex-eventos { width: 100%; }
+
+/* Bitácora en el panel lateral */
+.ex-bitacora { display: flex; flex-direction: column; gap: 14px; color: var(--fx-tinta); }
+.ex-bitacora-cab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ex-bitacora-cab .fx-boton { margin-left: auto; }
+.ex-actividades { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 12px; }
+.ex-actividades li { padding-left: 4px; }
+.ex-act-desc { font-size: 14px; font-weight: 550; }
+.ex-act-dato { margin-top: 4px; font-size: 13px; color: var(--fx-tinta-2); }
+.ex-act-dato span { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fx-tinta-3); }
+.ex-act-dificultad { padding: 6px 10px; border-radius: var(--fx-radio-chico); background: var(--fx-aviso-suave); }
+.ex-comentario { padding: 10px 12px; border-radius: var(--fx-radio-chico); background: var(--fx-morado-suave); }
+.ex-comentario p { margin: 4px 0 0; font-size: 13.5px; }
+.ex-escribir { display: flex; flex-direction: column; gap: 8px; }
+.ex-escribir textarea {
+  font: inherit; font-size: 13.5px; padding: 9px 11px; resize: vertical; min-height: 70px;
+  border-radius: var(--fx-radio-chico); border: 1px solid var(--fx-linea-2); background: var(--fx-bg); color: var(--fx-tinta);
+}
+.ex-escribir textarea:focus { outline: 2px solid var(--fx-morado); outline-offset: 0; border-color: transparent; }
+.ex-escribir-botones { display: flex; gap: 8px; justify-content: flex-end; }
+.ex-ok { margin: 0; font-size: 13px; color: var(--fx-ok); }
+.ex-error { margin: 0; font-size: 13px; color: var(--fx-atraso); }
+.ex-navegar { display: flex; justify-content: space-between; border-top: 1px solid var(--fx-linea); padding-top: 10px; }

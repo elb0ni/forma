@@ -7,7 +7,7 @@ import { InstReportes } from './InstReportes'
 import { InstHistorial } from './InstHistorial'
 import { InstAgenda } from './InstAgenda'
 import { EtapaProductivaList, NuevoRegistro } from '../productiva/EtapaProductivaList'
-import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
+import { Expediente } from '../expediente/Expediente'
 
 const BASE = '/dashboard/instructor'
 
@@ -110,10 +110,10 @@ function EtapaProductivaDetalleRoute() {
   const desdeAgenda = (location.state as { desde?: string } | null)?.desde === 'agenda'
   // La key remonta el detalle si cambia la pestaña pedida en la URL.
   return (
-    <EtapaProductivaDetalle
+    <Expediente
       key={`${etapaId}-${tab ?? ''}`}
       etapaId={Number(etapaId)}
-      initialTab={tab}
+      abrir={tab}
       backLabel={desdeAgenda ? 'Pendientes' : 'Aprendices'}
       onBack={() => (desdeAgenda ? navigate(-1) : navigate('..'))}
     />
@@ -123,5 +123,5 @@ function EtapaProductivaDetalleRoute() {
 function HistorialEtapaRoute() {
   const { etapaId } = useParams()
   const navigate = useNavigate()
-  return <EtapaProductivaDetalle etapaId={Number(etapaId)} backLabel="Historial" onBack={() => navigate('..')}/>
+  return <Expediente etapaId={Number(etapaId)} backLabel="Historial" onBack={() => navigate('..')}/>
 }

@@ -10,7 +10,7 @@ import { FiltroGrupo, FiltrosBar, FiltrosResumen, SortCaret } from './filtros'
 import type { FiltroOpcion, SortDir } from './filtros'
 import { AprendicesPracticaTable, EstadoAprendicesResumen } from './AprendicesPractica'
 import type { AprendizPractica, InstructorPracticaInfo, KpiAprendicesPractica } from './AprendicesPractica'
-import { EtapaProductivaDetalle } from '../productiva/EtapaProductivaDetalle'
+import { Expediente } from '../expediente/Expediente'
 import { faseFicha, FASE_META } from './fichaFase'
 import type { FaseFicha } from './fichaFase'
 import './filtros.css'
@@ -922,7 +922,7 @@ function FichaEtapaRoute() {
   const { etapaId } = useParams()
   const navigate = useNavigate()
   return (
-    <EtapaProductivaDetalle
+    <Expediente
       etapaId={Number(etapaId)}
       backLabel="Ficha"
       onBack={() => navigate('../..', { relative: 'path' })}
