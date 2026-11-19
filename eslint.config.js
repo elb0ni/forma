@@ -40,4 +40,15 @@ export default defineConfig([
   roleBoundary('superadmin', ['coordinador', 'instructor']),
   roleBoundary('coordinador', ['superadmin', 'instructor']),
   roleBoundary('instructor', ['superadmin', 'coordinador']),
+  // Rediseño: ningún color escrito a mano en el sistema nuevo. Todo sale de
+  // src/ui/tokens.css (var(--fx-*)), para que la paleta y el modo oscuro sean uno solo.
+  {
+    files: ['src/ui/**/*.{ts,tsx}', 'src/screens/expediente/**/*.{ts,tsx}', 'src/screens/hoy/**/*.{ts,tsx}', 'src/screens/panorama/**/*.{ts,tsx}', 'src/screens/publico/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': ['error', {
+        selector: 'Literal[value=/#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?\\b|rgba?\\(/]',
+        message: 'Usa los colores de src/ui/tokens.css (var(--fx-…)), no colores escritos a mano.',
+      }],
+    },
+  },
 ])

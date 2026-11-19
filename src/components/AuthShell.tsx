@@ -1,7 +1,12 @@
+import { lazy, Suspense } from "react";
 import type { ReactNode } from "react";
 import { Ic } from "./ui";
-import { Forma3D } from "./Forma3D";
 import "./AuthShell.css";
+
+// La figura 3D (three.js) solo se descarga en la pantalla de ingreso.
+const Forma3D = lazy(() =>
+  import("./Forma3D").then((m) => ({ default: m.Forma3D })),
+);
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
@@ -40,7 +45,9 @@ export function AuthShell({ children }: { children: ReactNode }) {
         <div className="auth-shell__halo-bottom" />
 
         {/* Canvas Three.js — ocupa todo el panel */}
-        <Forma3D />
+        <Suspense fallback={null}>
+          <Forma3D />
+        </Suspense>
 
         {/* Overlay UI (encima del canvas, pointer-events none para no bloquear mouse) */}
         <div className="auth-shell__overlay">

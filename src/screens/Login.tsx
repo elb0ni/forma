@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,10 +6,14 @@ import { z } from 'zod'
 import api from '../lib/api'
 import { useAuthStore } from '../store/auth'
 import { AuthShell } from '../components/AuthShell'
-import { SpaceTransition } from '../components/SpaceTransition'
 import { Ic } from '../components/ui'
 import type { AuthUser } from '../types'
 import './Login.css'
+
+// three.js solo se descarga al ingresar (figura del login y transición).
+const SpaceTransition = lazy(() =>
+  import('../components/SpaceTransition').then((m) => ({ default: m.SpaceTransition })),
+)
 
 const schema = z.object({
   email:    z.string().email('Correo inválido'),
@@ -137,12 +141,14 @@ export function Login() {
     </AuthShell>
 
     {warpPayload && (
-      <SpaceTransition
-        onComplete={() => {
-          setUser(warpPayload.user)
-          navigate(warpPayload.target, { replace: true })
-        }}
-      />
+      <Suspense fallback={null}>
+        <SpaceTransition
+          onComplete={() => {
+            setUser(warpPayload.user)
+            navigate(warpPayload.target, { replace: true })
+          }}
+        />
+      </Suspense>
     )}
     </>
   )

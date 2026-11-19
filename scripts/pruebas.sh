@@ -2,7 +2,7 @@
 # Modo pruebas de FORMA: base local en Docker (copia de la real, con correos cambiados),
 # correos capturados por Mailpit y servicios en puertos propios. Nunca toca la base real.
 #
-#   scripts/pruebas.sh encender | apagar | estado
+#   scripts/pruebas.sh encender | apagar | estado | comparar
 #
 # Puertos: front 5180 · back 3100 · extractor IA 8000 · base 3307 · Mailpit 8025 (web)
 set -euo pipefail
@@ -30,13 +30,21 @@ case "${1:-estado}" in
     echo "Listo: http://localhost:5180 · usuarios de prueba en CLAUDE.md"
     ;;
   apagar)
-    for n in front ia back; do
+    for n in version-actual front ia back; do
       if [ -f "$RUN/$n.pid" ]; then pkill -TERM -P "$(cat "$RUN/$n.pid")" 2>/dev/null || true; kill "$(cat "$RUN/$n.pid")" 2>/dev/null || true; rm -f "$RUN/$n.pid"; echo "· $n apagado"; fi
     done
     docker stop forma-pruebas-db forma-pruebas-mail > /dev/null && echo "· base local y Mailpit apagados"
     ;;
+  comparar)
+    # La versión anterior (rama refactor/solo-etapa-productiva) en :5181, contra el mismo back de pruebas.
+    VIEJA="$RAIZ/Javascript/forma-version-actual"
+    [ -d "$VIEJA" ] || { echo "Falta la carpeta $VIEJA (git worktree add ../forma-version-actual refactor/solo-etapa-productiva)"; exit 1; }
+    lanzar version-actual 5181 "$VIEJA" npx vite --mode pruebas --port 5181 --strictPort
+    esperar version-actual 5181
+    echo "Comparar: nueva http://localhost:5180 · actual http://localhost:5181"
+    ;;
   estado)
     for x in "front 5180" "back 3100" "ia 8000" "base 3307" "mailpit 8025"; do set -- $x; libre "$2" && echo "· $1 ($2): apagado" || echo "· $1 ($2): encendido"; done
     ;;
-  *) echo "uso: $0 encender | apagar | estado"; exit 1 ;;
+  *) echo "uso: $0 encender | apagar | estado | comparar"; exit 1 ;;
 esac

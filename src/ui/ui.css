@@ -1,0 +1,128 @@
+/* Componentes base del rediseño. Solo usan las variables de tokens.css. */
+
+.fx-lienzo { min-height: 100%; padding: 24px 28px 48px; box-sizing: border-box; }
+.fx-lienzo * { box-sizing: border-box; }
+@media (max-width: 720px) { .fx-lienzo { padding: 16px 14px 40px; } }
+
+.fx-eyebrow {
+  font-family: var(--fx-letra-num); font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--fx-tinta-3);
+}
+.fx-titulo { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; margin: 2px 0 0; color: var(--fx-tinta); }
+.fx-subtitulo { font-size: 15px; font-weight: 600; margin: 0; color: var(--fx-tinta); }
+.fx-texto-2 { color: var(--fx-tinta-2); }
+.fx-texto-3 { color: var(--fx-tinta-3); font-size: 12.5px; }
+.fx-num { font-family: var(--fx-letra-num); font-variant-numeric: tabular-nums; }
+
+/* Frase de estado: la primera línea que se lee en cada pantalla */
+.fx-frase {
+  font-size: 15.5px; line-height: 1.5; color: var(--fx-tinta);
+  padding: 12px 16px; border-radius: var(--fx-radio);
+  background: var(--fx-superficie); border: 1px solid var(--fx-linea);
+  border-left: 3px solid var(--fx-morado);
+}
+.fx-frase[data-tono='atraso'] { border-left-color: var(--fx-atraso); }
+.fx-frase[data-tono='ok'] { border-left-color: var(--fx-ok); }
+.fx-frase strong { font-weight: 650; }
+
+/* Estado: forma + palabra */
+.fx-estado {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font-size: 12px; font-weight: 550; line-height: 1; padding: 4px 9px 4px 7px;
+  border-radius: 999px; border: 1px solid transparent;
+}
+.fx-estado::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.fx-estado[data-tono='hecho']    { background: var(--fx-ok-suave); color: var(--fx-ok); }
+.fx-estado[data-tono='hecho']::before { background: var(--fx-ok); }
+.fx-estado[data-tono='toca']     { background: var(--fx-morado-suave); color: var(--fx-morado-tinta); border-color: var(--fx-morado-linea); }
+.fx-estado[data-tono='toca']::before { border: 2px solid var(--fx-morado); width: 6px; height: 6px; }
+.fx-estado[data-tono='atraso']   { background: var(--fx-atraso-suave); color: var(--fx-atraso); font-weight: 650; }
+.fx-estado[data-tono='atraso']::before { background: var(--fx-atraso); border-radius: 2px; }
+.fx-estado[data-tono='aviso']    { background: var(--fx-aviso-suave); color: var(--fx-aviso); }
+.fx-estado[data-tono='aviso']::before { background: var(--fx-aviso); }
+.fx-estado[data-tono='futuro']   { background: transparent; color: var(--fx-tinta-3); border: 1px dashed var(--fx-linea-2); }
+.fx-estado[data-tono='futuro']::before { border: 1.5px dashed var(--fx-tinta-3); width: 6px; height: 6px; }
+.fx-estado[data-tono='info']     { background: var(--fx-info-suave); color: var(--fx-info); }
+.fx-estado[data-tono='info']::before { background: var(--fx-info); }
+.fx-estado[data-tono='neutro']   { background: var(--fx-superficie-2); color: var(--fx-tinta-2); }
+.fx-estado[data-tono='neutro']::before { background: var(--fx-tinta-3); }
+
+/* Panel: la única "tarjeta" del sistema */
+.fx-panel {
+  background: var(--fx-superficie); border: 1px solid var(--fx-linea);
+  border-radius: var(--fx-radio); box-shadow: var(--fx-sombra);
+}
+.fx-panel-cab {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--fx-linea);
+}
+.fx-panel-cuerpo { padding: 14px 16px; }
+
+/* Indicadores: etiqueta + valor, con el porqué debajo */
+.fx-indicadores { display: grid; gap: 0; }
+.fx-indicador { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--fx-linea); }
+.fx-indicador:first-child { border-top: 0; padding-top: 0; }
+.fx-indicador .k { color: var(--fx-tinta-2); font-size: 13px; }
+.fx-indicador .v { font-family: var(--fx-letra-num); font-weight: 600; font-size: 14px; color: var(--fx-tinta); text-align: right; }
+.fx-indicador .v[data-tono='atraso'] { color: var(--fx-atraso); }
+.fx-indicador .v[data-tono='ok'] { color: var(--fx-ok); }
+.fx-indicador .n { grid-column: 1 / -1; font-size: 12px; color: var(--fx-tinta-3); }
+
+/* Botones del sistema nuevo */
+.fx-boton {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; font-weight: 550;
+  padding: 7px 12px; border-radius: var(--fx-radio-chico); cursor: pointer;
+  border: 1px solid var(--fx-linea-2); background: var(--fx-superficie); color: var(--fx-tinta);
+}
+.fx-boton:hover { border-color: var(--fx-morado); }
+.fx-boton[data-tipo='principal'] { background: var(--fx-morado); border-color: var(--fx-morado); color: var(--fx-sobre-morado); }
+.fx-boton[data-tipo='principal']:hover { filter: brightness(1.05); }
+.fx-boton[data-tipo='suave'] { border-color: transparent; background: transparent; color: var(--fx-morado-tinta); padding-inline: 6px; }
+.fx-boton:disabled { opacity: 0.5; cursor: default; }
+.fx-boton:focus-visible, .fx-clicable:focus-visible { outline: 2px solid var(--fx-morado); outline-offset: 2px; }
+
+/* Tabla compacta */
+.fx-tabla-envoltura { overflow-x: auto; }
+.fx-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fx-tabla th {
+  text-align: left; font-weight: 550; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--fx-tinta-3); padding: 8px 10px; border-bottom: 1px solid var(--fx-linea); white-space: nowrap;
+}
+.fx-tabla td { padding: 9px 10px; border-bottom: 1px solid var(--fx-linea); vertical-align: middle; color: var(--fx-tinta); }
+.fx-tabla tr.fx-grupo td {
+  background: var(--fx-superficie-2); font-size: 12px; font-weight: 600; color: var(--fx-tinta-2); padding: 7px 10px;
+}
+.fx-tabla tbody tr.fx-fila { cursor: pointer; }
+.fx-tabla tbody tr.fx-fila:hover td { background: var(--fx-morado-suave); }
+
+/* Panel lateral (detalle a un clic) */
+.fx-lateral-fondo { position: fixed; inset: 0; background: rgba(25, 23, 21, 0.35); z-index: 60; }
+.fx-lateral {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100vw); z-index: 61;
+  background: var(--fx-superficie); border-left: 1px solid var(--fx-linea); box-shadow: var(--fx-sombra);
+  display: flex; flex-direction: column;
+}
+.fx-lateral-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--fx-linea); }
+.fx-lateral-cuerpo { padding: 16px 18px; overflow-y: auto; flex: 1; }
+
+/* Línea de la etapa (expediente) */
+.fx-linea-envoltura { overflow-x: auto; }
+.fx-linea-etapa { display: block; width: 100%; min-width: 720px; height: auto; }
+.fx-linea-etapa text { font-family: var(--fx-letra); }
+.fx-linea-etapa .t-titulo { font-size: 14px; font-weight: 600; fill: var(--fx-tinta); }
+.fx-linea-etapa .t-sub { font-family: var(--fx-letra-num); font-size: 11.5px; fill: var(--fx-tinta-3); }
+.fx-linea-etapa .t-num { font-family: var(--fx-letra-num); font-size: 11px; fill: var(--fx-tinta-2); }
+.fx-linea-etapa .eje { stroke: var(--fx-linea-2); stroke-width: 1.2; fill: none; }
+.fx-linea-etapa .hoy { stroke: var(--fx-morado); stroke-width: 2; }
+.fx-linea-etapa .hoy-t { font-family: var(--fx-letra-num); font-size: 11px; font-weight: 600; fill: var(--fx-morado-tinta); }
+.fx-linea-etapa .clic { cursor: pointer; }
+
+/* Línea mini (filas de listas) */
+.fx-mini { display: inline-flex; align-items: center; gap: 8px; }
+.fx-mini-momentos { display: inline-flex; gap: 3px; }
+.fx-mini-m {
+  width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center;
+  font-family: var(--fx-letra-num); font-size: 10px; font-weight: 700;
+}
+.fx-mini-b { display: inline-flex; gap: 2px; }
+.fx-mini-b i { width: 6px; height: 14px; border-radius: 2px; display: block; }
