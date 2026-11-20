@@ -23,7 +23,7 @@ type FormData = z.infer<typeof schema>
 // ─── Fortaleza de contraseña ──────────────────────────────────────────────────
 
 const STRENGTH_LABELS = ['Muy débil', 'Débil', 'Aceptable', 'Buena', 'Fuerte']
-const STRENGTH_COLORS = ['#b91c1c', '#b91c1c', '#a16207', '#15803d', '#15803d']
+const STRENGTH_COLORS = ['var(--fx-atraso)', 'var(--fx-atraso)', 'var(--fx-aviso)', 'var(--fx-ok)', 'var(--fx-ok)']
 
 function strengthScore(pwd: string) {
   return [
@@ -112,7 +112,7 @@ export function CambiarContrasena() {
             autoComplete="current-password"
             autoFocus
             className="nx-input"
-            style={errors.password_actual ? { borderColor: '#fecaca' } : undefined}
+            style={errors.password_actual ? { borderColor: 'var(--fx-atraso-linea)' } : undefined}
           />
         </Field>
 
@@ -132,7 +132,7 @@ export function CambiarContrasena() {
               className="nx-input"
               style={{
                 paddingRight: 36,
-                ...(errors.password_nuevo ? { borderColor: '#fecaca' } : {}),
+                ...(errors.password_nuevo ? { borderColor: 'var(--fx-atraso-linea)' } : {}),
               }}
             />
             <button
@@ -151,7 +151,7 @@ export function CambiarContrasena() {
             <div className="cambiar__strength-bars">
               {[0, 1, 2, 3].map(i => (
                 <div key={i} className="cambiar__strength-bar" style={{
-                  background: i < score ? STRENGTH_COLORS[score] : '#e4e4e7',
+                  background: i < score ? STRENGTH_COLORS[score] : 'var(--fx-linea)',
                 }}/>
               ))}
             </div>
@@ -176,7 +176,7 @@ export function CambiarContrasena() {
             placeholder="Repite la nueva contraseña"
             autoComplete="new-password"
             className="nx-input"
-            style={errors.confirmar ? { borderColor: '#fecaca' } : undefined}
+            style={errors.confirmar ? { borderColor: 'var(--fx-atraso-linea)' } : undefined}
           />
         </Field>
 
@@ -193,7 +193,7 @@ export function CambiarContrasena() {
           disabled={isSubmitting}
           className="cambiar__submit-btn"
           style={{
-            background: isSubmitting ? '#a1a1aa' : '#4f46e5',
+            background: isSubmitting ? 'var(--fx-tinta-4)' : 'var(--fx-morado)',
             cursor: isSubmitting ? 'not-allowed' : 'pointer',
           }}
         >

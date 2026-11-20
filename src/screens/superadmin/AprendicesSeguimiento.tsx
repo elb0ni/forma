@@ -42,11 +42,11 @@ interface Respuesta {
 
 // Del más urgente al que ya cerró.
 const CASOS: { id: Caso; label: string; sub: string; color: string; icon: 'alert' | 'clock' | 'briefcase' | 'fileText' | 'checkCircle' }[] = [
-  { id: 'SIN_ALTERNATIVA',      label: 'Sin alternativa',     sub: 'Le falta más de un juicio y no tiene etapa productiva', color: '#e11d48', icon: 'alert' },
-  { id: 'LISTO_PARA_INICIAR',   label: 'Listos para iniciar', sub: 'Solo le falta el juicio de etapa productiva',        color: '#f59e0b', icon: 'clock' },
-  { id: 'EN_CURSO',             label: 'En práctica',         sub: 'Con etapa productiva abierta',                         color: '#6366f1', icon: 'briefcase' },
-  { id: 'TERMINADA_SIN_JUICIO', label: 'Terminó, sin juicio', sub: 'Etapa cerrada; SofiaPlus aún no carga el juicio',      color: '#0ea5a4', icon: 'fileText' },
-  { id: 'CONCLUIDA',            label: 'Por certificar',      sub: 'Etapa terminada y todos los juicios',                 color: '#22c55e', icon: 'checkCircle' },
+  { id: 'SIN_ALTERNATIVA',      label: 'Sin alternativa',     sub: 'Le falta más de un juicio y no tiene etapa productiva', color: 'var(--fx-atraso)', icon: 'alert' },
+  { id: 'LISTO_PARA_INICIAR',   label: 'Listos para iniciar', sub: 'Solo le falta el juicio de etapa productiva',        color: 'var(--fx-aviso)', icon: 'clock' },
+  { id: 'EN_CURSO',             label: 'En práctica',         sub: 'Con etapa productiva abierta',                         color: 'var(--fx-morado)', icon: 'briefcase' },
+  { id: 'TERMINADA_SIN_JUICIO', label: 'Terminó, sin juicio', sub: 'Etapa cerrada; SofiaPlus aún no carga el juicio',      color: 'var(--fx-info)', icon: 'fileText' },
+  { id: 'CONCLUIDA',            label: 'Por certificar',      sub: 'Etapa terminada y todos los juicios',                 color: 'var(--fx-ok)', icon: 'checkCircle' },
 ]
 const CASO = Object.fromEntries(CASOS.map(c => [c.id, c])) as Record<Caso, (typeof CASOS)[number]>
 
@@ -197,7 +197,7 @@ export function AprendicesSeguimiento() {
                       {a.seguimientos > 0
                         ? <>{a.seguimientos} seguimiento{a.seguimientos === 1 ? '' : 's'}{a.ultimo_seguimiento ? ` · último ${corta(a.ultimo_seguimiento)}` : ''}</>
                         : 'sin seguimientos'}
-                      {a.sin_seguimiento_reciente && <Ic n="bell" s={11} style={{ color: '#e11d48', marginLeft: 4, verticalAlign: -1 }}/>}
+                      {a.sin_seguimiento_reciente && <Ic n="bell" s={11} style={{ color: 'var(--fx-atraso)', marginLeft: 4, verticalAlign: -1 }}/>}
                     </span>
                   </>
                 ) : (

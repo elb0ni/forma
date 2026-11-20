@@ -39,7 +39,7 @@ export function CoordAlertas({ onOpenFicha }: { onOpenFicha?: (id: number) => vo
   return (
     <div style={{ maxWidth: 1000 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
-        <div style={{ fontSize: 13.5, color: '#52525b', maxWidth: 620 }}>
+        <div style={{ fontSize: 13.5, color: 'var(--fx-tinta-2)', maxWidth: 620 }}>
           Lo que requiere seguimiento en tu coordinación: novedades que reportan los instructores sobre un aprendiz y fichas cuya etapa productiva cierra pronto.
         </div>
         <AlertasInstructorButton coordId={coordId}/>
@@ -47,19 +47,19 @@ export function CoordAlertas({ onOpenFicha }: { onOpenFicha?: (id: number) => vo
 
       {vacio ? (
         <Card style={{ padding: 40, textAlign: 'center' }}>
-          <Ic n="checkCircle" s={28} style={{ color: '#16a34a' }}/>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0b', marginTop: 10 }}>Sin cierres próximos</div>
-          <div style={{ fontSize: 12.5, color: '#71717a', marginTop: 4 }}>Ninguna ficha en etapa productiva cierra en los próximos 30 días.</div>
+          <Ic n="checkCircle" s={28} style={{ color: 'var(--fx-ok)' }}/>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fx-tinta)', marginTop: 10 }}>Sin cierres próximos</div>
+          <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', marginTop: 4 }}>Ninguna ficha en etapa productiva cierra en los próximos 30 días.</div>
         </Card>
       ) : (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: '#fff7ed', border: '1px solid #fed7aa', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-              <Ic n="clock" s={15} style={{ color: '#c2410c' }}/>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--fx-aviso-suave)', border: '1px solid var(--fx-aviso-linea)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Ic n="clock" s={15} style={{ color: 'var(--fx-aviso)' }}/>
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>Cierran pronto (≤ 30 días) · {cierre.length}</div>
-              <div style={{ fontSize: 11.5, color: '#71717a' }}>Fin de etapa productiva cercano</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)' }}>Cierran pronto (≤ 30 días) · {cierre.length}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)' }}>Fin de etapa productiva cercano</div>
             </div>
           </div>
           <Card style={{ overflow: 'hidden' }}>
@@ -69,7 +69,7 @@ export function CoordAlertas({ onOpenFicha }: { onOpenFicha?: (id: number) => vo
                 className={onOpenFicha ? 'nx-row' : undefined}
                 onClick={() => onOpenFicha?.(f.id)}
                 style={{
-                  padding: '11px 16px', borderBottom: i < cierre.length - 1 ? '1px solid #f1f1f3' : 'none',
+                  padding: '11px 16px', borderBottom: i < cierre.length - 1 ? '1px solid var(--fx-superficie-2)' : 'none',
                   cursor: onOpenFicha ? 'pointer' : 'default',
                   display: 'flex', alignItems: 'center', gap: 14,
                 }}
@@ -77,11 +77,11 @@ export function CoordAlertas({ onOpenFicha }: { onOpenFicha?: (id: number) => vo
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Tag>{f.programa_codigo}</Tag>
-                    <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
+                    <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: 'var(--fx-tinta)' }}># {f.numero_ficha}</span>
                   </div>
-                  <div style={{ fontSize: 12, color: '#52525b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.programa_nombre}</div>
+                  <div style={{ fontSize: 12, color: 'var(--fx-tinta-2)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.programa_nombre}</div>
                 </div>
-                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: '#dc2626', width: 48, textAlign: 'right' }}>{dias}d</span>
+                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, fontWeight: 600, color: 'var(--fx-atraso)', width: 48, textAlign: 'right' }}>{dias}d</span>
               </div>
             ))}
           </Card>
@@ -94,8 +94,8 @@ export function CoordAlertas({ onOpenFicha }: { onOpenFicha?: (id: number) => vo
 function Center({ title, sub }: { title: string; sub: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 320, gap: 12, textAlign: 'center' }}>
-      <div style={{ fontSize: 16, fontWeight: 600, color: '#0a0a0b' }}>{title}</div>
-      <div style={{ fontSize: 13, color: '#71717a', maxWidth: 380 }}>{sub}</div>
+      <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--fx-tinta)' }}>{title}</div>
+      <div style={{ fontSize: 13, color: 'var(--fx-tinta-3)', maxWidth: 380 }}>{sub}</div>
     </div>
   )
 }

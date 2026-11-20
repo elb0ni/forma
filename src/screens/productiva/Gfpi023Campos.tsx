@@ -61,7 +61,7 @@ export function Campo({ label, required, ancho, error, children }: {
 export function Aviso({ children }: { children: ReactNode }) {
   return (
     <span className="g23-aviso g23-col2">
-      <Ic n="info" s={13} style={{ color: '#a16207', flexShrink: 0 }}/>
+      <Ic n="info" s={13} style={{ color: 'var(--fx-aviso)', flexShrink: 0 }}/>
       <span>{children}</span>
     </span>
   )

@@ -106,28 +106,28 @@ interface InstructorDetalleData {
 }
 
 const SEMAFORO: Record<InstructorDetalleData['adopcion']['semaforo'], { label: string; fg: string; bg: string; dot: string }> = {
-  ACTIVO:      { label: 'Activo',        fg: '#15803d', bg: '#dcfce7', dot: '#16a34a' },
-  TIBIO:       { label: 'Poco activo',   fg: '#a16207', bg: '#fef9c3', dot: '#ca8a04' },
-  INACTIVO:    { label: 'Inactivo',      fg: '#b91c1c', bg: '#fee2e2', dot: '#dc2626' },
-  NUNCA_ENTRO: { label: 'Nunca entró',   fg: '#52525b', bg: '#f1f1f3', dot: '#a1a1aa' },
+  ACTIVO:      { label: 'Activo',        fg: 'var(--fx-ok)', bg: 'var(--fx-ok-suave)', dot: 'var(--fx-ok)' },
+  TIBIO:       { label: 'Poco activo',   fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)', dot: 'var(--fx-aviso)' },
+  INACTIVO:    { label: 'Inactivo',      fg: 'var(--fx-atraso)', bg: 'var(--fx-atraso-suave)', dot: 'var(--fx-atraso)' },
+  NUNCA_ENTRO: { label: 'Nunca entró',   fg: 'var(--fx-tinta-2)', bg: 'var(--fx-superficie-2)', dot: 'var(--fx-tinta-4)' },
 }
 
 function Stat({ label, value, tone }: { label: string; value: number | string; tone?: 'risk' | 'crit' }) {
-  const color = tone === 'crit' ? '#dc2626' : tone === 'risk' ? '#c2410c' : '#0a0a0b'
+  const color = tone === 'crit' ? 'var(--fx-atraso)' : tone === 'risk' ? 'var(--fx-aviso)' : 'var(--fx-tinta)'
   return (
-    <div style={{ border: '1px solid #e4e4e7', borderRadius: 8, padding: '12px 14px' }}>
-      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#71717a', fontWeight: 600 }}>{label}</div>
+    <div style={{ border: '1px solid var(--fx-linea)', borderRadius: 8, padding: '12px 14px' }}>
+      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--fx-tinta-3)', fontWeight: 600 }}>{label}</div>
       <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 20, fontWeight: 700, color, marginTop: 5 }}>{value}</div>
     </div>
   )
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, margin: '26px 0 12px' }}>{children}</div>
+  return <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, margin: '26px 0 12px' }}>{children}</div>
 }
 
 function momIcon(ok: boolean): { n: IcName; color: string } {
-  return ok ? { n: 'checkCircle', color: '#16a34a' } : { n: 'clock', color: '#d4d4d8' }
+  return ok ? { n: 'checkCircle', color: 'var(--fx-ok)' } : { n: 'clock', color: 'var(--fx-linea-2)' }
 }
 
 type VistaId = 'resumen' | 'pendientes' | 'calendario' | 'historial'
@@ -192,7 +192,7 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
 
   const back = (
     <button onClick={onBack} className="back-btn" style={{
-      fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none',
+      fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none',
       cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'Inter, sans-serif',
     }}>
       <Ic n="arrowLeft" s={14}/>Volver
@@ -227,7 +227,7 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
           <Ava name={ins.nombre_completo} size={44}/>
           <div style={{ flex: 1, minWidth: 220 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 15, fontWeight: 600, color: '#0a0a0b' }}>{ins.nombre_completo}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--fx-tinta)' }}>{ins.nombre_completo}</span>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 20,
                 fontSize: 11, fontWeight: 700, background: sem.bg, color: sem.fg,
@@ -238,8 +238,8 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
               {ins.primer_login && <Bdg tone="warn">No ha entrado</Bdg>}
               {!ins.firma_registrada && <Bdg tone="warn">Sin firma</Bdg>}
             </div>
-            <div style={{ fontSize: 12.5, color: '#52525b', marginTop: 3 }}>{ins.email}</div>
-            <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 4, fontFamily: '"JetBrains Mono", monospace' }}>
+            <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', marginTop: 3 }}>{ins.email}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)', marginTop: 4, fontFamily: '"JetBrains Mono", monospace' }}>
               {ins.tipo_documento} {ins.numero_documento}
               {ins.centro_nombre ? ` · ${ins.centro_nombre}` : ''}
               {ins.coordinacion_nombre ? ` · ${ins.coordinacion_nombre}` : ''}
@@ -270,13 +270,13 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
       {/* Aprendices */}
       <SectionTitle>Aprendices a su cargo · {aprendices.length}</SectionTitle>
       {aprendices.length === 0 ? (
-        <Card style={{ padding: 20 }}><div style={{ fontSize: 12.5, color: '#a1a1aa', textAlign: 'center' }}>Sin etapas productivas registradas.</div></Card>
+        <Card style={{ padding: 20 }}><div style={{ fontSize: 12.5, color: 'var(--fx-tinta-4)', textAlign: 'center' }}>Sin etapas productivas registradas.</div></Card>
       ) : (
         <Card style={{ overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, minWidth: 720 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a' }}>
+                <tr style={{ borderBottom: '1px solid var(--fx-linea)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fx-tinta-3)' }}>
                   <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600 }}>Aprendiz</th>
                   <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600 }}>Ficha</th>
                   <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600 }}>Modalidad</th>
@@ -289,13 +289,13 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
                   <tr key={a.etapa_id}
                     onClick={() => verEtapa(a.etapa_id)}
                     className="nx-row"
-                    style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}>
+                    style={{ borderBottom: '1px solid var(--fx-superficie-2)', cursor: 'pointer' }}>
                     <td style={{ padding: '10px 14px' }}>
-                      <div style={{ fontWeight: 600, color: '#0a0a0b' }}>{a.aprendiz_nombre}</div>
-                      <div style={{ fontSize: 10.5, color: '#a1a1aa', fontFamily: '"JetBrains Mono", monospace' }}>{a.numero_documento}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--fx-tinta)' }}>{a.aprendiz_nombre}</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-4)', fontFamily: '"JetBrains Mono", monospace' }}>{a.numero_documento}</div>
                     </td>
-                    <td style={{ padding: '10px 14px', fontFamily: '"JetBrains Mono", monospace', color: '#52525b' }}># {a.numero_ficha}</td>
-                    <td style={{ padding: '10px 14px', color: '#3f3f46' }}>{MODALIDAD_LABEL[a.modalidad] ?? a.modalidad}</td>
+                    <td style={{ padding: '10px 14px', fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta-2)' }}># {a.numero_ficha}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--fx-tinta-2)' }}>{MODALIDAD_LABEL[a.modalidad] ?? a.modalidad}</td>
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                         {([a.momentos.planeacion, a.momentos.seguimiento, a.momentos.evaluacion]).map((ok, i) => {
@@ -304,7 +304,7 @@ function InstructorDetalleMain({ instructorId, onBack }: { instructorId: string;
                         })}
                       </div>
                     </td>
-                    <td style={{ padding: '10px 14px', fontFamily: '"JetBrains Mono", monospace', color: '#52525b' }}>{fd(a.ultimo_seguimiento)}</td>
+                    <td style={{ padding: '10px 14px', fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta-2)' }}>{fd(a.ultimo_seguimiento)}</td>
                   </tr>
                 ))}
               </tbody>

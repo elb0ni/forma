@@ -6,7 +6,7 @@ import type { AprendizPractica } from './AprendicesPractica'
 import type { EtapaProductiva, SeguimientoProductivo, TipoMomento } from '../productiva/types'
 import './ProgresoPractica.css'
 
-// ─── Progreso de la etapa práctica (popover al pasar sobre un aprendiz) ──────
+// ─── Progreso de la etapa productiva (popover al pasar sobre un aprendiz) ──────
 // Para cualquier aprendiz de la ficha: una línea con los hitos del camino
 // completo, de la lectiva a la certificación, para ver de un vistazo en qué
 // punto va y qué sigue:

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BrandMark, Btn, Card, Ic } from '../../components/ui'
+import { useAmbito } from '../../store/ambito'
 import api from '../../lib/api'
 import { LoadingBlock, CenterState, centroLabel } from './parts'
 import './ReportesAdmin.css'
@@ -28,10 +29,10 @@ const USA_FECHAS = new Set(['etapas-por-cerrar', 'conceptos-por-resolver'])
 // Color de la celda "Plan"/"Estado" de la tabla del documento.
 function chipTone(v: string): { bg: string; fg: string } {
   const s = v.toLowerCase()
-  if (s.includes('vencida') || s.includes('sin plan') || s.includes('no aprob')) return { bg: '#fee2e2', fg: '#b91c1c' }
-  if (s.includes('hoy') || s.includes('con plan')) return { bg: '#fef9c3', fg: '#a16207' }
-  if (s.includes('faltan') || s.includes('aprob')) return { bg: '#dcfce7', fg: '#15803d' }
-  return { bg: '#f1f1f3', fg: '#52525b' }
+  if (s.includes('vencida') || s.includes('sin plan') || s.includes('no aprob')) return { bg: 'var(--fx-atraso-suave)', fg: 'var(--fx-atraso)' }
+  if (s.includes('hoy') || s.includes('con plan')) return { bg: 'var(--fx-aviso-suave)', fg: 'var(--fx-aviso)' }
+  if (s.includes('faltan') || s.includes('aprob')) return { bg: 'var(--fx-ok-suave)', fg: 'var(--fx-ok)' }
+  return { bg: 'var(--fx-superficie-2)', fg: 'var(--fx-tinta-2)' }
 }
 
 function hoyISO() {
@@ -61,8 +62,10 @@ export function ReportesAdmin({ coordinacionId, allowCentro = true }: {
   const [centros, setCentros] = useState<CentroOpt[]>([])
   const [coords, setCoords]   = useState<CoordOpt[]>([])
   const [tipo, setTipo]       = useState('')
-  const [centroId, setCentroId] = useState('')
-  const [coordId, setCoordId]   = useState('')
+  // Arrancan con el ámbito elegido arriba (Fase 16); aquí se pueden afinar.
+  const amb = useAmbito()
+  const [centroId, setCentroId] = useState(() => (amb.centroId ? String(amb.centroId) : ''))
+  const [coordId, setCoordId]   = useState(() => (amb.coordId ? String(amb.coordId) : ''))
   const [desde, setDesde]     = useState(hace3MesesISO())
   const [hasta, setHasta]     = useState(hoyISO())
   const [data, setData]       = useState<ReporteData | null>(null)
@@ -112,20 +115,20 @@ export function ReportesAdmin({ coordinacionId, allowCentro = true }: {
 
   return (
     <div className="rep-wrap">
-      <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>Reportes de práctica</h2>
-      <div style={{ fontSize: 13, color: '#52525b', marginBottom: 24 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)', marginBottom: 4 }}>Reportes de práctica</h2>
+      <div style={{ fontSize: 13, color: 'var(--fx-tinta-2)', marginBottom: 24 }}>
         Cobertura de instructor, estado de los aprendices y seguimiento — {coordinacionId != null ? 'tu coordinación' : 'Regional Atlántico'}.
       </div>
 
       <div className="rep-grid">
         {/* Parámetros */}
         <Card style={{ padding: 20, position: 'sticky', top: 80, alignSelf: 'start' }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 14 }}>Reporte</div>
+          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, marginBottom: 14 }}>Reporte</div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
             {Object.entries(grupos).map(([grupo, items]) => (
               <div key={grupo}>
-                <div style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#a1a1aa', fontWeight: 600, margin: '8px 0 4px' }}>{grupo}</div>
+                <div style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-4)', fontWeight: 600, margin: '8px 0 4px' }}>{grupo}</div>
                 {items.map(m => {
                   const active = tipo === m.tipo
                   return (
@@ -140,8 +143,8 @@ export function ReportesAdmin({ coordinacionId, allowCentro = true }: {
           </div>
 
           {(hayFiltros || usaFechas) && (
-            <div style={{ borderTop: '1px solid #e4e4e7', paddingTop: 14 }}>
-              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 12 }}>Filtros</div>
+            <div style={{ borderTop: '1px solid var(--fx-linea)', paddingTop: 14 }}>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, marginBottom: 12 }}>Filtros</div>
               {hayFiltros && (
                 <>
                   <Lbl text="Centro">
@@ -167,7 +170,7 @@ export function ReportesAdmin({ coordinacionId, allowCentro = true }: {
             </div>
           )}
 
-          <div style={{ borderTop: '1px solid #e4e4e7', marginTop: 18, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ borderTop: '1px solid var(--fx-linea)', marginTop: 18, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Btn variant="primary" icon="download" style={{ width: '100%', justifyContent: 'center' }} onClick={() => window.print()}>Descargar PDF</Btn>
             <Btn variant="secondary" icon="download" style={{ width: '100%', justifyContent: 'center' }} onClick={() => window.print()}>Imprimir</Btn>
           </div>
@@ -175,8 +178,8 @@ export function ReportesAdmin({ coordinacionId, allowCentro = true }: {
 
         {/* Vista previa */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>Vista previa</div>
-          <div style={{ fontSize: 11.5, color: '#52525b', marginBottom: 12 }}>El reporte se imprime tal cual lo ves.</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)', marginBottom: 4 }}>Vista previa</div>
+          <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-2)', marginBottom: 12 }}>El reporte se imprime tal cual lo ves.</div>
           {loading ? <Card style={{ padding: 40 }}><LoadingBlock minHeight={320}/></Card>
             : error || !data ? <Card style={{ padding: 40 }}><CenterState icon="alert" title="No se pudo generar el reporte" sub={error ?? undefined}/></Card>
             : <ReportePreview data={data}/>}
@@ -192,22 +195,22 @@ function ReportePreview({ data }: { data: ReporteData }) {
   return (
     <Card style={{ padding: 40 }} >
       <div className="rep-doc">
-        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #4f46e5', paddingBottom: 16, marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid var(--fx-morado)', paddingBottom: 16, marginBottom: 18 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <BrandMark size={22}/>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.5px', color: '#4f46e5' }}>FORMA</div>
-              <div style={{ fontSize: 9, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Plataforma de seguimiento de etapa productiva</div>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.5px', color: 'var(--fx-morado)' }}>FORMA</div>
+              <div style={{ fontSize: 9, color: 'var(--fx-tinta-3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Plataforma de seguimiento de etapa productiva</div>
             </div>
           </div>
-          <div style={{ textAlign: 'right', fontSize: 10, color: '#71717a' }}>
+          <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--fx-tinta-3)' }}>
             <div>SENA · Regional Atlántico</div>
             <div>Generado · {fd(data.generado)}</div>
           </div>
         </div>
 
-        <h1 style={{ fontSize: 19, fontWeight: 700, color: '#0a0a0b', margin: '0 0 2px' }}>{data.titulo}</h1>
-        <div style={{ fontSize: 11.5, color: '#52525b', marginBottom: 18 }}>{data.subtitulo}</div>
+        <h1 style={{ fontSize: 19, fontWeight: 700, color: 'var(--fx-tinta)', margin: '0 0 2px' }}>{data.titulo}</h1>
+        <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-2)', marginBottom: 18 }}>{data.subtitulo}</div>
 
         {data.resumen.length > 0 && (
           <div className="rep-kpis">
@@ -221,7 +224,7 @@ function ReportePreview({ data }: { data: ReporteData }) {
         )}
 
         {data.filas.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: '#71717a', padding: '24px 0', textAlign: 'center', border: '1px dashed #e4e4e7', borderRadius: 8 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', padding: '24px 0', textAlign: 'center', border: '1px dashed var(--fx-linea)', borderRadius: 8 }}>
             Sin datos para los parámetros seleccionados.
           </div>
         ) : (
@@ -254,7 +257,7 @@ function ReportePreview({ data }: { data: ReporteData }) {
           </table>
         )}
 
-        <div style={{ marginTop: 22, paddingTop: 10, borderTop: '1px solid #e4e4e7', display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#a1a1aa' }}>
+        <div style={{ marginTop: 22, paddingTop: 10, borderTop: '1px solid var(--fx-linea)', display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: 'var(--fx-tinta-4)' }}>
           <span>FORMA · {data.titulo}</span>
           <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{data.filas.length} registros</span>
         </div>
@@ -266,7 +269,7 @@ function ReportePreview({ data }: { data: ReporteData }) {
 function Lbl({ text, children, style }: { text: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={style}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: '#27272a', marginBottom: 6 }}>{text}</div>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)', marginBottom: 6 }}>{text}</div>
       {children}
     </div>
   )

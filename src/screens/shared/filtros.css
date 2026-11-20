@@ -1,7 +1,7 @@
 /* ─── Barra de búsqueda + panel de filtros desplegable ─────────────────────────
    Compartido por Fichas (superadmin/coordinador) y Programas de formación.
    El modo oscuro de la app es un invert global del lienzo, así que aquí solo
-   se define la paleta clara (acento #4f46e5, bordes #e4e4e7, chips #f1f1f3). */
+   se define la paleta clara (acento var(--fx-morado), bordes var(--fx-linea), chips var(--fx-superficie-2)). */
 
 .ff-bar {
   display: flex;
@@ -22,17 +22,17 @@
   width: 100%;
   height: 38px;
   padding: 0 32px 0 36px;
-  border: 1px solid #e4e4e7;
+  border: 1px solid var(--fx-linea);
   border-radius: 10px;
   font-size: 13px;
-  color: #18181b;
+  color: var(--fx-tinta);
   font-family: 'Inter', sans-serif;
-  background: #fff;
+  background: var(--fx-superficie);
   outline: none;
   transition: border-color 120ms, box-shadow 120ms;
 }
-.ff-search > input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px #eef2ff; }
-.ff-search__icon { position: absolute; left: 12px; color: #a1a1aa; pointer-events: none; display: flex; }
+.ff-search > input:focus { border-color: var(--fx-morado); box-shadow: 0 0 0 3px var(--fx-morado-suave); }
+.ff-search__icon { position: absolute; left: 12px; color: var(--fx-tinta-4); pointer-events: none; display: flex; }
 .ff-search__clear {
   position: absolute;
   right: 9px;
@@ -42,8 +42,8 @@
   height: 18px;
   border: none;
   border-radius: 50%;
-  background: #f1f1f3;
-  color: #71717a;
+  background: var(--fx-superficie-2);
+  color: var(--fx-tinta-3);
   cursor: pointer;
 }
 
@@ -53,25 +53,25 @@
   gap: 8px;
   height: 38px;
   padding: 0 14px;
-  border: 1px solid #e4e4e7;
+  border: 1px solid var(--fx-linea);
   border-radius: 10px;
-  background: #fff;
-  color: #3f3f46;
+  background: var(--fx-superficie);
+  color: var(--fx-tinta-2);
   font-size: 13px;
   font-weight: 500;
   font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: border-color 120ms, background 120ms, color 120ms;
 }
-.ff-trigger:hover { border-color: #d4d4d8; background: #fafafa; }
-.ff-trigger--active { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; font-weight: 600; }
-.ff-trigger--open { border-color: #4f46e5; box-shadow: 0 0 0 3px #eef2ff; }
+.ff-trigger:hover { border-color: var(--fx-linea-2); background: var(--fx-superficie-1); }
+.ff-trigger--active { border-color: var(--fx-morado); background: var(--fx-morado-suave); color: var(--fx-morado); font-weight: 600; }
+.ff-trigger--open { border-color: var(--fx-morado); box-shadow: 0 0 0 3px var(--fx-morado-suave); }
 .ff-trigger__badge {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   font-weight: 700;
-  background: #4f46e5;
-  color: #fff;
+  background: var(--fx-morado);
+  color: var(--fx-superficie);
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
@@ -80,7 +80,7 @@
   align-items: center;
   justify-content: center;
 }
-.ff-trigger__chev { color: #a1a1aa; transition: transform 160ms ease; }
+.ff-trigger__chev { color: var(--fx-tinta-4); transition: transform 160ms ease; }
 .ff-trigger--open .ff-trigger__chev { transform: rotate(180deg); }
 
 /* Resumen de filtros activos cuando el panel está cerrado */
@@ -90,11 +90,11 @@
   gap: 7px;
   flex-wrap: wrap;
   font-size: 12px;
-  color: #71717a;
+  color: var(--fx-tinta-3);
   margin: -2px 0 14px;
 }
-.ff-summary__lead { display: inline-flex; align-items: center; gap: 5px; color: #a1a1aa; }
-.ff-summary__text { color: #3f3f46; font-weight: 500; }
+.ff-summary__lead { display: inline-flex; align-items: center; gap: 5px; color: var(--fx-tinta-4); }
+.ff-summary__text { color: var(--fx-tinta-2); font-weight: 500; }
 .ff-summary__clear {
   background: none;
   border: none;
@@ -102,16 +102,16 @@
   padding: 0 2px;
   font-size: 12px;
   font-weight: 600;
-  color: #4f46e5;
+  color: var(--fx-morado);
   font-family: 'Inter', sans-serif;
 }
 
 /* ─── Panel ──────────────────────────────────────────────────────────────────── */
 
 .ff-panel {
-  border: 1px solid #e4e4e7;
+  border: 1px solid var(--fx-linea);
   border-radius: 14px;
-  background: #fff;
+  background: var(--fx-superficie);
   box-shadow: 0 14px 36px -16px rgba(24, 24, 27, .18);
   margin-bottom: 18px;
   overflow: hidden;
@@ -123,7 +123,7 @@
   padding: 4px;
 }
 
-.ff-group { padding: 14px 14px 10px; border-left: 1px solid #f4f4f5; }
+.ff-group { padding: 14px 14px 10px; border-left: 1px solid var(--fx-superficie-2); }
 .ff-group:first-child { border-left: none; }
 
 .ff-group__title {
@@ -134,7 +134,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .08em;
-  color: #71717a;
+  color: var(--fx-tinta-3);
   margin-bottom: 9px;
 }
 
@@ -160,35 +160,35 @@
   text-align: left;
   transition: background 100ms;
 }
-.ff-opt:hover { background: #f7f7f8; }
-.ff-opt--on { background: #eef2ff; }
+.ff-opt:hover { background: var(--fx-superficie-1); }
+.ff-opt--on { background: var(--fx-morado-suave); }
 
 .ff-opt__mark {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 1.5px solid #d4d4d8;
+  border: 1.5px solid var(--fx-linea-2);
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--fx-superficie);
   flex-shrink: 0;
 }
-.ff-opt--on .ff-opt__mark { background: #4f46e5; border-color: #4f46e5; }
+.ff-opt--on .ff-opt__mark { background: var(--fx-morado); border-color: var(--fx-morado); }
 
 .ff-opt__body { flex: 1; min-width: 0; }
 .ff-opt__label {
   display: block;
   font-size: 12.5px;
-  color: #3f3f46;
+  color: var(--fx-tinta-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ff-opt--on .ff-opt__label { color: #312e81; font-weight: 600; }
+.ff-opt--on .ff-opt__label { color: var(--fx-morado-tinta); font-weight: 600; }
 .ff-opt__hint {
   display: block;
   font-size: 10px;
-  color: #a1a1aa;
+  color: var(--fx-tinta-4);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -198,17 +198,17 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   font-weight: 700;
-  color: #a1a1aa;
+  color: var(--fx-tinta-4);
   flex-shrink: 0;
 }
-.ff-opt--on .ff-opt__count { color: #4f46e5; }
+.ff-opt--on .ff-opt__count { color: var(--fx-morado); }
 
 /* ─── Pie del panel: campos sueltos + acciones ───────────────────────────────── */
 
 .ff-panel__foot {
-  border-top: 1px solid #f1f1f3;
+  border-top: 1px solid var(--fx-superficie-2);
   padding: 14px;
-  background: #fcfcfd;
+  background: var(--fx-superficie-1);
   display: flex;
   align-items: flex-end;
   gap: 18px;
@@ -221,10 +221,10 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .08em;
-  color: #71717a;
+  color: var(--fx-tinta-3);
 }
 .ff-dates { display: flex; align-items: center; gap: 6px; }
-.ff-dates__sep { color: #a1a1aa; }
+.ff-dates__sep { color: var(--fx-tinta-4); }
 
 .ff-instr {
   display: inline-flex;
@@ -232,17 +232,17 @@
   gap: 8px;
   height: 34px;
   padding: 0 12px;
-  border: 1px solid #fed7aa;
+  border: 1px solid var(--fx-aviso-linea);
   border-radius: 8px;
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--fx-aviso-suave);
+  color: var(--fx-aviso);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   transition: background 120ms, color 120ms;
 }
-.ff-instr--on { background: #c2410c; color: #fff; border-color: #c2410c; }
+.ff-instr--on { background: var(--fx-aviso); color: var(--fx-superficie); border-color: var(--fx-aviso); }
 .ff-instr__count { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; opacity: .85; }
 
 .ff-foot__spacer { flex: 1 1 auto; }
@@ -257,16 +257,16 @@
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 600;
-  color: #52525b;
+  color: var(--fx-tinta-2);
   font-family: 'Inter', sans-serif;
 }
-.ff-clear:hover { color: #b91c1c; }
-.ff-clear:disabled { color: #d4d4d8; cursor: default; }
+.ff-clear:hover { color: var(--fx-atraso); }
+.ff-clear:disabled { color: var(--fx-linea-2); cursor: default; }
 
 /* ─── Encabezado de tabla ordenable (click para asc/desc) ────────────────────── */
 .ff-sort-th { cursor: pointer; user-select: none; white-space: nowrap; transition: color 120ms; }
-.ff-sort-th:hover { color: #18181b; }
-.ff-sort-th--on { color: #4f46e5; }
+.ff-sort-th:hover { color: var(--fx-tinta); }
+.ff-sort-th--on { color: var(--fx-morado); }
 .ff-sort-caret {
   display: inline-flex;
   align-items: center;
@@ -276,6 +276,6 @@
 }
 
 @media (max-width: 620px) {
-  .ff-group { border-left: none; border-top: 1px solid #f4f4f5; }
+  .ff-group { border-left: none; border-top: 1px solid var(--fx-superficie-2); }
   .ff-group:first-child { border-top: none; }
 }

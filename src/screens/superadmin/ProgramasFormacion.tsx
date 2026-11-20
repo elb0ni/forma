@@ -34,10 +34,10 @@ function programaShort(nombre: string): string {
 
 function nivelColor(nivel: string) {
   const n = nivel.toUpperCase()
-  if (n.includes('TECNÓLOGO'))       return { bg: '#dbeafe', fg: '#1d4ed8' }
-  if (n.includes('TÉCNICO'))         return { bg: '#dcfce7', fg: '#15803d' }
-  if (n.includes('ESPECIALIZACIÓN')) return { bg: '#f3e8ff', fg: '#6b21a8' }
-  return                                    { bg: '#f1f1f3', fg: '#52525b' }
+  if (n.includes('TECNÓLOGO'))       return { bg: 'var(--fx-info-suave)', fg: 'var(--fx-info)' }
+  if (n.includes('TÉCNICO'))         return { bg: 'var(--fx-ok-suave)', fg: 'var(--fx-ok)' }
+  if (n.includes('ESPECIALIZACIÓN')) return { bg: 'var(--fx-morado-suave)', fg: 'var(--fx-morado-tinta)' }
+  return                                    { bg: 'var(--fx-superficie-2)', fg: 'var(--fx-tinta-2)' }
 }
 
 function nivelCorto(nivel: string): string {
@@ -124,7 +124,7 @@ function EstadoFichaPill({ estado }: { estado: string }) {
 }
 
 function EtapaPill({ etapa }: { etapa: string | null }) {
-  if (!etapa) return <span style={{ color: '#a1a1aa', fontSize: 12 }}>—</span>
+  if (!etapa) return <span style={{ color: 'var(--fx-tinta-4)', fontSize: 12 }}>—</span>
   if (etapa === 'PRACTICA') return <Bdg tone="accent" icon="briefcase">Práctica</Bdg>
   return <Bdg tone="neutral" icon="layers">Lectiva</Bdg>
 }
@@ -184,8 +184,8 @@ interface CentroResumen {
 }
 
 const SEL_STYLE: React.CSSProperties = {
-  height: 34, padding: '0 10px', border: '1px solid #e4e4e7', borderRadius: 8,
-  fontSize: 12.5, background: '#fff', color: '#18181b',
+  height: 34, padding: '0 10px', border: '1px solid var(--fx-linea)', borderRadius: 8,
+  fontSize: 12.5, background: 'var(--fx-superficie)', color: 'var(--fx-tinta)',
   fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none',
 }
 
@@ -248,9 +248,9 @@ function CentrosPanel({ centros, value, onPick, loading }: {
           // el centro; color = cobertura de instructor.
           const share    = c.fichas_en_practica > 0 ? Math.round((c.fichas_en_practica / totalEnPractica) * 100) : 0
           const barPct   = c.fichas_en_practica > 0 ? Math.max(4, share) : 0
-          const barCol   = c.fichas_en_practica === 0 ? '#d4d4d8'
-            : c.fichas_sin_instructor === 0 ? '#16a34a'
-            : pct >= 60 ? '#c2410c' : '#dc2626'
+          const barCol   = c.fichas_en_practica === 0 ? 'var(--fx-linea-2)'
+            : c.fichas_sin_instructor === 0 ? 'var(--fx-ok)'
+            : pct >= 60 ? 'var(--fx-aviso)' : 'var(--fx-atraso)'
           const nota = c.fichas_sin_instructor > 0
             ? `${c.fichas_sin_instructor} ficha${c.fichas_sin_instructor === 1 ? '' : 's'} sin instructor`
             : c.etapas_vencidas > 0
@@ -273,7 +273,7 @@ function CentrosPanel({ centros, value, onPick, loading }: {
               </div>
 
               <div className="prog-centro-card__line">
-                <b style={{ color: c.fichas_en_practica > 0 ? '#0a0a0b' : '#a1a1aa' }}>{c.fichas_en_practica}</b> fichas
+                <b style={{ color: c.fichas_en_practica > 0 ? 'var(--fx-tinta)' : 'var(--fx-tinta-4)' }}>{c.fichas_en_practica}</b> fichas
                 <span className="prog-centro-card__sep">·</span>
                 <b>{c.instructores}</b> instructor{c.instructores === 1 ? '' : 'es'}
               </div>
@@ -283,7 +283,7 @@ function CentrosPanel({ centros, value, onPick, loading }: {
                   <span style={{ width: `${barPct}%`, background: barCol }}/>
                 </div>
               ) : (
-                <div className="prog-centro-card__cov" style={{ color: '#c4c4cc' }}>sin práctica activa</div>
+                <div className="prog-centro-card__cov" style={{ color: 'var(--fx-linea-2)' }}>sin práctica activa</div>
               )}
 
               {nota && <div className="prog-centro-card__note">{nota}</div>}
@@ -308,7 +308,7 @@ function ListSkeleton() {
             <table className="prog-table">
               <tbody>
                 {[0, 1, 2, 3, 4, 5].map(i => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f1f3' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--fx-superficie-2)' }}>
                     <td className="prog-table__td"><Sk w={`${55 + (i % 4) * 8}%`} h={14} delay={i * 50}/></td>
                     <td className="prog-table__td"><Sk w={64} h={14} delay={i * 50 + 10}/></td>
                     <td className="prog-table__td"><Sk w={28} h={14} delay={i * 50 + 20}/></td>
@@ -480,7 +480,7 @@ function ProgramasList() {
             {error ? (
               <Card style={{ padding: 24 }}>
                 <div className="prog-error">
-                  <div className="prog-error__icon-wrap"><Ic n="alert" s={16} style={{ color: '#b91c1c' }}/></div>
+                  <div className="prog-error__icon-wrap"><Ic n="alert" s={16} style={{ color: 'var(--fx-atraso)' }}/></div>
                   <div>
                     <div className="prog-error__title">No se pudieron cargar los programas</div>
                     <div className="prog-error__msg">{error}</div>
@@ -506,7 +506,7 @@ function ProgramasList() {
         <div>
           <h2 className="programas-header__title">Programas de formación</h2>
           <p className="programas-header__sub">
-            El estado de la etapa práctica por programa{centroSel ? <> · <strong style={{ color: '#4f46e5' }}>{centroLabel(centroSel.nombre)}</strong></> : ''}.
+            El estado de la etapa productiva por programa{centroSel ? <> · <strong style={{ color: 'var(--fx-morado)' }}>{centroLabel(centroSel.nombre)}</strong></> : ''}.
           </p>
         </div>
       </div>
@@ -574,8 +574,8 @@ function ProgramasList() {
             {filtered.length === 0 ? (
               <Card>
                 <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                  <Ic n={q ? 'search' : 'folder'} s={26} style={{ color: '#a1a1aa' }}/>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>
+                  <Ic n={q ? 'search' : 'folder'} s={26} style={{ color: 'var(--fx-tinta-4)' }}/>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>
                     {q ? `Sin programas que coincidan con "${q.trim()}"` : 'Ningún programa cumple estos filtros'}
                   </div>
                 </div>
@@ -612,7 +612,7 @@ function ProgramasList() {
                               key={p.id}
                               className="nx-row"
                               onClick={() => navigate(String(p.id), { relative: 'path' })}
-                              style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}
+                              style={{ borderBottom: '1px solid var(--fx-superficie-2)', cursor: 'pointer' }}
                             >
                               <td className="prog-table__td">
                                 <div className="prog-table__name-cell">
@@ -621,8 +621,8 @@ function ProgramasList() {
                                     <div className="prog-table__name">{p.nombre}</div>
                                     <div className="prog-table__meta">
                                       <span className="prog-code">{p.codigo} · {fmtVersion(p.version)}</span>
-                                      <span style={{ color: '#d4d4d8' }}>·</span>
-                                      <span style={{ fontSize: 11, color: '#71717a' }}>{p.fichas_total} ficha{p.fichas_total === 1 ? '' : 's'}{centroSel ? ' aquí' : ''}</span>
+                                      <span style={{ color: 'var(--fx-linea-2)' }}>·</span>
+                                      <span style={{ fontSize: 11, color: 'var(--fx-tinta-3)' }}>{p.fichas_total} ficha{p.fichas_total === 1 ? '' : 's'}{centroSel ? ' aquí' : ''}</span>
                                       {p.estado === 'INACTIVO' && <Bdg tone="neutral">Inactivo</Bdg>}
                                     </div>
                                   </div>
@@ -635,17 +635,17 @@ function ProgramasList() {
                               </td>
                               <td className="prog-table__td--num">
                                 {p.fichas_en_practica > 0
-                                  ? <span style={{ color: '#4f46e5' }}>{p.fichas_en_practica}</span>
-                                  : <span style={{ color: '#d4d4d8', fontWeight: 400 }}>—</span>}
+                                  ? <span style={{ color: 'var(--fx-morado)' }}>{p.fichas_en_practica}</span>
+                                  : <span style={{ color: 'var(--fx-linea-2)', fontWeight: 400 }}>—</span>}
                               </td>
                               <td className="prog-table__td--num">
                                 {p.fichas_sin_instructor > 0
-                                  ? <span style={{ color: '#dc2626' }}>{p.fichas_sin_instructor}</span>
-                                  : <span style={{ color: '#d4d4d8', fontWeight: 400 }}>—</span>}
+                                  ? <span style={{ color: 'var(--fx-atraso)' }}>{p.fichas_sin_instructor}</span>
+                                  : <span style={{ color: 'var(--fx-linea-2)', fontWeight: 400 }}>—</span>}
                               </td>
                               <td className="prog-table__td"><ProxPill iso={p.proxima_a_practica}/></td>
                               <td className="prog-table__td" style={{ textAlign: 'right' }}>
-                                <Ic n="chevronRight" s={15} style={{ color: '#d4d4d8', verticalAlign: 'middle' }}/>
+                                <Ic n="chevronRight" s={15} style={{ color: 'var(--fx-linea-2)', verticalAlign: 'middle' }}/>
                               </td>
                             </tr>
                           )
@@ -688,21 +688,21 @@ function KpiBox({ label, value, sub, icon, tone, hover }: {
   return (
     <Card style={{ padding: 16, overflow: 'visible' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', fontWeight: 600 }}>{label}</div>
         {hover ? (
           <div className="prog-kpi-trigger" tabIndex={0}>
-            <Ic n={icon} s={15} style={{ color: tone ?? '#a1a1aa' }}/>
+            <Ic n={icon} s={15} style={{ color: tone ?? 'var(--fx-tinta-4)' }}/>
             <Ic n="chevronDown" s={9} className="prog-kpi-trigger__caret"/>
             <div className="prog-kpi-pop">
               <div className="prog-kpi-pop__panel">{hover}</div>
             </div>
           </div>
         ) : (
-          <Ic n={icon} s={15} style={{ color: tone ?? '#a1a1aa' }}/>
+          <Ic n={icon} s={15} style={{ color: tone ?? 'var(--fx-tinta-4)' }}/>
         )}
       </div>
-      <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 600, color: tone ?? '#0a0a0b', marginTop: 10 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: '#52525b', marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 600, color: tone ?? 'var(--fx-tinta)', marginTop: 10 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-2)', marginTop: 4 }}>{sub}</div>}
     </Card>
   )
 }
@@ -715,14 +715,14 @@ function ProgramaKpis({ kpi, porCentro }: {
   const pct = kpi.fichas_en_practica > 0 ? Math.round((conInstructor / kpi.fichas_en_practica) * 100) : 0
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 24 }}>
-      <KpiBox label="Fichas en práctica" value={kpi.fichas_en_practica} sub={`${kpi.fichas_activas} en ejecución`} icon="briefcase" tone="#4f46e5"/>
+      <KpiBox label="Fichas en práctica" value={kpi.fichas_en_practica} sub={`${kpi.fichas_activas} en ejecución`} icon="briefcase" tone="var(--fx-morado)"/>
       <KpiBox label="Aprendices en práctica" value={kpi.aprendices_practica} icon="users"/>
       <KpiBox
         label="Cobertura de instructor"
-        value={kpi.fichas_en_practica > 0 ? <>{conInstructor}/{kpi.fichas_en_practica} <span style={{ fontSize: 13, color: '#71717a' }}>{pct}%</span></> : '—'}
+        value={kpi.fichas_en_practica > 0 ? <>{conInstructor}/{kpi.fichas_en_practica} <span style={{ fontSize: 13, color: 'var(--fx-tinta-3)' }}>{pct}%</span></> : '—'}
         sub={kpi.fichas_sin_instructor > 0 ? `${kpi.fichas_sin_instructor} ficha${kpi.fichas_sin_instructor === 1 ? '' : 's'} sin asignar` : 'todas cubiertas'}
         icon="user"
-        tone={kpi.fichas_sin_instructor > 0 ? '#c2410c' : '#16a34a'}
+        tone={kpi.fichas_sin_instructor > 0 ? 'var(--fx-aviso)' : 'var(--fx-ok)'}
       />
       <KpiBox
         label="Centros"
@@ -743,15 +743,15 @@ type AlertaId = 'sin_instructor' | 'no_favorables' | 'vencidas'
 
 const ALERTA_META: Record<AlertaId, { label: string; tone: string; bg: string; bd: string; icon: IcName; hint: string }> = {
   sin_instructor: {
-    label: 'Sin instructor', tone: '#c2410c', bg: '#fff7ed', bd: '#fed7aa', icon: 'user',
+    label: 'Sin instructor', tone: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)', bd: 'var(--fx-aviso-linea)', icon: 'user',
     hint: 'Fichas en práctica sin instructor de seguimiento asignado.',
   },
   no_favorables: {
-    label: 'Conceptos por resolver', tone: '#b45309', bg: '#fffbeb', bd: '#fde68a', icon: 'fileText',
+    label: 'Conceptos por resolver', tone: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)', bd: 'var(--fx-aviso-linea)', icon: 'fileText',
     hint: 'Seguimientos con concepto no favorable. Se resuelven con la coordinación y un plan de mejoramiento acordado con el instructor — no cuentan en contra suya mientras haya plan en curso.',
   },
   vencidas: {
-    label: 'Etapas por cerrar', tone: '#c2410c', bg: '#fff7ed', bd: '#fed7aa', icon: 'clock',
+    label: 'Etapas por cerrar', tone: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)', bd: 'var(--fx-aviso-linea)', icon: 'clock',
     hint: 'La fecha estimada de fin ya pasó y la etapa sigue abierta. Ciérrala o ajusta la fecha.',
   },
 }
@@ -776,15 +776,15 @@ function AlertaRow({ fichaId, onOpen, title, sub, chip, chipTone }: {
         <div className="prog-alertas__row-sub">{sub}</div>
       </div>
       <span className="prog-alertas__chip" style={{ color: chipTone.fg, background: chipTone.bg }}>{chip}</span>
-      {clickable && <Ic n="chevronRight" s={13} style={{ color: '#d4d4d8', flexShrink: 0 }}/>}
+      {clickable && <Ic n="chevronRight" s={13} style={{ color: 'var(--fx-linea-2)', flexShrink: 0 }}/>}
     </div>
   )
 }
 
-const CHIP_NEUTRAL = { fg: '#c2410c', bg: '#ffedd5' }
-const CHIP_OK      = { fg: '#15803d', bg: '#dcfce7' }
-const CHIP_WARN    = { fg: '#b45309', bg: '#fef3c7' }
-const CHIP_CRIT    = { fg: '#b91c1c', bg: '#fee2e2' }
+const CHIP_NEUTRAL = { fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)' }
+const CHIP_OK      = { fg: 'var(--fx-ok)', bg: 'var(--fx-ok-suave)' }
+const CHIP_WARN    = { fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)' }
+const CHIP_CRIT    = { fg: 'var(--fx-atraso)', bg: 'var(--fx-atraso-suave)' }
 
 function ProgramaAlertas({ alertas, fichas, onOpenFicha }: {
   alertas: ProgramaDetalleData['alertas']
@@ -914,7 +914,7 @@ function FichasDelPrograma({ fichas: fichasProp, onOpen }: { fichas: FichaProgra
     setSort(k); setDir(FICHA_COL_DIR[k])
   }
 
-  // Solo fichas que ya están (o estuvieron) en etapa práctica -- las que siguen
+  // Solo fichas que ya están (o estuvieron) en etapa productiva -- las que siguen
   // en lectiva no tienen nada de práctica que mostrar acá.
   const fichas = useMemo(() => fichasProp.filter(f => f.etapa !== 'LECTIVA'), [fichasProp])
 
@@ -941,12 +941,12 @@ function FichasDelPrograma({ fichas: fichasProp, onOpen }: { fichas: FichaProgra
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>
-          Fichas del programa <span style={{ fontFamily: '"JetBrains Mono", monospace', color: '#71717a', fontWeight: 400 }}>· {view.length}</span>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)' }}>
+          Fichas del programa <span style={{ fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta-3)', fontWeight: 400 }}>· {view.length}</span>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <div className="prog-list-search">
-            <Ic n="search" s={14} className="prog-list-search__icon" style={{ color: '#a1a1aa' }}/>
+            <Ic n="search" s={14} className="prog-list-search__icon" style={{ color: 'var(--fx-tinta-4)' }}/>
             <input
               value={q}
               onChange={e => setQ(e.target.value)}
@@ -976,9 +976,9 @@ function FichasDelPrograma({ fichas: fichasProp, onOpen }: { fichas: FichaProgra
       </div>
 
       {view.length === 0 ? (
-        <Card><div style={{ padding: 32, textAlign: 'center', fontSize: 12.5, color: '#71717a' }}>
+        <Card><div style={{ padding: 32, textAlign: 'center', fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>
           {fichas.length === 0
-            ? 'Este programa no tiene fichas en etapa práctica.'
+            ? 'Este programa no tiene fichas en etapa productiva.'
             : ql ? `Sin fichas con "${q.trim()}".` : 'Sin fichas para este filtro.'}
         </div></Card>
       ) : (
@@ -990,7 +990,7 @@ function FichasDelPrograma({ fichas: fichasProp, onOpen }: { fichas: FichaProgra
                   <SortTh label="Ficha"                  k="ficha"       sort={sort} dir={dir} onSort={onSort}/>
                   <SortTh label="Coordinador"            k="coordinador" sort={sort} dir={dir} onSort={onSort}/>
                   <SortTh label="Etapa"                  k="etapa"       sort={sort} dir={dir} onSort={onSort}/>
-                  <SortTh label="Instructor de práctica" k="instructor"  sort={sort} dir={dir} onSort={onSort}/>
+                  <SortTh label="Instructor de seguimiento" k="instructor"  sort={sort} dir={dir} onSort={onSort}/>
                   <SortTh label="Aprendices en práctica" k="aprendices"  sort={sort} dir={dir} onSort={onSort} num/>
                   <SortTh label="Cierre"                 k="cierre"      sort={sort} dir={dir} onSort={onSort}/>
                   <th className="prog-table__th"/>
@@ -998,39 +998,39 @@ function FichasDelPrograma({ fichas: fichasProp, onOpen }: { fichas: FichaProgra
               </thead>
               <tbody>
                 {view.map(f => (
-                  <tr key={f.id} className="nx-row" onClick={() => onOpen(f.id)} style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}>
+                  <tr key={f.id} className="nx-row" onClick={() => onOpen(f.id)} style={{ borderBottom: '1px solid var(--fx-superficie-2)', cursor: 'pointer' }}>
                     <td className="prog-table__td">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12.5, fontWeight: 600, color: '#0a0a0b' }}>{f.numero_ficha}</span>
+                        <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>{f.numero_ficha}</span>
                         <EstadoFichaPill estado={f.estado}/>
                       </div>
-                      <div style={{ fontSize: 10.5, color: '#71717a', marginTop: 3 }}>
+                      <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-3)', marginTop: 3 }}>
                         {centroLabel(f.centro_nombre)}{f.coordinacion_nombre ? ` · ${f.coordinacion_nombre}` : ''}
                       </div>
                     </td>
                     <td className="prog-table__td" style={{ fontSize: 12.5 }}>
                       {f.coordinador_nombre
-                        ? <span style={{ color: '#18181b' }}>{f.coordinador_nombre}</span>
-                        : <span style={{ color: '#a1a1aa' }}>Sin coordinador</span>}
+                        ? <span style={{ color: 'var(--fx-tinta)' }}>{f.coordinador_nombre}</span>
+                        : <span style={{ color: 'var(--fx-tinta-4)' }}>Sin coordinador</span>}
                     </td>
                     <td className="prog-table__td"><EtapaPill etapa={f.etapa}/></td>
                     <td className="prog-table__td">
                       {f.instructor_practica
-                        ? <span style={{ fontSize: 12.5, color: '#18181b' }}>{f.instructor_practica}</span>
+                        ? <span style={{ fontSize: 12.5, color: 'var(--fx-tinta)' }}>{f.instructor_practica}</span>
                         : f.etapa === 'PRACTICA'
-                          ? <span style={{ fontSize: 12, color: '#b91c1c', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="alert" s={12}/> sin asignar</span>
-                          : <span style={{ fontSize: 12, color: '#a1a1aa' }}>—</span>}
+                          ? <span style={{ fontSize: 12, color: 'var(--fx-atraso)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="alert" s={12}/> sin asignar</span>
+                          : <span style={{ fontSize: 12, color: 'var(--fx-tinta-4)' }}>—</span>}
                     </td>
                     <td className="prog-table__td--num" title={`${f.aprendices_en_practica ?? 0} con etapa productiva en ejecución · ${f.aprendices} en la ficha`}>
-                      <span style={{ color: (f.aprendices_en_practica ?? 0) > 0 ? '#4f46e5' : '#a1a1aa' }}>{f.aprendices_en_practica ?? 0}</span>
-                      <span style={{ color: '#a1a1aa', fontWeight: 400 }}>/{f.aprendices}</span>
+                      <span style={{ color: (f.aprendices_en_practica ?? 0) > 0 ? 'var(--fx-morado)' : 'var(--fx-tinta-4)' }}>{f.aprendices_en_practica ?? 0}</span>
+                      <span style={{ color: 'var(--fx-tinta-4)', fontWeight: 400 }}>/{f.aprendices}</span>
                     </td>
                     <td className="prog-table__td">
-                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: f.dias_restantes != null && f.dias_restantes < 0 ? '#b91c1c' : f.dias_restantes != null && f.dias_restantes <= 30 ? '#c2410c' : '#52525b' }}>
+                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: f.dias_restantes != null && f.dias_restantes < 0 ? 'var(--fx-atraso)' : f.dias_restantes != null && f.dias_restantes <= 30 ? 'var(--fx-aviso)' : 'var(--fx-tinta-2)' }}>
                         {f.dias_restantes == null ? '—' : f.dias_restantes < 0 ? `venció hace ${Math.abs(f.dias_restantes)} d` : `${f.dias_restantes} d`}
                       </span>
                     </td>
-                    <td className="prog-table__td" style={{ textAlign: 'right' }}><Ic n="chevronRight" s={15} style={{ color: '#d4d4d8' }}/></td>
+                    <td className="prog-table__td" style={{ textAlign: 'right' }}><Ic n="chevronRight" s={15} style={{ color: 'var(--fx-linea-2)' }}/></td>
                   </tr>
                 ))}
               </tbody>
@@ -1074,7 +1074,7 @@ function CentrosRollup({ rows }: { rows: ProgramaDetalleData['por_centro'] }) {
       <div className="prog-kpi-pop__list">
         {orden.map(c => {
           const pct = c.fichas_practica > 0 ? Math.round((c.con_instructor / c.fichas_practica) * 100) : 0
-          const col = c.sin_instructor === 0 ? '#16a34a' : c.sin_instructor >= c.fichas_practica / 2 ? '#dc2626' : '#c2410c'
+          const col = c.sin_instructor === 0 ? 'var(--fx-ok)' : c.sin_instructor >= c.fichas_practica / 2 ? 'var(--fx-atraso)' : 'var(--fx-aviso)'
           return (
             <div
               key={c.centro_id}
@@ -1084,7 +1084,7 @@ function CentrosRollup({ rows }: { rows: ProgramaDetalleData['por_centro'] }) {
               <span className="prog-kpi-pop__name">{centroLabel(c.centro_nombre)}</span>
               {c.fichas_practica > 0 ? (
                 <span className="prog-kpi-pop__cov">
-                  <b style={{ color: c.aprendices_practica > 0 ? '#4f46e5' : '#a1a1aa' }}>{c.aprendices_practica}</b>
+                  <b style={{ color: c.aprendices_practica > 0 ? 'var(--fx-morado)' : 'var(--fx-tinta-4)' }}>{c.aprendices_practica}</b>
                   <span className="prog-kpi-pop__bar"><span style={{ width: `${pct}%`, background: col }}/></span>
                   <i>{c.con_instructor}/{c.fichas_practica}</i>
                 </span>
@@ -1121,7 +1121,7 @@ function ProgramaDetalle() {
   const back = (
     <button
       onClick={() => navigate('..', { relative: 'path' })}
-      style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#52525b', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, fontFamily: 'Inter, sans-serif' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--fx-tinta-2)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, fontFamily: 'Inter, sans-serif' }}
     >
       <Ic n="arrowLeft" s={14}/> Programas
     </button>
@@ -1159,7 +1159,7 @@ function ProgramaDetalle() {
       {/* Cabecera */}
       <div style={{ marginBottom: 22, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#52525b', marginBottom: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--fx-tinta-2)', marginBottom: 6, flexWrap: 'wrap' }}>
             <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{p.codigo}</span>
             <span>·</span>
             <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{fmtVersion(p.version)}</span>
@@ -1168,12 +1168,12 @@ function ProgramaDetalle() {
             <Bdg tone={p.estado === 'VIGENTE' ? 'ok' : 'neutral'}>{p.estado === 'VIGENTE' ? 'Vigente' : 'Inactivo'}</Bdg>
           </div>
           <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-            <div style={{ width: 44, height: 44, borderRadius: 8, background: '#0a0a0b', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, fontFamily: '"JetBrains Mono", monospace' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--fx-tinta)', color: 'var(--fx-superficie)', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0, fontFamily: '"JetBrains Mono", monospace' }}>
               {programaShort(p.nombre)}
             </div>
             <div style={{ minWidth: 0 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>{p.nombre}</h2>
-              <div style={{ fontSize: 12.5, color: '#52525b', marginTop: 4 }}>Título que otorga: {p.titulo_otorga}</div>
+              <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)' }}>{p.nombre}</h2>
+              <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', marginTop: 4 }}>Título que otorga: {p.titulo_otorga}</div>
             </div>
           </div>
         </div>
@@ -1184,9 +1184,9 @@ function ProgramaDetalle() {
 
       {sinPractica && alertas.fichas_sin_instructor.length === 0 && alertas.conceptos_no_favorables.length === 0 && alertas.etapas_vencidas.length === 0 && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', gap: 12, padding: 14, borderRadius: 8, background: '#f1f1f3', border: '1px solid #e4e4e7', color: '#27272a', fontSize: 13 }}>
+          <div style={{ display: 'flex', gap: 12, padding: 14, borderRadius: 8, background: 'var(--fx-superficie-2)', border: '1px solid var(--fx-linea)', color: 'var(--fx-tinta)', fontSize: 13 }}>
             <Ic n="info" s={15} style={{ marginTop: 2, flexShrink: 0 }}/>
-            <span>Este programa no tiene fichas en etapa práctica todavía.</span>
+            <span>Este programa no tiene fichas en etapa productiva todavía.</span>
           </div>
         </div>
       )}

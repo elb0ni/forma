@@ -106,3 +106,55 @@
 .pan-fichas { font-size: 12.5px; line-height: 1.8; margin: 6px 0 0; }
 .hoy-enlace { background: none; border: 0; padding: 0; font: inherit; color: var(--fx-morado-tinta); font-weight: 600; cursor: pointer; text-decoration: underline; }
 .pan-mes-nombre.pan-tal-cual { text-transform: none; }
+
+/* Inicio: comparación y secciones */
+.pan-seccion { display: flex; flex-direction: column; gap: 10px; }
+.pan-comparacion { min-width: 900px; }
+.pan-comparacion [data-tono='atraso'] { color: var(--fx-atraso); }
+.pan-fila-total td { font-weight: 650; background: var(--fx-superficie-1); }
+.pan-fila-clic { cursor: pointer; }
+.pan-fila-clic:hover td { background: var(--fx-morado-suave); }
+.pan-fila-clic:focus-visible { outline: 2px solid var(--fx-morado); outline-offset: -2px; }
+
+/* Panel Asignar */
+.asg { display: flex; flex-direction: column; gap: 14px; color: var(--fx-tinta); }
+.asg-quien { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: var(--fx-radio); background: var(--fx-superficie-1); border: 1px solid var(--fx-linea); font-size: 13.5px; }
+.asg-solicitudes { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--fx-radio); background: var(--fx-morado-suave); border: 1px solid var(--fx-morado-linea); }
+.asg-solicitudes h4 { margin: 0; }
+.asg-solicitud { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.asg-acciones { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.asg-modos { display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--fx-superficie-2); align-self: flex-start; flex-wrap: wrap; }
+.asg-modos button { font: inherit; font-size: 13px; font-weight: 550; padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--fx-tinta-2); cursor: pointer; }
+.asg-modos button[data-on] { background: var(--fx-superficie); color: var(--fx-morado-tinta); box-shadow: var(--fx-sombra); }
+.asg-ok { margin: 0; font-size: 13px; color: var(--fx-ok); font-weight: 550; }
+.asg-nota { margin: 0; font-size: 13px; }
+.asg-nota[data-tono='atraso'], .pan-sug-carga [data-tono='atraso'] { color: var(--fx-atraso); }
+.asg-destino { display: flex; gap: 8px; flex-wrap: wrap; }
+.asg-destino select { flex: 1; min-width: 200px; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: var(--fx-radio-chico); border: 1px solid var(--fx-linea-2); background: var(--fx-superficie); color: var(--fx-tinta); }
+.asg-sueltos { display: flex; flex-direction: column; gap: 10px; }
+.asg-lista { list-style: none; margin: 0; padding: 0; border: 1px solid var(--fx-linea); border-radius: var(--fx-radio); max-height: 420px; overflow: auto; }
+.asg-lista li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 10px; border-top: 1px solid var(--fx-linea); font-size: 13px; }
+.asg-lista li:first-child { border-top: 0; }
+.asg-lista label { display: flex; gap: 8px; align-items: center; cursor: pointer; min-width: 0; }
+.asg-lista input { accent-color: var(--fx-morado); }
+.asg-lista-cab { background: var(--fx-superficie-1); position: sticky; top: 0; }
+.asg-nombres { margin: 0; line-height: 1.6; }
+.asg-hist { border-top: 1px solid var(--fx-linea); padding-top: 10px; }
+.asg-liberar { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+.pan-lista li.asg-sol-fila { grid-template-columns: 90px 1fr auto; }
+
+/* Equipo: filtros en chips y buscador */
+.eq-barra { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.eq-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.eq-chips button {
+  font: inherit; font-size: 12.5px; font-weight: 550; padding: 6px 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--fx-linea-2); background: var(--fx-superficie); color: var(--fx-tinta-2);
+}
+.eq-chips button span { color: var(--fx-tinta-3); margin-left: 4px; }
+.eq-chips button[data-on] { background: var(--fx-morado-suave); border-color: var(--fx-morado-linea); color: var(--fx-morado-tinta); }
+.eq-chips button[data-on] span { color: var(--fx-morado-tinta); }
+.eq-buscar {
+  font: inherit; font-size: 13px; padding: 7px 12px; width: 240px; max-width: 100%;
+  border-radius: var(--fx-radio-chico); border: 1px solid var(--fx-linea-2); background: var(--fx-superficie); color: var(--fx-tinta);
+}
+.eq-buscar:focus, .asg-destino select:focus { outline: 2px solid var(--fx-morado-linea); border-color: var(--fx-morado); }

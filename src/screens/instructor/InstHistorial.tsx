@@ -61,7 +61,7 @@ function mesKey(s: string): string {
 
 // ─── Heatmap de actividad (estilo GitHub, ~26 semanas) ───────────────────────
 
-const HEAT_TONES = ['#f1f1f3', '#c7d2fe', '#818cf8', '#4f46e5', '#3730a3']
+const HEAT_TONES = ['var(--fx-superficie-2)', 'var(--fx-morado-linea)', 'var(--fx-morado-linea)', 'var(--fx-morado)', 'var(--fx-morado-tinta)']
 function heatTone(count: number): string {
   if (count <= 0) return HEAT_TONES[0]
   if (count === 1) return HEAT_TONES[1]
@@ -147,11 +147,11 @@ function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
   const mostrarConcepto = momento && e.tipo_momento !== 'PLANEACION'
   const icono = iconoHistorial(e)
   return (
-    <tr className="nx-row" onClick={onOpen} style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}>
+    <tr className="nx-row" onClick={onOpen} style={{ borderBottom: '1px solid var(--fx-superficie-2)', cursor: 'pointer' }}>
       <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
-        <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#27272a' }}>{fdHora(e.registrado_at)}</div>
+        <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: 'var(--fx-tinta)' }}>{fdHora(e.registrado_at)}</div>
         {e.tipo_seguimiento && (
-          <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 3 }}>{TIPO_SEG_LABEL[e.tipo_seguimiento] ?? e.tipo_seguimiento}</div>
+          <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-4)', marginTop: 3 }}>{TIPO_SEG_LABEL[e.tipo_seguimiento] ?? e.tipo_seguimiento}</div>
         )}
       </td>
       <td style={TD_S}>
@@ -159,7 +159,7 @@ function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
           <span style={{ width: 22, height: 22, borderRadius: 6, display: 'grid', placeItems: 'center', background: icono.bg, color: icono.color, flexShrink: 0 }}>
             <Ic n={icono.icon} s={12}/>
           </span>
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: '#18181b' }}>{momentoLabel(e)}</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>{momentoLabel(e)}</span>
           {e.motivo_extraordinario && <Bdg tone="warn">Extraordinario</Bdg>}
           {e.tipo_momento === 'EVALUACION' && e.resultado_final && (
             <Bdg tone={e.resultado_final === 'APROBADO' ? 'ok' : 'err'}>
@@ -168,36 +168,36 @@ function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
           )}
         </div>
         {e.motivo_extraordinario && (
-          <div style={{ fontSize: 10.5, color: '#71717a', marginTop: 3, maxWidth: 260 }}>{e.motivo_extraordinario}</div>
+          <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-3)', marginTop: 3, maxWidth: 260 }}>{e.motivo_extraordinario}</div>
         )}
         {e.detalle && (
-          <div style={{ fontSize: 10.5, color: '#71717a', marginTop: 3, maxWidth: 280 }}>{e.detalle}</div>
+          <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-3)', marginTop: 3, maxWidth: 280 }}>{e.detalle}</div>
         )}
       </td>
       <td style={TD_S}>
-        <div style={{ fontSize: 12.5, color: '#18181b', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 12.5, color: 'var(--fx-tinta)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {e.aprendiz_nombre}
         </div>
-        <div style={{ fontSize: 10.5, color: '#a1a1aa', fontFamily: '"JetBrains Mono", monospace', marginTop: 2 }}>
+        <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-4)', fontFamily: '"JetBrains Mono", monospace', marginTop: 2 }}>
           {e.aprendiz_documento} · # {e.numero_ficha}
         </div>
       </td>
       <td style={{ ...TD_S }}>
-        <span style={{ fontSize: 12, color: e.empresa_nombre ? '#3f3f46' : '#c4c4c8', display: 'inline-block', maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'bottom' }}>
+        <span style={{ fontSize: 12, color: e.empresa_nombre ? 'var(--fx-tinta-2)' : 'var(--fx-linea-2)', display: 'inline-block', maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'bottom' }}>
           {e.empresa_nombre || '—'}
         </span>
       </td>
       <td style={TD_S}>
-        {mostrarConcepto ? <Bdg tone={con.tone}>{con.label}</Bdg> : <span style={{ fontSize: 11, color: '#c4c4c8' }}>—</span>}
+        {mostrarConcepto ? <Bdg tone={con.tone}>{con.label}</Bdg> : <span style={{ fontSize: 11, color: 'var(--fx-linea-2)' }}>—</span>}
       </td>
       <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
-        {!momento ? <span style={{ fontSize: 11, color: '#c4c4c8' }}>—</span> : (
+        {!momento ? <span style={{ fontSize: 11, color: 'var(--fx-linea-2)' }}>—</span> : (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span title={e.firmado ? `Firmado ${e.firmado_at ? fd(e.firmado_at) : ''}` : 'Sin firmas completas'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: e.firmado ? '#15803d' : '#c2410c' }}>
+          <span title={e.firmado ? `Firmado ${e.firmado_at ? fd(e.firmado_at) : ''}` : 'Sin firmas completas'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: e.firmado ? 'var(--fx-ok)' : 'var(--fx-aviso)' }}>
             <Ic n={e.firmado ? 'checkCircle' : 'clock'} s={12}/>Firma
           </span>
           {e.tiene_ubicacion && (
-            <span title={e.ubicacion_ok ? 'Ubicación dentro de rango' : 'Ubicación fuera de rango'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: e.ubicacion_ok ? '#15803d' : '#b91c1c' }}>
+            <span title={e.ubicacion_ok ? 'Ubicación dentro de rango' : 'Ubicación fuera de rango'} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: e.ubicacion_ok ? 'var(--fx-ok)' : 'var(--fx-atraso)' }}>
               <Ic n="pin" s={12}/>{e.ubicacion_ok ? 'GPS' : 'GPS!'}
             </span>
           )}
@@ -205,7 +205,7 @@ function EventoRow({ e, onOpen }: { e: HistorialEvento; onOpen: () => void }) {
         )}
       </td>
       <td style={{ ...TD_S, textAlign: 'right' }}>
-        <Ic n="chevronRight" s={16} style={{ color: '#d4d4d8' }}/>
+        <Ic n="chevronRight" s={16} style={{ color: 'var(--fx-linea-2)' }}/>
       </td>
     </tr>
   )
@@ -254,10 +254,10 @@ export function InstHistorial({ onOpenEtapa, url = '/instructores/mi/historial' 
     <div style={{ maxWidth: 1200 }}>
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 700, color: '#4f46e5', lineHeight: 1 }}>
+          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 700, color: 'var(--fx-morado)', lineHeight: 1 }}>
             {data.total.toLocaleString('es-CO')}
           </span>
-          <span style={{ fontSize: 13, color: '#52525b' }}>
+          <span style={{ fontSize: 13, color: 'var(--fx-tinta-2)' }}>
             registros en total
             {' · '}<span>{counts.ETAPAS} de etapas</span>
             {' · '}<span>{counts.PLANEACION} de planeación</span>
@@ -285,7 +285,7 @@ export function InstHistorial({ onOpenEtapa, url = '/instructores/mi/historial' 
           ))}
         </div>
         <div className="inst-search">
-          <Ic n="search" s={14} className="inst-search__icon" style={{ color: '#a1a1aa' }}/>
+          <Ic n="search" s={14} className="inst-search__icon" style={{ color: 'var(--fx-tinta-4)' }}/>
           <input className="inst-search__input" placeholder="Buscar aprendiz, ficha o empresa…" value={q} onChange={e => { setQ(e.target.value); setPage(0) }}/>
         </div>
       </div>
@@ -299,7 +299,7 @@ export function InstHistorial({ onOpenEtapa, url = '/instructores/mi/historial' 
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                 <thead>
-                  <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
+                  <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', borderBottom: '1px solid var(--fx-linea)' }}>
                     <th style={TH_S}>Cuándo</th>
                     <th style={TH_S}>Registro</th>
                     <th style={TH_S}>Aprendiz · ficha</th>
@@ -317,11 +317,11 @@ export function InstHistorial({ onOpenEtapa, url = '/instructores/mi/historial' 
                       <Fragment key={e.key}>
                         {nuevoMes && (
                           <tr>
-                            <td colSpan={7} style={{ padding: '11px 14px 7px', background: '#fbfbfc', borderTop: i === 0 ? 'none' : '2px solid #ececef' }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#52525b' }}>
+                            <td colSpan={7} style={{ padding: '11px 14px 7px', background: 'var(--fx-superficie-1)', borderTop: i === 0 ? 'none' : '2px solid var(--fx-linea)' }}>
+                              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fx-tinta-2)' }}>
                                 {mesLargo(e.registrado_at)}
                               </span>
-                              <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600, color: '#a1a1aa', marginLeft: 8 }}>
+                              <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600, color: 'var(--fx-tinta-4)', marginLeft: 8 }}>
                                 {view.filter(x => mesKey(x.registrado_at) === mk).length}
                               </span>
                             </td>

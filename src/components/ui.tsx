@@ -78,9 +78,9 @@ export function Ic({ n, s = 16, sw = 1.6, style: st, className: cl }: {
 export function BrandMark({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x=".5" y=".5" width="23" height="23" rx="6" fill="#0a0a0b"/>
-      <path d="M6 16V8h1.6l2.2 3.2L12 8h1.4v8H12v-5.2L9.8 14h-.4L7.2 10.8V16H6Z" fill="#fff"/>
-      <circle cx="17.5" cy="14.5" r="1.6" fill="#4f46e5"/>
+      <rect x=".5" y=".5" width="23" height="23" rx="6" fill="var(--fx-morado)"/>
+      <path d="M6 16V8h1.6l2.2 3.2L12 8h1.4v8H12v-5.2L9.8 14h-.4L7.2 10.8V16H6Z" fill="var(--fx-superficie)"/>
+      <circle cx="17.5" cy="14.5" r="1.6" fill="var(--fx-morado-linea)"/>
     </svg>
   )
 }
@@ -88,8 +88,8 @@ export function BrandMark({ size = 24 }: { size?: number }) {
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
 const TONES = [
-  '#dbeafe:#1d4ed8', '#dcfce7:#15803d', '#fef9c3:#a16207',
-  '#ffe4e6:#be123c', '#f3e8ff:#7e22ce', '#e0f2fe:#0369a1',
+  'var(--fx-info-suave):var(--fx-info)', 'var(--fx-ok-suave):var(--fx-ok)', 'var(--fx-aviso-suave):var(--fx-aviso)',
+  'var(--fx-atraso-suave):var(--fx-atraso)', 'var(--fx-morado-suave):var(--fx-morado)', 'var(--fx-info-suave):var(--fx-info)',
 ]
 
 function initials(name: string) {
@@ -183,15 +183,15 @@ export function Tag({ children, style: s }: { children: ReactNode; style?: CSSPr
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
 const STATUS_DOT: Record<string, string> = {
-  ok: '#16a34a', done: '#16a34a', warn: '#ca8a04',
-  risk: '#ea580c', crit: '#dc2626', off: '#a1a1aa',
+  ok: 'var(--fx-ok)', done: 'var(--fx-ok)', warn: 'var(--fx-aviso)',
+  risk: 'var(--fx-aviso)', crit: 'var(--fx-atraso)', off: 'var(--fx-tinta-4)',
 }
 
 export function Prog({ value = 0, status, height = 6, showLabel, style: s }: {
   value?: number; status?: string; height?: number; showLabel?: boolean; style?: CSSProperties
 }) {
   const v   = Math.max(0, Math.min(100, value))
-  const col = status ? (STATUS_DOT[status] ?? '#4f46e5') : '#4f46e5'
+  const col = status ? (STATUS_DOT[status] ?? 'var(--fx-morado)') : 'var(--fx-morado)'
   return (
     <div className="prog" style={s}>
       <div className="prog__track" style={{ height, borderRadius: height }}>
@@ -216,7 +216,7 @@ export function Modal({ title, icon, onClose, children, footer, width = 420 }: {
         {title && (
           <div className="modal-head">
             <div className="modal-head__title">
-              {icon && <Ic n={icon} s={16} style={{ color: '#4f46e5' }}/>}
+              {icon && <Ic n={icon} s={16} style={{ color: 'var(--fx-morado)' }}/>}
               {title}
             </div>
             <button className="modal-head__close" onClick={onClose} aria-label="Cerrar">
@@ -285,12 +285,12 @@ export function Metric({ label, value, delta, deltaTone = 'neutral', sub, icon }
   label: string; value: string | number; delta?: string
   deltaTone?: 'up' | 'down' | 'neutral'; sub?: string; icon?: IcName
 }) {
-  const dColor = { up: '#15803d', down: '#b91c1c', neutral: '#52525b' }[deltaTone]
+  const dColor = { up: 'var(--fx-ok)', down: 'var(--fx-atraso)', neutral: 'var(--fx-tinta-2)' }[deltaTone]
   return (
     <Card style={{ padding: 20 }}>
       <div className="metric__header">
         <div className="metric__label">{label}</div>
-        {icon && <Ic n={icon} s={16} style={{ color: '#a1a1aa' }}/>}
+        {icon && <Ic n={icon} s={16} style={{ color: 'var(--fx-tinta-4)' }}/>}
       </div>
       <div className="metric__values">
         <div className="metric__value">{value}</div>

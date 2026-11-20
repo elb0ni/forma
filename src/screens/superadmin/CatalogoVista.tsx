@@ -37,8 +37,8 @@ interface CatalogoData {
 type Alcance = 'vigentes' | 'total'
 
 // Un color por centro, estable por código.
-const TONOS: Record<string, string> = { '9302': '#6366f1', '9207': '#0ea5a4', '9208': '#f97316', '9103': '#22c55e' }
-const TONOS_EXTRA = ['#a855f7', '#ec4899', '#0ea5e9', '#eab308']
+const TONOS: Record<string, string> = { '9302': 'var(--fx-morado)', '9207': 'var(--fx-info)', '9208': 'var(--fx-aviso)', '9103': 'var(--fx-ok)' }
+const TONOS_EXTRA = ['var(--fx-morado)', 'var(--fx-morado)', 'var(--fx-info)', 'var(--fx-aviso)']
 const tonoDe = (c: CentroConciliado, i: number) => TONOS[c.codigo] ?? TONOS_EXTRA[i % TONOS_EXTRA.length]
 
 // Iniciales del centro ("Nacional Colombo Alemán" -> "CA").

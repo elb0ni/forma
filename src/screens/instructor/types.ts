@@ -235,14 +235,14 @@ export interface EstadoAprendiz {
 // Ícono y color de cada registro del historial (Historial y Home).
 type IconoMeta = { icon: IcName; color: string; bg: string }
 const MOMENTO_ICON: Record<'PLANEACION' | 'SEGUIMIENTO' | 'EVALUACION', IconoMeta> = {
-  PLANEACION:  { icon: 'edit',        color: '#4f46e5', bg: '#eef2ff' },
-  SEGUIMIENTO: { icon: 'briefcase',   color: '#0369a1', bg: '#e0f2fe' },
-  EVALUACION:  { icon: 'checkCircle', color: '#15803d', bg: '#dcfce7' },
+  PLANEACION:  { icon: 'edit',        color: 'var(--fx-morado)', bg: 'var(--fx-morado-suave)' },
+  SEGUIMIENTO: { icon: 'briefcase',   color: 'var(--fx-info)', bg: 'var(--fx-info-suave)' },
+  EVALUACION:  { icon: 'checkCircle', color: 'var(--fx-ok)', bg: 'var(--fx-ok-suave)' },
 }
 const CLASE_ICON: Record<'ETAPA_REGISTRADA' | 'ETAPA_ACTUALIZADA' | 'VISITA', IconoMeta> = {
-  ETAPA_REGISTRADA:  { icon: 'user',     color: '#0f766e', bg: '#ccfbf1' },
-  ETAPA_ACTUALIZADA: { icon: 'refresh',  color: '#0f766e', bg: '#f0fdfa' },
-  VISITA:            { icon: 'calendar', color: '#7c3aed', bg: '#f3e8ff' },
+  ETAPA_REGISTRADA:  { icon: 'user',     color: 'var(--fx-info)', bg: 'var(--fx-info-suave)' },
+  ETAPA_ACTUALIZADA: { icon: 'refresh',  color: 'var(--fx-info)', bg: 'var(--fx-info-suave)' },
+  VISITA:            { icon: 'calendar', color: 'var(--fx-morado)', bg: 'var(--fx-morado-suave)' },
 }
 export function iconoHistorial(e: HistorialEvento): IconoMeta {
   if (e.clase === 'MOMENTO' || e.clase === 'MOMENTO_EDITADO') {

@@ -19,7 +19,7 @@ interface FichaPracticaData {
   instructor_practica: InstructorPracticaInfo | null
 }
 
-// Ficha en etapa práctica vista por su instructor de seguimiento (asignacion_practica):
+// Ficha en etapa productiva vista por su instructor de seguimiento (asignacion_practica):
 // roster de aprendices, y desde cada uno se entra directo a crear o seguir gestionando
 // su etapa productiva -- reutiliza los mismos componentes que el módulo "Etapa productiva".
 export function InstFichaPractica({ fichaId, onBack, onOpenEtapa, onCrear }: {
@@ -64,7 +64,7 @@ export function InstFichaPractica({ fichaId, onBack, onOpenEtapa, onCrear }: {
   }
 
   const back = (
-    <button onClick={onBack} style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
+    <button onClick={onBack} style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
       <Ic n="arrowLeft" s={14}/>Volver a mis fichas
     </button>
   )
@@ -79,20 +79,20 @@ export function InstFichaPractica({ fichaId, onBack, onOpenEtapa, onCrear }: {
       {back}
 
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 12, color: '#52525b', marginBottom: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 12, color: 'var(--fx-tinta-2)', marginBottom: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{ficha.programa_codigo}</span>
           <span>·</span><span>{ficha.nivel_formacion}</span>
         </div>
-        <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>{ficha.programa_nombre}</h2>
-        <div style={{ marginTop: 4, display: 'flex', gap: 10, fontSize: 13, color: '#3f3f46', alignItems: 'center', flexWrap: 'wrap' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)' }}>{ficha.programa_nombre}</h2>
+        <div style={{ marginTop: 4, display: 'flex', gap: 10, fontSize: 13, color: 'var(--fx-tinta-2)', alignItems: 'center', flexWrap: 'wrap' }}>
           <Tag>Ficha {ficha.numero_ficha}</Tag>
           <span>{jornadaLabel(ficha.jornada)}{ficha.sede ? ` · ${ficha.sede}` : ''}</span>
-          <span style={{ color: '#a1a1aa' }}>·</span>
+          <span style={{ color: 'var(--fx-tinta-4)' }}>·</span>
           <span>{ficha.coordinacion_nombre}</span>
         </div>
         {instructor_practica && (
-          <div style={{ marginTop: 8, fontSize: 12, color: '#3f3f46' }}>
-            Instructor de práctica: <strong>{instructor_practica.nombre}</strong> · desde {fd(instructor_practica.fecha_inicio)}
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--fx-tinta-2)' }}>
+            Instructor de seguimiento: <strong>{instructor_practica.nombre}</strong> · desde {fd(instructor_practica.fecha_inicio)}
           </div>
         )}
 
@@ -109,7 +109,7 @@ export function InstFichaPractica({ fichaId, onBack, onOpenEtapa, onCrear }: {
       <EstadoAprendicesResumen kpi={kpi}/>
 
       {registrando && (
-        <div style={{ fontSize: 12, color: '#71717a', marginBottom: 10 }}>Registrando aprendiz…</div>
+        <div style={{ fontSize: 12, color: 'var(--fx-tinta-3)', marginBottom: 10 }}>Registrando aprendiz…</div>
       )}
       <AprendicesPracticaTable aprendices={aprendices} onOpen={abrir}/>
     </div>

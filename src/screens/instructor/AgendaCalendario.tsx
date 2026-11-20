@@ -34,22 +34,22 @@ const ANCHO_FIJO = 1280
 type EstadoEvento = EstadoMomentoAprendiz | 'PASADA' | 'FICHA' | 'MARCA'
 
 const TONO: Record<EstadoEvento, { fg: string; bg: string; dot: string; label: string }> = {
-  VENCIDO:  { fg: '#be123c', bg: '#fff1f2', dot: '#e11d48', label: 'Vencido' },
-  ABIERTO:  { fg: '#b45309', bg: '#fffbeb', dot: '#d97706', label: 'Ventana abierta (cierra ese día)' },
-  AGENDADO: { fg: '#4338ca', bg: '#eef2ff', dot: '#6366f1', label: 'Visita agendada' },
-  PROXIMO:  { fg: '#475569', bg: '#f1f5f9', dot: '#94a3b8', label: 'Se habilita ese día' },
-  HECHO:    { fg: '#15803d', bg: '#f0fdf4', dot: '#22c55e', label: 'Hecho' },
-  PASADA:   { fg: '#71717a', bg: '#f4f4f5', dot: '#a1a1aa', label: 'Visita pasada' },
-  FICHA:    { fg: '#0f766e', bg: '#f0fdfa', dot: '#14b8a6', label: 'Ficha' },
-  MARCA:    { fg: '#3f3f46', bg: '#ffffff', dot: '#52525b', label: 'Inicio / fin de etapa' },
+  VENCIDO:  { fg: 'var(--fx-atraso)', bg: 'var(--fx-atraso-suave)', dot: 'var(--fx-atraso)', label: 'Vencido' },
+  ABIERTO:  { fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)', dot: 'var(--fx-aviso)', label: 'Ventana abierta (cierra ese día)' },
+  AGENDADO: { fg: 'var(--fx-morado-tinta)', bg: 'var(--fx-morado-suave)', dot: 'var(--fx-morado)', label: 'Visita agendada' },
+  PROXIMO:  { fg: 'var(--fx-tinta-2)', bg: 'var(--fx-superficie-2)', dot: 'var(--fx-tinta-3)', label: 'Se habilita ese día' },
+  HECHO:    { fg: 'var(--fx-ok)', bg: 'var(--fx-ok-suave)', dot: 'var(--fx-ok)', label: 'Hecho' },
+  PASADA:   { fg: 'var(--fx-tinta-3)', bg: 'var(--fx-superficie-2)', dot: 'var(--fx-tinta-4)', label: 'Visita pasada' },
+  FICHA:    { fg: 'var(--fx-info)', bg: 'var(--fx-info-suave)', dot: 'var(--fx-info)', label: 'Ficha' },
+  MARCA:    { fg: 'var(--fx-tinta-2)', bg: 'var(--fx-superficie)', dot: 'var(--fx-tinta-2)', label: 'Inicio / fin de etapa' },
 }
 const LEYENDA: EstadoEvento[] = ['VENCIDO', 'ABIERTO', 'AGENDADO', 'PROXIMO', 'HECHO']
 
 const SITUACION: Record<SituacionAprendiz, { label: string; color: string }> = {
-  ATRASADO: { label: 'Atrasados', color: '#e11d48' },
-  LE_TOCA:  { label: 'Le toca',   color: '#d97706' },
-  AL_DIA:   { label: 'Al día',    color: '#64748b' },
-  COMPLETO: { label: 'Completos', color: '#16a34a' },
+  ATRASADO: { label: 'Atrasados', color: 'var(--fx-atraso)' },
+  LE_TOCA:  { label: 'Le toca',   color: 'var(--fx-aviso)' },
+  AL_DIA:   { label: 'Al día',    color: 'var(--fx-tinta-2)' },
+  COMPLETO: { label: 'Completos', color: 'var(--fx-ok)' },
 }
 const SITUACIONES = Object.keys(SITUACION) as SituacionAprendiz[]
 
@@ -225,7 +225,7 @@ function FilaEvento({ e, mostrarQuien, mostrarFecha, onAbrir }: {
         <span className="cn-ev__texto">{e.largo}</span>
       </span>
       {mostrarFecha && <span className="cn-ev__fecha">{corta(e.fecha)}</span>}
-      <Ic n="chevronRight" s={13} style={{ color: '#d4d4d8', flexShrink: 0 }}/>
+      <Ic n="chevronRight" s={13} style={{ color: 'var(--fx-linea-2)', flexShrink: 0 }}/>
     </button>
   )
 }
@@ -345,7 +345,7 @@ export function AgendaCalendario({ data, onVerEtapa, onVerFicha, onIrPendientes 
       {/* ── Aprendices ─────────────────────────────────────────────────── */}
       <aside className="card cn-lado">
         <label className="cn-buscar">
-          <Ic n="search" s={13} style={{ color: '#a1a1aa' }}/>
+          <Ic n="search" s={13} style={{ color: 'var(--fx-tinta-4)' }}/>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar aprendiz o ficha"/>
         </label>
         <div className="cn-sit">
@@ -359,7 +359,7 @@ export function AgendaCalendario({ data, onVerEtapa, onVerFicha, onIrPendientes 
 
         <div className="cn-lista">
           <button className={`cn-apr cn-apr--todos${!foco ? ' sel' : ''}`} onClick={() => enfocar(null)}>
-            <Ic n="users" s={14} style={{ color: '#71717a' }}/>
+            <Ic n="users" s={14} style={{ color: 'var(--fx-tinta-3)' }}/>
             <span className="cn-apr__cuerpo">
               <span className="cn-apr__nombre">Todos los aprendices</span>
               <span className="cn-apr__res">{visibles.length} en seguimiento{filtrando ? ' (filtrados)' : ''}</span>
@@ -441,7 +441,7 @@ export function AgendaCalendario({ data, onVerEtapa, onVerFicha, onIrPendientes 
                   return (
                     <span key={g.key} className="cn-chip"
                       title={g.eventos.map(e => `${e.quien}: ${e.largo}`).join('\n')}
-                      style={{ color: TONO[g.estado].fg, background: TONO[g.estado].bg, borderColor: g.estado === 'MARCA' ? '#d4d4d8' : 'transparent' }}>
+                      style={{ color: TONO[g.estado].fg, background: TONO[g.estado].bg, borderColor: g.estado === 'MARCA' ? 'var(--fx-linea-2)' : 'transparent' }}>
                       <span className="cn-chip__dot" style={{ background: TONO[g.estado].dot }}/>
                       <span className="cn-chip__txt">
                         {g.corto}{quien && <span className="cn-chip__quien"> · {quien}</span>}
@@ -518,7 +518,7 @@ function PanelProximos({ eventos, hoy, sinFecha, onAbrir, onIr, onIrPendientes }
 
       {vencidos.length > 0 && (
         <div className="cn-bloque">
-          <div className="cn-bloque__t" style={{ color: '#be123c' }}>Atrasado · {vencidos.length}</div>
+          <div className="cn-bloque__t" style={{ color: 'var(--fx-atraso)' }}>Atrasado · {vencidos.length}</div>
           <div className="cn-evs">{vencidos.map(e => <FilaEvento key={e.key} e={e} mostrarQuien mostrarFecha onAbrir={() => onAbrir(e)}/>)}</div>
         </div>
       )}

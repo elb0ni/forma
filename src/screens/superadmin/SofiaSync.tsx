@@ -374,7 +374,7 @@ function AlertasPanel({ alertas }: { alertas: Alertas | null }) {
   const grupos: { titulo: string; sub: string; icon: IcName; tone: string; filas: FichaAlerta[]; extra: (f: FichaAlerta) => string }[] = [
     {
       titulo: 'En práctica sin instructor', icon: 'alert', tone: 'err',
-      sub: 'SofiaPlus las reporta en etapa práctica y no tienen instructor de práctica asignado en FORMA.',
+      sub: 'SofiaPlus las reporta en etapa productiva y no tienen instructor de seguimiento asignado en FORMA.',
       filas: alertas.practica_sin_instructor, extra: f => f.sofia_responsable ?? '',
     },
     {

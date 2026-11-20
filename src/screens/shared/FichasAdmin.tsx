@@ -3,6 +3,9 @@ import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-do
 import { Ic, Card, Ava, Btn, Tag, Pager, Tip } from '../../components/ui'
 import api from '../../lib/api'
 import { useAuthStore } from '../../store/auth'
+import { useAmbito } from '../../store/ambito'
+import { PanelLateral } from '../../ui'
+import { AsignarPanel } from '../panorama/AsignarPanel'
 import { FichaForm } from './FichaForm'
 import type { FichaEdit } from './FichaForm'
 import { jornadaLabel, centroLabel } from './parts'
@@ -94,8 +97,8 @@ function FechasFicha({ f }: { f: FichaRow }) {
     <div style={{ display: 'grid', gap: 4 }}>
       {rows.map(([label, iso]) => (
         <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 20 }}>
-          <span style={{ color: '#a1a1aa' }}>{label}</span>
-          <span style={{ fontFamily: '"JetBrains Mono", monospace', color: '#f4f4f5' }}>{fd(iso)}</span>
+          <span style={{ color: 'var(--fx-tinta-4)' }}>{label}</span>
+          <span style={{ fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-superficie-2)' }}>{fd(iso)}</span>
         </div>
       ))}
     </div>
@@ -162,8 +165,8 @@ const FECHA_CAMPO_LABEL: Record<FechaCampo, string> = {
 }
 
 const SEL = {
-  height: 34, padding: '0 10px', border: '1px solid #e4e4e7', borderRadius: 8,
-  fontSize: 12.5, background: '#fff', color: '#18181b',
+  height: 34, padding: '0 10px', border: '1px solid var(--fx-linea)', borderRadius: 8,
+  fontSize: 12.5, background: 'var(--fx-superficie)', color: 'var(--fx-tinta)',
   fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none',
 }
 
@@ -176,7 +179,7 @@ const FICHA_COLS: { key: FichaSortCol; label: string; defDir: SortDir }[] = [
   { key: 'numero',      label: 'Número',                 defDir: 'asc'  },
   { key: 'programa',    label: 'Programa',               defDir: 'asc'  },
   { key: 'coordinador', label: 'Coordinador',            defDir: 'asc'  },
-  { key: 'instructor',  label: 'Instructor de práctica', defDir: 'asc'  },
+  { key: 'instructor',  label: 'Instructor de seguimiento', defDir: 'asc'  },
   { key: 'aprendices',  label: 'Aprendices',             defDir: 'desc' },
   { key: 'cierre',      label: 'Fin productiva',         defDir: 'asc'  },
   { key: 'fase',        label: 'Fase',                   defDir: 'asc'  },
@@ -209,7 +212,7 @@ const VACIO_AL_FINAL: Partial<Record<FichaSortCol, (f: FichaRow) => boolean>> = 
 const TH_S = { padding: '10px 11px', textAlign: 'left' as const, fontWeight: 600 }
 const TD_S = { padding: '12px 11px' }
 
-// ─── Detalle de ficha (read-only: instructor de práctica + roster de aprendices) ─
+// ─── Detalle de ficha (read-only: instructor de seguimiento + roster de aprendices) ─
 // Independientemente de si la ficha ya entró a etapa productiva o todavía
 // está en lectiva, el detalle solo muestra lo relativo a práctica -- si
 // todavía no hay aprendices en esa etapa, AprendicesPracticaTable ya resuelve
@@ -261,16 +264,17 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
   // El coordinador no edita la ficha: solo asigna instructores.
   const esCoordinador = useAuthStore(s => s.user?.rol) === 'COORD_ACADEMICO'
   const [state, setState] = useState<DetState>({ status: 'loading' })
+  const [asignar, setAsignar] = useState(false)
+  const [version, setVersion] = useState(0)
 
   useEffect(() => {
-    setState({ status: 'loading' })
     api.get<FichaDetalleData>(`/fichas/${id}/detalle`)
       .then(r => setState({ status: 'ok', data: r.data }))
       .catch(() => setState({ status: 'error' }))
-  }, [id])
+  }, [id, version])
 
   const back = (
-    <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#52525b', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16 }}>
+    <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--fx-tinta-2)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16 }}>
       <Ic n="arrowLeft" s={14}/> Fichas
     </button>
   )
@@ -280,8 +284,8 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
     <div>{back}
       <Card style={{ padding: 24 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <Ic n="alert" s={15} style={{ color: '#b91c1c' }}/>
-          <span style={{ fontSize: 13.5, color: '#b91c1c' }}>No se pudo cargar la ficha.</span>
+          <Ic n="alert" s={15} style={{ color: 'var(--fx-atraso)' }}/>
+          <span style={{ fontSize: 13.5, color: 'var(--fx-atraso)' }}>No se pudo cargar la ficha.</span>
         </div>
       </Card>
     </div>
@@ -308,16 +312,16 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
       {/* Encabezado */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, marginBottom: 22, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 300 }}>
-          <div style={{ fontSize: 12, color: '#52525b', marginBottom: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 12, color: 'var(--fx-tinta-2)', marginBottom: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{ficha.programa_codigo}</span>
             <span>·</span><span>{ficha.nivel_formacion}</span>
             <span>·</span><span style={{ fontFamily: '"JetBrains Mono", monospace' }}>V{String(ficha.programa_version).padStart(3, '0')}</span>
           </div>
-          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>{ficha.programa_nombre}</h2>
-          <div style={{ marginTop: 4, display: 'flex', gap: 10, fontSize: 13, color: '#3f3f46', alignItems: 'center', flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)' }}>{ficha.programa_nombre}</h2>
+          <div style={{ marginTop: 4, display: 'flex', gap: 10, fontSize: 13, color: 'var(--fx-tinta-2)', alignItems: 'center', flexWrap: 'wrap' }}>
             <Tag>{programaShort(ficha.programa_nombre)}</Tag>
-            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: '#18181b' }}>Ficha {ficha.numero_ficha}</span>
-            <span style={{ color: '#a1a1aa' }}>·</span>
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: 'var(--fx-tinta)' }}>Ficha {ficha.numero_ficha}</span>
+            <span style={{ color: 'var(--fx-tinta-4)' }}>·</span>
             <span>{jornadaLabel(ficha.jornada)}{ficha.sede ? ` · ${ficha.sede}` : ''}</span>
             <FasePill fase={faseFicha({
               estado: ficha.estado,
@@ -326,16 +330,23 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
             })}/>
           </div>
           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            <Ic n="user" s={13} style={{ color: instructor_practica ? '#15803d' : '#a16207' }}/>
+            <Ic n="user" s={13} style={{ color: instructor_practica ? 'var(--fx-ok)' : 'var(--fx-aviso)' }}/>
             {instructor_practica ? (
-              <span style={{ color: '#3f3f46' }}>Instructor de práctica: <strong>{instructor_practica.nombre}</strong> · desde {fd(instructor_practica.fecha_inicio)}</span>
+              <span style={{ color: 'var(--fx-tinta-2)' }}>Instructor de seguimiento: <strong>{instructor_practica.nombre}</strong> · desde {fd(instructor_practica.fecha_inicio)}</span>
             ) : (
-              <span style={{ color: '#a16207' }}>Sin instructor de práctica asignado -- asígnalo desde "{esCoordinador ? 'Asignar instructores' : 'Editar ficha y asignaciones'}".</span>
+              <span style={{ color: 'var(--fx-aviso)' }}>Sin instructor de seguimiento: asígnalo con el botón "Asignar".</span>
             )}
           </div>
         </div>
-        <Btn variant="accent" icon="users" onClick={onEditar}>{esCoordinador ? 'Asignar instructores' : 'Editar ficha y asignaciones'}</Btn>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Btn variant="accent" icon="users" onClick={() => setAsignar(true)}>Asignar</Btn>
+          {!esCoordinador && <Btn variant="ghost" icon="edit" onClick={onEditar}>Editar ficha</Btn>}
+        </div>
       </div>
+      <PanelLateral abierto={asignar} onCerrar={() => { setAsignar(false); setVersion(v => v + 1) }} ancho={600}
+        titulo={`Asignar · ficha ${ficha.numero_ficha}`} sub="Toda la ficha, aprendices sueltos o repartida entre varios">
+        {asignar && <AsignarPanel fichaId={id}/>}
+      </PanelLateral>
 
       {/* Distribución de los aprendices entre los 5 estados de práctica */}
       <EstadoAprendicesResumen kpi={kpi}/>
@@ -350,12 +361,12 @@ export function FichaDetalle({ id, onBack, onEditar, onOpenEtapa }: {
         />
 
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', marginBottom: 14 }}>Coordinación</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)', marginBottom: 14 }}>Coordinación</div>
           <Card style={{ padding: 16 }}>
             {meta.map(([l, v], i) => (
-              <div key={l} style={{ padding: '7px 0', borderBottom: i < meta.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
-                <div style={{ fontSize: 10.5, color: '#71717a', marginBottom: 2 }}>{l}</div>
-                <div style={{ fontSize: 12.5, color: '#18181b', fontWeight: 500 }}>{v || '—'}</div>
+              <div key={l} style={{ padding: '7px 0', borderBottom: i < meta.length - 1 ? '1px solid var(--fx-superficie-2)' : 'none' }}>
+                <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-3)', marginBottom: 2 }}>{l}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--fx-tinta)', fontWeight: 500 }}>{v || '—'}</div>
               </div>
             ))}
           </Card>
@@ -372,7 +383,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
   "use no memo"
   const navigate = useNavigate()
   // El coordinador no crea ni edita fichas (solo el super admin): su acción
-  // sobre una ficha es asignar el instructor de práctica.
+  // sobre una ficha es asignar el instructor de seguimiento.
   const esCoordinador = useAuthStore(s => s.user?.rol) === 'COORD_ACADEMICO'
   const esSubdirector = useAuthStore(s => s.user?.rol) === 'SUBDIRECTOR'
   // Por defecto se ven las fichas "activas" (en práctica + en cierre) -- lo que
@@ -408,7 +419,11 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
     setSortCol(col); setSortDir(defDir)
   }
 
-  const all = state.status === 'ok' ? state.data : []
+  // El ámbito elegido arriba (centro y coordinación) acota la lista (Fase 14).
+  const ambCentro = useAmbito(st => st.centroId)
+  const ambCoord = useAmbito(st => st.coordId)
+  const all = (state.status === 'ok' ? state.data : []).filter(f =>
+    scope || ((esSubdirector || !ambCentro || f.centro_formacion_id === ambCentro) && (!ambCoord || f.coordinacion_academica_id === ambCoord)))
   const q   = search.trim().toLowerCase()
   const fechaActiva = !!(fechaDesde || fechaHasta)
 
@@ -543,7 +558,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
   const pageItems = filtered.slice(curPage * PAGE_SIZE, (curPage + 1) * PAGE_SIZE)
 
   const theadRow = (
-    <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
+    <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', borderBottom: '1px solid var(--fx-linea)' }}>
       {FICHA_COLS.map(c => {
         const on = sortCol === c.key
         return (
@@ -568,18 +583,18 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>Fichas</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)' }}>Fichas</h2>
           <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 700, color: '#4f46e5', lineHeight: 1 }}>
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 700, color: 'var(--fx-morado)', lineHeight: 1 }}>
               {activasCount.toLocaleString('es-CO')}
             </span>
-            <span style={{ fontSize: 13, color: '#52525b' }}>
+            <span style={{ fontSize: 13, color: 'var(--fx-tinta-2)' }}>
               fichas activas {scope ? 'en tu coordinación' : esSubdirector ? 'en tu centro' : 'en la regional'}
               {' · '}<span>{enPracticaCount.toLocaleString('es-CO')} en práctica</span>
-              {enCierreCount > 0 && <> · <span style={{ color: '#a16207' }}>{enCierreCount.toLocaleString('es-CO')} en cierre</span></>}
-              {proximasCount > 0 && <> · <span style={{ color: '#6366f1' }}>{proximasCount.toLocaleString('es-CO')} próxima{proximasCount === 1 ? '' : 's'}</span></>}
-              {' · '}<span style={{ color: '#a1a1aa' }}>{all.length.toLocaleString('es-CO')} en total</span>
-              {sinInstrCount > 0 && <> · <strong style={{ color: '#c2410c', fontWeight: 600 }}>{sinInstrCount} sin instructor</strong></>}
+              {enCierreCount > 0 && <> · <span style={{ color: 'var(--fx-aviso)' }}>{enCierreCount.toLocaleString('es-CO')} en cierre</span></>}
+              {proximasCount > 0 && <> · <span style={{ color: 'var(--fx-morado)' }}>{proximasCount.toLocaleString('es-CO')} próxima{proximasCount === 1 ? '' : 's'}</span></>}
+              {' · '}<span style={{ color: 'var(--fx-tinta-4)' }}>{all.length.toLocaleString('es-CO')} en total</span>
+              {sinInstrCount > 0 && <> · <strong style={{ color: 'var(--fx-aviso)', fontWeight: 600 }}>{sinInstrCount} sin instructor</strong></>}
             </span>
           </div>
         </div>
@@ -683,7 +698,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
             <thead>{theadRow}</thead>
             <tbody>
               {[0, 1, 2, 3, 4, 5].map(i => (
-                <tr key={i} style={{ borderBottom: '1px solid #f1f1f3' }}>
+                <tr key={i} style={{ borderBottom: '1px solid var(--fx-superficie-2)' }}>
                   <td style={TD_S}><Sk w={56} h={12}/></td>
                   <td style={TD_S}><Sk w={170} h={12}/></td>
                   <td style={TD_S}><Sk w={130} h={12}/></td>
@@ -702,8 +717,8 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
       {state.status === 'error' && (
         <Card style={{ padding: 24 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <Ic n="alert" s={15} style={{ color: '#b91c1c' }}/>
-            <span style={{ fontSize: 13.5, color: '#b91c1c' }}>No se pudieron cargar las fichas.</span>
+            <Ic n="alert" s={15} style={{ color: 'var(--fx-atraso)' }}/>
+            <span style={{ fontSize: 13.5, color: 'var(--fx-atraso)' }}>No se pudieron cargar las fichas.</span>
           </div>
         </Card>
       )}
@@ -711,9 +726,9 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
       {state.status === 'ok' && all.length === 0 && (
         <Card>
           <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <Ic n="folder" s={28} style={{ color: '#a1a1aa' }}/>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0b' }}>Sin fichas</div>
-            <div style={{ fontSize: 12.5, color: '#71717a' }}>Aún no hay fichas registradas en el sistema.</div>
+            <Ic n="folder" s={28} style={{ color: 'var(--fx-tinta-4)' }}/>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fx-tinta)' }}>Sin fichas</div>
+            <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>Aún no hay fichas registradas en el sistema.</div>
           </div>
         </Card>
       )}
@@ -721,8 +736,8 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
       {state.status === 'ok' && all.length > 0 && filtered.length === 0 && (
         <Card>
           <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <Ic n={q ? 'search' : 'folder'} s={26} style={{ color: '#a1a1aa' }}/>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>
+            <Ic n={q ? 'search' : 'folder'} s={26} style={{ color: 'var(--fx-tinta-4)' }}/>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>
               {q ? `Sin resultados para "${search.trim()}"` : 'Sin fichas en esta categoría'}
             </div>
           </div>
@@ -741,27 +756,27 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
                   key={f.id}
                   className="nx-row"
                   onClick={() => navigate(String(f.id), { relative: 'path' })}
-                  style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}
+                  style={{ borderBottom: '1px solid var(--fx-superficie-2)', cursor: 'pointer' }}
                 >
                   <td style={TD_S}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: FASE_META[faseFicha(f)].dot, flexShrink: 0 }}/>
-                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: '#0a0a0b' }}>{f.numero_ficha}</span>
+                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: 'var(--fx-tinta)' }}>{f.numero_ficha}</span>
                     </div>
                     {(f.centro_nombre || f.coordinacion_nombre) && (
                       <div
                         title={[f.centro_nombre, f.coordinacion_nombre].filter(Boolean).join(' · ')}
-                        style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 3, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        style={{ fontSize: 10.5, color: 'var(--fx-tinta-4)', marginTop: 3, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                       >
                         {f.centro_nombre ? centroLabel(f.centro_nombre) : f.coordinacion_nombre}
                       </div>
                     )}
                   </td>
                   <td style={TD_S}>
-                    <div title={f.programa_nombre} style={{ color: '#18181b', maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div title={f.programa_nombre} style={{ color: 'var(--fx-tinta)', maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {f.programa_nombre}
                     </div>
-                    <div style={{ fontSize: 10.5, color: '#52525b', marginTop: 3 }}>
+                    <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-2)', marginTop: 3 }}>
                       {[f.jornada, f.sede].filter(Boolean).join(' · ') || '—'}
                     </div>
                   </td>
@@ -769,41 +784,41 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
                     {f.coordinador_nombre ? (
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <Ava name={f.coordinador_nombre} size={22}/>
-                        <span title={f.coordinador_nombre} style={{ fontSize: 12, color: '#27272a', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span title={f.coordinador_nombre} style={{ fontSize: 12, color: 'var(--fx-tinta)', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {f.coordinador_nombre}
                         </span>
                       </div>
                     ) : (
-                      <span style={{ fontSize: 12, color: '#a1a1aa' }}>Sin coordinador</span>
+                      <span style={{ fontSize: 12, color: 'var(--fx-tinta-4)' }}>Sin coordinador</span>
                     )}
                   </td>
                   <td style={TD_S}>
                     {f.instructor_practica ? (
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <Ava name={f.instructor_practica} size={22}/>
-                        <span title={f.instructor_practica} style={{ fontSize: 12, color: '#27272a', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span title={f.instructor_practica} style={{ fontSize: 12, color: 'var(--fx-tinta)', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {f.instructor_practica}
                         </span>
                       </div>
                     ) : esSinInstructor(f) ? (
-                      <span style={{ fontSize: 11.5, fontWeight: 600, color: '#c2410c', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--fx-aviso)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                         <Ic n="alert" s={12}/>Sin asignar
                       </span>
                     ) : (
-                      <span style={{ fontSize: 12, color: '#d4d4d8' }}>—</span>
+                      <span style={{ fontSize: 12, color: 'var(--fx-linea-2)' }}>—</span>
                     )}
                   </td>
                   <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
                     {f.aprendices_en_practica > 0 || faseFicha(f) !== 'PROXIMA' ? (
                       <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12.5 }}>
-                        <strong style={{ color: '#4f46e5' }}>{f.aprendices_en_practica}</strong>
-                        <span style={{ color: '#a1a1aa' }}>/{f.aprendices}</span>
+                        <strong style={{ color: 'var(--fx-morado)' }}>{f.aprendices_en_practica}</strong>
+                        <span style={{ color: 'var(--fx-tinta-4)' }}>/{f.aprendices}</span>
                       </span>
                     ) : (
-                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#a1a1aa' }}>{f.aprendices || '—'}</span>
+                      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: 'var(--fx-tinta-4)' }}>{f.aprendices || '—'}</span>
                     )}
                   </td>
-                  <td style={{ ...TD_S, fontSize: 12, color: '#27272a', whiteSpace: 'nowrap' }}>
+                  <td style={{ ...TD_S, fontSize: 12, color: 'var(--fx-tinta)', whiteSpace: 'nowrap' }}>
                     <Tip
                       style={{ fontFamily: '"JetBrains Mono", monospace' }}
                       content={<FechasFicha f={f}/>}
@@ -816,7 +831,7 @@ function FichasList({ scope }: { scope?: { coordinacionId: number; centroId: num
                     <button
                       title={esCoordinador ? 'Asignar instructores' : 'Editar ficha'}
                       onClick={() => navigate(`${f.id}/editar`, { relative: 'path' })}
-                      style={{ width: 28, height: 28, borderRadius: 6, background: 'none', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', color: '#71717a' }}
+                      style={{ width: 28, height: 28, borderRadius: 6, background: 'none', border: 'none', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--fx-tinta-3)' }}
                     >
                       <Ic n={esCoordinador ? 'users' : 'edit'} s={13}/>
                     </button>

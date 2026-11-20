@@ -24,8 +24,9 @@ const cumple = (a: EstadoAprendiz, f: Filtro) =>
     : f === 'AL_DIA' ? a.situacion === 'AL_DIA' || a.situacion === 'COMPLETO'
     : a.situacion === f
 
-export function Aprendices({ onAbrir, onNuevo, onHistorial }: {
+export function Aprendices({ onAbrir, onNuevo, onHistorial, onFicha }: {
   onAbrir: (etapaId: number, tab?: TabEtapa | null) => void
+  onFicha?: (fichaId: number) => void
   onNuevo: () => void
   onHistorial: () => void
 }) {
@@ -130,7 +131,12 @@ export function Aprendices({ onAbrir, onNuevo, onHistorial }: {
               )}
               {fichas.map(([ficha, l]) => [
                 <tr key={`g-${ficha}`} className="fx-grupo">
-                  <td colSpan={5}>Ficha {ficha}{l[0].programa_nombre ? ` · ${l[0].programa_nombre}` : ''} · {plural(l.length, 'aprendiz', 'aprendices')}</td>
+                  <td colSpan={5}>
+                    Ficha {ficha}{l[0].programa_nombre ? ` · ${l[0].programa_nombre}` : ''} · {plural(l.length, 'aprendiz', 'aprendices')}
+                    {onFicha && l[0].ficha_id != null && (
+                      <> · <button type="button" className="hoy-enlace" onClick={() => onFicha(l[0].ficha_id!)}>ver la ficha</button></>
+                    )}
+                  </td>
                 </tr>,
                 ...l.map((a) => {
                   const s = SITUACION[a.situacion]

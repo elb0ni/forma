@@ -10,7 +10,7 @@ import type { AuthUser, UserRole } from '../types'
 export function Spinner() {
   return (
     <div className="root-spinner">
-      <Ic n="refresh" s={24} className="spin" style={{ color: '#a1a1aa' }}/>
+      <Ic n="refresh" s={24} className="spin" style={{ color: 'var(--fx-tinta-4)' }}/>
     </div>
   )
 }
@@ -94,12 +94,12 @@ async function cerrarSesion() {
 function RolNoReconocido() {
   return (
     <div className="root-spinner" style={{ flexDirection: 'column', gap: 16, padding: 24 }}>
-      <div style={{ fontSize: 14, color: '#3f3f46', textAlign: 'center', maxWidth: 340 }}>
+      <div style={{ fontSize: 14, color: 'var(--fx-tinta-2)', textAlign: 'center', maxWidth: 340 }}>
         Tu cuenta tiene un rol que esta aplicación no reconoce. Contacta a un administrador para que revise tu usuario.
       </div>
       <button
         onClick={cerrarSesion}
-        style={{ height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #e4e4e7', background: '#fff', color: '#18181b', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+        style={{ height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid var(--fx-linea)', background: 'var(--fx-superficie)', color: 'var(--fx-tinta)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
       >
         Cerrar sesión
       </button>

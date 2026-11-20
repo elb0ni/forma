@@ -5,7 +5,6 @@ import { Ic, Card, Btn } from '../../components/ui'
 import { useAuthStore } from '../../store/auth'
 import type { ProgramaResumen } from '../../types'
 import api from '../../lib/api'
-import { AprendicesAsignacion } from './AprendicesAsignacion'
 
 type Jornada = 'MAÑANA' | 'TARDE' | 'NOCHE' | 'MIXTA'
 type EstadoFicha = 'EN_EJECUCION' | 'FINALIZADA' | 'SUSPENDIDA'
@@ -29,11 +28,9 @@ export interface FichaEdit {
   etapa_actual?:             'LECTIVA' | 'PRACTICA' | null
 }
 
-interface InstructorOpt { id: string; nombre_completo: string }
 interface CentroOpt     { id: number; nombre: string; codigo: string }
 interface CoordOpt      { id: number; nombre: string; centro_formacion_id: number | null }
 
-interface AsignacionPractica { id: number; instructor_id: string; instructor_nombre?: string; fecha_inicio: string; estado: 'ACTIVA' | 'FINALIZADA' }
 
 const JORNADAS: { value: Jornada; label: string }[] = [
   { value: 'MAÑANA', label: 'Mañana' },
@@ -56,10 +53,10 @@ function Field({ label, hint, required, children }: {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#27272a' }}>
-          {label}{required && <span style={{ color: '#b91c1c' }}> *</span>}
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)' }}>
+          {label}{required && <span style={{ color: 'var(--fx-atraso)' }}> *</span>}
         </span>
-        {hint && <span style={{ fontSize: 11, color: '#71717a' }}>{hint}</span>}
+        {hint && <span style={{ fontSize: 11, color: 'var(--fx-tinta-3)' }}>{hint}</span>}
       </div>
       {children}
     </div>
@@ -71,7 +68,7 @@ function Seg({ name, value, onChange, options, disabled }: {
   options: { value: string; label: string }[]; disabled?: boolean
 }) {
   return (
-    <div className="seg" style={{ display: 'inline-flex', padding: 2, background: '#f1f1f3', borderRadius: 8, border: '1px solid #e4e4e7', opacity: disabled ? 0.6 : 1 }}>
+    <div className="seg" style={{ display: 'inline-flex', padding: 2, background: 'var(--fx-superficie-2)', borderRadius: 8, border: '1px solid var(--fx-linea)', opacity: disabled ? 0.6 : 1 }}>
       {options.map(o => (
         <Fragment key={o.value}>
           <input type="radio" name={name} id={`${name}-${o.value}`} checked={value === o.value} onChange={() => onChange(o.value)} disabled={disabled}/>
@@ -102,88 +99,6 @@ function fmtVersion(v: string | number): string {
   return `V${String(v).replace(/^v/i, '').padStart(3, '0')}`
 }
 
-function fdISO(s: string): string {
-  return new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-// ─── Instructor de práctica: uno solo para toda la ficha (no por competencia) ───
-// A diferencia de la etapa lectiva, en etapa productiva un único instructor
-// hace seguimiento a todos los aprendices de la ficha -- se gestiona con
-// asignacion_practica.
-
-function InstructorPracticaSection({ fichaId, coordId, instructores }: {
-  fichaId: number; coordId: number | null; instructores: InstructorOpt[]
-}) {
-  "use no memo"
-  const [activa, setActiva] = useState<AsignacionPractica | null | undefined>(undefined)
-  const [reasignando, setReasignando] = useState(false)
-  const [instructorId, setInstructorId] = useState('')
-  // La fecha de inicio de la asignación no se le pide al usuario -- se usa la
-  // fecha de hoy, que es siempre el momento real en que se hace la asignación.
-  const fecha = new Date().toISOString().slice(0, 10)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  function cargar() {
-    api.get<AsignacionPractica | null>(`/asignaciones-practica/activa?ficha_id=${fichaId}`)
-      .then(r => setActiva(r.data))
-      .catch(() => setActiva(null))
-  }
-  useEffect(cargar, [fichaId])
-
-  async function guardar() {
-    if (!instructorId) return
-    setBusy(true); setError(null)
-    try {
-      await api.post('/asignaciones-practica', { ficha_id: fichaId, instructor_id: instructorId, fecha_inicio: fecha })
-      setReasignando(false); setInstructorId('')
-      cargar()
-    } catch (e) {
-      const m = axios.isAxiosError(e) ? (e.response?.data?.message ?? e.message) : 'No se pudo asignar el instructor.'
-      setError(Array.isArray(m) ? m.join(' · ') : String(m))
-    } finally { setBusy(false) }
-  }
-
-  return (
-    <Card style={{ padding: 24 }}>
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600 }}>
-        Instructor de práctica
-      </div>
-      <div style={{ fontSize: 12, color: '#52525b', marginTop: 2, marginBottom: 16 }}>
-        Uno solo para toda la ficha: hace seguimiento a todos los aprendices en etapa productiva.
-      </div>
-
-      {activa === undefined ? (
-        <div style={{ fontSize: 12.5, color: '#a1a1aa' }}>Cargando…</div>
-      ) : activa && !reasignando ? (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#18181b' }}>{activa.instructor_nombre}</div>
-            <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 2 }}>Desde {fdISO(activa.fecha_inicio)}</div>
-          </div>
-          <Btn size="sm" variant="ghost" onClick={() => setReasignando(true)}>Reasignar</Btn>
-        </div>
-      ) : (
-        <div>
-          {!activa && <div style={{ fontSize: 12.5, color: '#71717a', marginBottom: 12 }}>Esta ficha todavía no tiene instructor de práctica asignado.</div>}
-          <select
-            value={instructorId} onChange={e => setInstructorId(e.target.value)} disabled={coordId == null}
-            style={{ fontSize: 12, padding: '6px 8px', border: '1px solid #e4e4e7', borderRadius: 6, fontFamily: 'Inter, sans-serif', width: '100%' }}
-          >
-            <option value="">{coordId == null ? 'Elige coordinación primero' : 'Selecciona un instructor…'}</option>
-            {instructores.map(i => <option key={i.id} value={i.id}>{i.nombre_completo}</option>)}
-          </select>
-          {error && <div style={{ fontSize: 11.5, color: '#b91c1c', marginTop: 8 }}>{error}</div>}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-            {activa && <Btn size="sm" variant="ghost" onClick={() => { setReasignando(false); setError(null) }} disabled={busy}>Cancelar</Btn>}
-            <Btn size="sm" variant="accent" icon="check" onClick={guardar} disabled={!instructorId || busy}>{busy ? 'Guardando…' : 'Asignar'}</Btn>
-          </div>
-        </div>
-      )}
-    </Card>
-  )
-}
-
 // ─── Pantalla ───────────────────────────────────────────────────────────────────
 
 export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
@@ -197,7 +112,6 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
   const [programs,     setPrograms]     = useState<ProgramaResumen[]>([])
   const [centros,      setCentros]      = useState<CentroOpt[]>([])
   const [coords,       setCoords]       = useState<CoordOpt[]>([])
-  const [instructores, setInstructores] = useState<InstructorOpt[]>([])
 
   // Campos del formulario
   const [numero,      setNumero]      = useState(ficha?.numero_ficha ?? '')
@@ -242,15 +156,6 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
       .then(r => setCoords(r.data))
       .catch(() => {})
   }, [])
-
-  // Solo instructores de la coordinación de la ficha (regla: misma coordinación) --
-  // es el pool del que se elige el instructor de práctica.
-  useEffect(() => {
-    if (coordId == null) { setInstructores([]); return }
-    api.get<InstructorOpt[]>(`/usuarios?rol=INSTRUCTOR&coordinacion_id=${coordId}`)
-      .then(r => setInstructores(r.data))
-      .catch(() => setInstructores([]))
-  }, [coordId])
 
   const selProg = programs.find(p => p.id === progId) ?? null
 
@@ -310,16 +215,16 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
     <div style={{ paddingBottom: 48 }}>
       <button
         onClick={onCancel}
-        style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center' }}
+        style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center' }}
       >
         <Ic n="arrowLeft" s={14}/>Fichas
       </button>
 
-      <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)', marginBottom: 4 }}>
         {soloAsignacionCoord ? `Asignar instructores · ficha ${ficha?.numero_ficha ?? ''}` : editando ? `Editar ficha ${ficha!.numero_ficha}` : 'Crear ficha de formación'}
       </h2>
-      <div style={{ fontSize: 13, color: '#52525b', marginBottom: 24 }}>
-        Define el grupo, el programa y el instructor de práctica que hará seguimiento a sus aprendices en etapa productiva.
+      <div style={{ fontSize: 13, color: 'var(--fx-tinta-2)', marginBottom: 24 }}>
+        Define el grupo y el programa. El instructor de seguimiento se asigna después, desde la ficha.
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
@@ -327,7 +232,7 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Datos generales */}
           <Card style={{ padding: 24 }}>
-            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 16 }}>
+            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, marginBottom: 16 }}>
               Datos generales
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -398,31 +303,29 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
               )}
             </div>
             {soloAsignacionCoord ? (
-              <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 12 }}>
+              <div style={{ fontSize: 11, color: 'var(--fx-tinta-4)', marginTop: 12 }}>
                 Los datos generales de la ficha son de solo lectura para coordinación. Si necesitas corregir fechas, sede, jornada o estado, contacta a un administrador.
               </div>
             ) : locked && (
-              <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 12 }}>
+              <div style={{ fontSize: 11, color: 'var(--fx-tinta-4)', marginTop: 12 }}>
                 El número de ficha, el programa y la fecha de inicio no se pueden modificar después de crear la ficha.
               </div>
             )}
           </Card>
 
-          {/* Instructor de práctica (etapa productiva): uno por ficha */}
+          {/* v3: el instructor (de la ficha o por aprendiz) se asigna solo desde
+              el panel "Asignar" de la ficha o desde Asignación. */}
           {savedId != null && (
-            <InstructorPracticaSection fichaId={savedId} coordId={coordId} instructores={instructores}/>
-          )}
-
-          {/* Override por aprendiz, para los que ya pueden arrancar práctica */}
-          {savedId != null && (
-            <AprendicesAsignacion fichaId={savedId} instructores={instructores}/>
+            <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>
+              El instructor de seguimiento se asigna con el botón "Asignar" en la página de la ficha.
+            </div>
           )}
 
           {/* Error + acciones */}
           {error && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 14px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8 }}>
-              <Ic n="alert" s={15} style={{ color: '#b91c1c', flexShrink: 0 }}/>
-              <span style={{ fontSize: 12.5, color: '#b91c1c' }}>{error}</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 14px', background: 'var(--fx-atraso-suave)', border: '1px solid var(--fx-atraso-linea)', borderRadius: 8 }}>
+              <Ic n="alert" s={15} style={{ color: 'var(--fx-atraso)', flexShrink: 0 }}/>
+              <span style={{ fontSize: 12.5, color: 'var(--fx-atraso)' }}>{error}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -443,35 +346,35 @@ export function FichaForm({ ficha, onCancel, onSaved, lockScope }: {
         {/* Columna lateral */}
         <div>
           <Card style={{ padding: 20, position: 'sticky', top: 80 }}>
-            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 12 }}>
+            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, marginBottom: 12 }}>
               Programa seleccionado
             </div>
             {selProg ? (
               <>
                 <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 6, background: '#0a0a0b', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 9.5, fontWeight: 700, flexShrink: 0, fontFamily: '"JetBrains Mono", monospace' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 6, background: 'var(--fx-tinta)', color: 'var(--fx-superficie)', display: 'grid', placeItems: 'center', fontSize: 9.5, fontWeight: 700, flexShrink: 0, fontFamily: '"JetBrains Mono", monospace' }}>
                     {selProg.codigo.slice(0, 4)}
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', lineHeight: 1.3 }}>{selProg.nombre}</div>
-                    <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: '#52525b', marginTop: 2 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)', lineHeight: 1.3 }}>{selProg.nombre}</div>
+                    <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'var(--fx-tinta-2)', marginTop: 2 }}>
                       {selProg.codigo} · {fmtVersion(selProg.version)}
                     </div>
                   </div>
                 </div>
-                <div style={{ paddingTop: 12, borderTop: '1px solid #f1f1f3', display: 'grid', gap: 10 }}>
+                <div style={{ paddingTop: 12, borderTop: '1px solid var(--fx-superficie-2)', display: 'grid', gap: 10 }}>
                   <div>
-                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>Nivel de formación</div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: '#18181b', marginTop: 3 }}>{selProg.nivel_formacion}</div>
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)' }}>Nivel de formación</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fx-tinta)', marginTop: 3 }}>{selProg.nivel_formacion}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>Título que otorga</div>
-                    <div style={{ fontSize: 12.5, color: '#3f3f46', marginTop: 3, lineHeight: 1.4 }}>{selProg.titulo_otorga}</div>
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)' }}>Título que otorga</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', marginTop: 3, lineHeight: 1.4 }}>{selProg.titulo_otorga}</div>
                   </div>
                 </div>
               </>
             ) : (
-              <div style={{ fontSize: 12.5, color: '#a1a1aa', padding: '8px 0' }}>Selecciona un programa.</div>
+              <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-4)', padding: '8px 0' }}>Selecciona un programa.</div>
             )}
           </Card>
         </div>

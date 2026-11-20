@@ -137,7 +137,7 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
   useEffect(load, [etapaId])
 
   const back = (
-    <button onClick={onBack} style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
+    <button onClick={onBack} style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
       <Ic n="arrowLeft" s={14}/>{backLabel}
     </button>
   )
@@ -176,16 +176,16 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
     return (
       <button key={t.id} onClick={() => setTab(t.id)} style={{
         display: 'flex', alignItems: 'center', gap: 7, padding: '10px 4px', marginBottom: -1,
-        background: 'none', border: 'none', borderBottom: `2px solid ${active ? '#4f46e5' : 'transparent'}`,
-        color: active ? '#0a0a0b' : '#71717a', fontSize: 12.5, fontWeight: active ? 600 : 500,
+        background: 'none', border: 'none', borderBottom: `2px solid ${active ? 'var(--fx-morado)' : 'transparent'}`,
+        color: active ? 'var(--fx-tinta)' : 'var(--fx-tinta-3)', fontSize: 12.5, fontWeight: active ? 600 : 500,
         cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
       }}>
-        <Ic n={t.icon} s={13} style={{ color: active ? '#4f46e5' : '#a1a1aa' }}/>
+        <Ic n={t.icon} s={13} style={{ color: active ? 'var(--fx-morado)' : 'var(--fx-tinta-4)' }}/>
         {t.label}
-        {t.badge === 'ok' && <Ic n="checkCircle" s={12} style={{ color: '#15803d' }}/>}
-        {t.badge === 'warn' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ca8a04' }}/>}
+        {t.badge === 'ok' && <Ic n="checkCircle" s={12} style={{ color: 'var(--fx-ok)' }}/>}
+        {t.badge === 'warn' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fx-aviso)' }}/>}
         {t.badge === 'count' && (
-          <span style={{ fontSize: 10, fontFamily: '"JetBrains Mono", monospace', background: '#f1f1f3', borderRadius: 10, padding: '1px 6px', color: '#52525b' }}>
+          <span style={{ fontSize: 10, fontFamily: '"JetBrains Mono", monospace', background: 'var(--fx-superficie-2)', borderRadius: 10, padding: '1px 6px', color: 'var(--fx-tinta-2)' }}>
             {t.count ?? seguimientos.length}
           </span>
         )}
@@ -199,13 +199,13 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
       {back}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 600, color: '#0a0a0b' }}>{etapa.aprendiz_nombre}</h2>
-          <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: '#52525b' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--fx-tinta)' }}>{etapa.aprendiz_nombre}</h2>
+          <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: 'var(--fx-tinta-2)' }}>
             <Tag>{MODALIDAD_LABEL[etapa.modalidad]}</Tag>
             {etapa.empresa_nombre && <span>{etapa.empresa_nombre}</span>}
-            <span style={{ color: '#d4d4d8' }}>·</span>
+            <span style={{ color: 'var(--fx-linea-2)' }}>·</span>
             <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{etapa.aprendiz_documento}</span>
-            <span style={{ color: '#d4d4d8' }}>·</span>
+            <span style={{ color: 'var(--fx-linea-2)' }}>·</span>
             <EstadoBdg estado={estadoCalc.estado}/>
           </div>
         </div>
@@ -235,10 +235,10 @@ export function EtapaProductivaDetalle({ etapaId, onBack, initialTab = 'general'
       <div className={`ep-layout${verPreview ? '' : ' ep-layout--solo'}`}>
         {/* Izquierda: los 4 tabs donde el instructor va diligenciando */}
         <div className="ep-layout__editor">
-          <div className="ep-tabs" style={{ display: 'flex', gap: 6, borderBottom: '1px solid #e4e4e7', marginBottom: 24, overflowX: 'auto' }}>
+          <div className="ep-tabs" style={{ display: 'flex', gap: 6, borderBottom: '1px solid var(--fx-linea)', marginBottom: 24, overflowX: 'auto' }}>
             {TABS.map(tabBtn)}
             <span style={{ flex: 1, minWidth: 16 }}/>
-            <span style={{ alignSelf: 'center', width: 1, height: 18, background: '#e4e4e7', margin: '0 6px' }}/>
+            <span style={{ alignSelf: 'center', width: 1, height: 18, background: 'var(--fx-linea)', margin: '0 6px' }}/>
             {TABS_CONTROL.map(tabBtn)}
           </div>
 
@@ -421,7 +421,7 @@ export function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; on
         <Campo label="Dirección" required error={ver('aprDireccion')}>{campo(aprDireccion, setAprDireccion, { placeholder: 'Dirección de residencia' })}</Campo>
         <Campo label="Correo electrónico institucional" error={ver('aprEmailInst')}>{campo(aprEmailInst, setAprEmailInst, { placeholder: '@sena.edu.co' })}</Campo>
         {editing && (
-          <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a' }}>
+          <span className="g23-col2" style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)' }}>
             Debe quedar al menos un correo: personal o institucional.
           </span>
         )}
@@ -468,10 +468,10 @@ export function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; on
             <span className="g23-bloque__n">{tieneEmpresa ? 5 : 4}</span>
             <span className="g23-toggle__t">Persona en situación de discapacidad</span>
             <span className="g23-toggle__hint">si aplica</span>
-            <Ic n={apoyoAbierto ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: '#a1a1aa' }}/>
+            <Ic n={apoyoAbierto ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: 'var(--fx-tinta-4)' }}/>
           </button>
           {apoyoAbierto && (
-            <div className="g23-bloque__body g23-bloque__body--3" style={{ borderTop: '1px solid #f1f1f3' }}>
+            <div className="g23-bloque__body g23-bloque__body--3" style={{ borderTop: '1px solid var(--fx-superficie-2)' }}>
               <Campo label="Nombre de quien lo asiste">{campo(asisteNombre, setAsisteNombre)}</Campo>
               <Campo label="Tipo de asistencia">{campo(asisteTipo, setAsisteTipo, { placeholder: 'Lenguaje de señas, apoyo visual…' })}</Campo>
               <Campo label="Contacto telefónico">{campo(asisteTelefono, setAsisteTelefono, { soloNum: true })}</Campo>
@@ -481,7 +481,7 @@ export function GeneralTab({ etapa, onSaved }: { etapa: EtapaConSeguimientos; on
       )}
 
 
-      {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
+      {err && <div style={{ fontSize: 12, color: 'var(--fx-atraso)' }}>{err}</div>}
 
       <div style={{ display: 'flex', justifyContent: editing ? 'flex-end' : 'flex-start', gap: 10 }}>
         {editing ? (
@@ -657,7 +657,7 @@ function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente,
       </Bloque>
 
       <Bloque n={2} titulo="Concertación del plan de trabajo">
-        <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a', marginBottom: -4 }}>
+        <span className="g23-col2" style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)', marginBottom: -4 }}>
           Marca los resultados de aprendizaje que el aprendiz desarrollará en la empresa: su competencia,
           actividades y evidencias salen del diseño curricular. Todo queda editable.
         </span>
@@ -686,7 +686,7 @@ function PlaneacionForm({ etapa, etapaId, requiereJefe, planeacion, firmaFuente,
         <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas} fuente={firmaFuente}/>
       )}
 
-      {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
+      {err && <div style={{ fontSize: 12, color: 'var(--fx-atraso)' }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <Btn variant="secondary" onClick={onCancel} disabled={busy}>Cancelar</Btn>
         <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>
@@ -765,28 +765,28 @@ function SeguimientoItem({ s, requiereJefe, open, onToggle, onChanged }: {
       <button onClick={onToggle} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8, display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', flexShrink: 0,
-          background: extraordinario ? '#ffedd5' : '#eef2ff', color: extraordinario ? '#c2410c' : '#4f46e5',
+          background: extraordinario ? 'var(--fx-aviso-suave)' : 'var(--fx-morado-suave)', color: extraordinario ? 'var(--fx-aviso)' : 'var(--fx-morado)',
         }}>#{s.numero_seguimiento}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#18181b', fontFamily: '"JetBrains Mono", monospace' }}>{fd(s.fecha_realizada)}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)', fontFamily: '"JetBrains Mono", monospace' }}>{fd(s.fecha_realizada)}</span>
             <Bdg tone="neutral">{s.tipo_seguimiento}</Bdg>
             {extraordinario && <Bdg tone="warn">Extraordinario</Bdg>}
-            <span style={{ fontSize: 11.5, color: '#71717a' }}>{satisfactorios}/{total} satisfactorio</span>
+            <span style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)' }}>{satisfactorios}/{total} satisfactorio</span>
           </div>
         </div>
-        <Ic n={open ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: '#a1a1aa', flexShrink: 0 }}/>
+        <Ic n={open ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: 'var(--fx-tinta-4)', flexShrink: 0 }}/>
       </button>
       {open && (
-        <div style={{ borderTop: '1px solid #f1f1f3', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ borderTop: '1px solid var(--fx-superficie-2)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {extraordinario && (
             <div>
-              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600, marginBottom: 4 }}>Motivo del seguimiento extraordinario</div>
-              <div style={{ fontSize: 12.5, color: '#18181b' }}>{s.motivo_extraordinario}</div>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', fontWeight: 600, marginBottom: 4 }}>Motivo del seguimiento extraordinario</div>
+              <div style={{ fontSize: 12.5, color: 'var(--fx-tinta)' }}>{s.motivo_extraordinario}</div>
             </div>
           )}
           {s.enlace_grabacion && (
-            <a href={s.enlace_grabacion} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#4f46e5', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <a href={s.enlace_grabacion} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--fx-morado)', display: 'flex', alignItems: 'center', gap: 4 }}>
               <Ic n="external" s={12}/>Grabación del momento
             </a>
           )}
@@ -798,8 +798,8 @@ function SeguimientoItem({ s, requiereJefe, open, onToggle, onChanged }: {
             ['Observaciones del ente co-formador', s.observaciones_coformador],
           ] as [string, string | null][]).map(([label, value]) => value && (
             <div key={label}>
-              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600, marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 12.5, color: '#18181b', lineHeight: 1.5 }}>{value}</div>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', fontWeight: 600, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--fx-tinta)', lineHeight: 1.5 }}>{value}</div>
             </div>
           ))}
           <FirmasYUbicacion seguimiento={s} requiereJefe={requiereJefe} onChanged={onChanged}/>
@@ -885,7 +885,7 @@ function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, soloExtrao
         <Campo label="Enlace de grabación" ancho error={ver('enlace')}>
           <input className="nx-input" placeholder={esVirtual ? 'https://…' : 'Solo si el seguimiento se hace de forma virtual'} value={enlace} onChange={e => setEnlace(e.target.value)}/>
         </Campo>
-        <label className="g23-col2" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#3f3f46', cursor: 'pointer' }}>
+        <label className="g23-col2" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--fx-tinta-2)', cursor: 'pointer' }}>
           <input type="checkbox" className="nx-check" checked={esExtraordinario} disabled={soloExtraordinario} onChange={e => setEsExtraordinario(e.target.checked)}/>
           Es un seguimiento extraordinario (fuera del momento 2 regular)
         </label>
@@ -907,7 +907,7 @@ function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, soloExtrao
 
       <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas} fuente={firmaFuente}/>
 
-      {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
+      {err && <div style={{ fontSize: 12, color: 'var(--fx-atraso)' }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <Btn variant="secondary" onClick={onCancel} disabled={busy}>Cancelar</Btn>
         <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>
@@ -915,7 +915,7 @@ function SeguimientoForm({ etapa, etapaId, requiereJefe, firmaFuente, soloExtrao
         </Btn>
       </div>
       {hayErrores && intentado && (
-        <div style={{ fontSize: 11.5, color: '#a1a1aa', textAlign: 'right' }}>
+        <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-4)', textAlign: 'right' }}>
           {sinValorar > 0 && `${sinValorar} variables sin valorar. `}
           {!firmasCompletas(firmas, requiereJefe) && 'Faltan firmas.'}
         </div>
@@ -967,15 +967,15 @@ export function EvaluacionTab({ etapa, etapaId, visitas, requiereJefe, planeacio
         <FactoresBlock titulo="Factores técnicos" items={tecnicos} readOnly/>
         <FactoresBlock titulo="Factores actitudinales y comportamentales" items={actitudinales} readOnly/>
         <Card style={{ padding: 16 }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600, marginBottom: 10 }}>Retroalimentación</div>
+          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', fontWeight: 600, marginBottom: 10 }}>Retroalimentación</div>
           {([
             ['Ente co-formador', evaluacion.retro_coformador],
             ['Instructor de seguimiento', evaluacion.retro_instructor],
             ['Aprendiz', evaluacion.retro_aprendiz],
           ] as [string, string | null][]).map(([label, value]) => (
             <div key={label} style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: '#52525b', fontWeight: 600, marginBottom: 3 }}>{label}</div>
-              <div style={{ fontSize: 12.5, color: value ? '#18181b' : '#a1a1aa', lineHeight: 1.5 }}>{value || 'Sin diligenciar'}</div>
+              <div style={{ fontSize: 11, color: 'var(--fx-tinta-2)', fontWeight: 600, marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 12.5, color: value ? 'var(--fx-tinta)' : 'var(--fx-tinta-4)', lineHeight: 1.5 }}>{value || 'Sin diligenciar'}</div>
             </div>
           ))}
         </Card>
@@ -1094,22 +1094,22 @@ function EvaluacionForm({ etapa, etapaId, visitas, requiereJefe, evaluacion, fir
 
       {!evaluacion && (
         <Bloque n={5} titulo="Juicio de evaluación de la etapa productiva">
-          <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a', marginBottom: -2 }}>
+          <span className="g23-col2" style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)', marginBottom: -2 }}>
             Define si el aprendiz aprueba la etapa. No se puede guardar sin elegir uno.
           </span>
           <div className="g23-col2" style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setJuicio('APROBADO')} style={{
               flex: 1, padding: '14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-              border: `2px solid ${juicio === 'APROBADO' ? '#86efac' : '#e4e4e7'}`,
-              background: juicio === 'APROBADO' ? '#dcfce7' : '#fff',
-              color: juicio === 'APROBADO' ? '#15803d' : '#3f3f46', fontWeight: 600, fontSize: 13,
+              border: `2px solid ${juicio === 'APROBADO' ? 'var(--fx-ok-linea)' : 'var(--fx-linea)'}`,
+              background: juicio === 'APROBADO' ? 'var(--fx-ok-suave)' : 'var(--fx-superficie)',
+              color: juicio === 'APROBADO' ? 'var(--fx-ok)' : 'var(--fx-tinta-2)', fontWeight: 600, fontSize: 13,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}><Ic n="checkCircle" s={15}/>Aprobado</button>
             <button onClick={() => setJuicio('NO_APROBADO')} style={{
               flex: 1, padding: '14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-              border: `2px solid ${juicio === 'NO_APROBADO' ? '#fecaca' : '#e4e4e7'}`,
-              background: juicio === 'NO_APROBADO' ? '#fee2e2' : '#fff',
-              color: juicio === 'NO_APROBADO' ? '#b91c1c' : '#3f3f46', fontWeight: 600, fontSize: 13,
+              border: `2px solid ${juicio === 'NO_APROBADO' ? 'var(--fx-atraso-linea)' : 'var(--fx-linea)'}`,
+              background: juicio === 'NO_APROBADO' ? 'var(--fx-atraso-suave)' : 'var(--fx-superficie)',
+              color: juicio === 'NO_APROBADO' ? 'var(--fx-atraso)' : 'var(--fx-tinta-2)', fontWeight: 600, fontSize: 13,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}><Ic n="x" s={15}/>No aprobado</button>
           </div>
@@ -1120,7 +1120,7 @@ function EvaluacionForm({ etapa, etapaId, visitas, requiereJefe, evaluacion, fir
         <FirmasCaptura requiereJefe={requiereJefe} value={firmas} onChange={setFirmas} fuente={firmaFuente}/>
       )}
 
-      {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
+      {err && <div style={{ fontSize: 12, color: 'var(--fx-atraso)' }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
         <Btn variant="secondary" onClick={onCancel} disabled={busy}>Cancelar</Btn>
         <Btn variant="accent" icon="check" disabled={busy} onClick={() => void guardar()}>

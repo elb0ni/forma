@@ -35,7 +35,7 @@ export function Integridad() {
       <div className="tab-bar int-tabs">
         {TABS.map(t => (
           <button key={t.id} onClick={() => ir(t.id)} className={`tab-btn${actual === t.id ? ' tab-btn--active' : ' tab-btn--inactive'}`}>
-            <Ic n={t.icon} s={14} style={{ color: actual === t.id ? '#0a0a0b' : '#a1a1aa' }}/>
+            <Ic n={t.icon} s={14} style={{ color: actual === t.id ? 'var(--fx-tinta)' : 'var(--fx-tinta-4)' }}/>
             {t.label}
           </button>
         ))}

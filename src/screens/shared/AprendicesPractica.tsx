@@ -6,7 +6,7 @@ import type { AnclaPopover } from './ProgresoPractica'
 
 // ─── Tipos y helpers compartidos entre la vista de coordinador/admin
 // (FichasAdmin) y la del instructor (InstFichas) para el roster de
-// aprendices de una ficha en etapa práctica -- viene de
+// aprendices de una ficha en etapa productiva -- viene de
 // GET /fichas/:id/detalle (campo `aprendices`), sin restricción de
 // rol en el backend.
 
@@ -32,7 +32,7 @@ export const MODALIDAD_LABEL: Record<string, string> = {
   UNIDAD_PRODUCTIVA: 'Unidad productiva',
 }
 
-// ─── Los 5 casos del aprendiz en etapa práctica ─────────────────────────────
+// ─── Los 5 casos del aprendiz en etapa productiva ─────────────────────────────
 // El backend (ficha.service.ts::casoAprendizPractica) ya clasifica cada
 // aprendiz en uno de estos 5 casos cruzando el último reporte de juicios de
 // SofiaPlus con su etapa_productiva. Acá los etiquetamos y los mostramos SIEMPRE
@@ -62,23 +62,23 @@ export const CASO_META: Record<CasoAprendizPractica, {
   label: string; tone: CasoTone; color: string; icon: IcName; hint: string
 }> = {
   EN_CURSO: {
-    label: 'Con seguimiento', tone: 'accent', color: '#4f46e5', icon: 'briefcase',
+    label: 'Con seguimiento', tone: 'accent', color: 'var(--fx-morado)', icon: 'briefcase',
     hint: 'Con alternativa y juicios al día (9/10). Necesita seguimiento.',
   },
   CONCLUIDA: {
-    label: 'Por certificar', tone: 'ok', color: '#16a34a', icon: 'checkCircle',
+    label: 'Por certificar', tone: 'ok', color: 'var(--fx-ok)', icon: 'checkCircle',
     hint: 'Juicios en 10/10. Solo falta certificar en SENA Sofia.',
   },
   TERMINADA_SIN_JUICIO: {
-    label: 'Falta juicio final', tone: 'blue', color: '#0891b2', icon: 'clock',
+    label: 'Falta juicio final', tone: 'blue', color: 'var(--fx-info)', icon: 'clock',
     hint: 'Ya terminó la práctica; Sofia aún no carga el juicio 10/10.',
   },
   LISTO_PARA_INICIAR: {
-    label: 'Puede iniciar', tone: 'warn', color: '#d97706', icon: 'target',
+    label: 'Puede iniciar', tone: 'warn', color: 'var(--fx-aviso)', icon: 'target',
     hint: 'Juicios 9/10 pero no ha elegido alternativa. Ya puede empezar.',
   },
   SIN_ALTERNATIVA: {
-    label: 'Crítico', tone: 'err', color: '#dc2626', icon: 'alert',
+    label: 'Crítico', tone: 'err', color: 'var(--fx-atraso)', icon: 'alert',
     hint: 'Le falta más de un juicio y no tiene alternativa ni cómo asignarla.',
   },
 }
@@ -128,7 +128,7 @@ export function casoBadge(r: AprendizPractica): { label: string; tone: CasoTone 
 function CasosAyudaModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Los 5 casos del aprendiz en práctica" icon="info" width={460} onClose={onClose}>
-      <div style={{ fontSize: 12, color: '#71717a', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: 'var(--fx-tinta-3)', marginBottom: 12 }}>
         El backend clasifica a cada aprendiz cruzando su reporte de juicios de SENA Sofia con su
         etapa productiva. En la tabla y la barra sólo se muestra "Caso N"; acá está qué es cada uno.
       </div>
@@ -139,7 +139,7 @@ function CasosAyudaModal({ onClose }: { onClose: () => void }) {
             key={c}
             style={{
               display: 'flex', gap: 11, padding: '11px 0',
-              borderTop: i === 0 ? 'none' : '1px solid #f1f1f3',
+              borderTop: i === 0 ? 'none' : '1px solid var(--fx-superficie-2)',
             }}
           >
             <div style={{ width: 26, flexShrink: 0, display: 'flex', justifyContent: 'center', paddingTop: 1 }}>
@@ -148,10 +148,10 @@ function CasosAyudaModal({ onClose }: { onClose: () => void }) {
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                 <Ic n={m.icon} s={13} style={{ color: m.color }}/>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0a0a0b' }}>Caso {CASO_NUM[c]}</span>
-                <span style={{ fontSize: 12, color: '#52525b' }}>· {m.label}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--fx-tinta)' }}>Caso {CASO_NUM[c]}</span>
+                <span style={{ fontSize: 12, color: 'var(--fx-tinta-2)' }}>· {m.label}</span>
               </div>
-              <div style={{ fontSize: 12, color: '#71717a', lineHeight: 1.45, marginTop: 3 }}>{m.hint}</div>
+              <div style={{ fontSize: 12, color: 'var(--fx-tinta-3)', lineHeight: 1.45, marginTop: 3 }}>{m.hint}</div>
             </div>
           </div>
         )
@@ -191,15 +191,15 @@ export function EstadoAprendicesResumen({ kpi }: { kpi: KpiAprendicesPractica })
     <Card style={{ padding: 16, marginBottom: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: total > 0 ? 12 : 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>Aprendices</span>
-          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#52525b' }}>{total}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)' }}>Aprendices</span>
+          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: 'var(--fx-tinta-2)' }}>{total}</span>
         </div>
         <button
           onClick={() => setAyuda(true)}
           aria-label="Qué significa cada caso"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 8px',
-            border: '1px solid #e4e4e7', borderRadius: 7, background: '#fff', color: '#52525b',
+            border: '1px solid var(--fx-linea)', borderRadius: 7, background: 'var(--fx-superficie)', color: 'var(--fx-tinta-2)',
             fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
           }}
         >
@@ -209,7 +209,7 @@ export function EstadoAprendicesResumen({ kpi }: { kpi: KpiAprendicesPractica })
 
       {total > 0 && (
         <>
-          <div style={{ display: 'flex', height: 8, borderRadius: 5, overflow: 'hidden', gap: 2, marginBottom: 14, background: '#f4f4f5' }}>
+          <div style={{ display: 'flex', height: 8, borderRadius: 5, overflow: 'hidden', gap: 2, marginBottom: 14, background: 'var(--fx-superficie-2)' }}>
             {conValor.map(x => (
               <div key={x.c} style={{ flex: x.n, background: x.m.color, minWidth: 4 }}/>
             ))}
@@ -222,8 +222,8 @@ export function EstadoAprendicesResumen({ kpi }: { kpi: KpiAprendicesPractica })
                 style={{ display: 'flex', gap: 7, alignItems: 'center', opacity: n === 0 ? 0.4 : 1 }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: m.color, flexShrink: 0 }}/>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#18181b' }}>{casoNombre(c)}</span>
-                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#52525b' }}>{n}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fx-tinta)' }}>{casoNombre(c)}</span>
+                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: 'var(--fx-tinta-2)' }}>{n}</span>
               </div>
             ))}
           </div>
@@ -250,7 +250,7 @@ function fdISO(s: string | null): string {
 const TH_S = { padding: '10px 14px', textAlign: 'left' as const, fontWeight: 600 }
 const TD_S = { padding: '12px 14px' }
 
-// Roster de aprendices de una ficha en etapa práctica: reemplaza la lista de
+// Roster de aprendices de una ficha en etapa productiva: reemplaza la lista de
 // competencias (que deja de aplicar una vez cerrada la etapa lectiva).
 // Cruza el reporte de juicios de SofiaPlus con la etapa_productiva de cada
 // aprendiz (si ya eligió alternativa) y lo agrupa por los 5 estados de práctica
@@ -285,7 +285,7 @@ export function AprendicesPracticaTable({ aprendices: aprendicesProp, onOpen, so
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)' }}>
           Aprendices · {aprendices.length}
         </div>
       </div>
@@ -293,9 +293,9 @@ export function AprendicesPracticaTable({ aprendices: aprendicesProp, onOpen, so
       {aprendices.length === 0 ? (
         <Card>
           <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <Ic n="fileText" s={26} style={{ color: '#a1a1aa' }}/>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>Sin reporte de juicios</div>
-            <div style={{ fontSize: 12.5, color: '#71717a', textAlign: 'center' }}>Todavía no se ha cargado un reporte de avance de juicios para esta ficha.</div>
+            <Ic n="fileText" s={26} style={{ color: 'var(--fx-tinta-4)' }}/>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>Sin reporte de juicios</div>
+            <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', textAlign: 'center' }}>Todavía no se ha cargado un reporte de avance de juicios para esta ficha.</div>
           </div>
         </Card>
       ) : (
@@ -303,7 +303,7 @@ export function AprendicesPracticaTable({ aprendices: aprendicesProp, onOpen, so
           <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
-              <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
+              <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', borderBottom: '1px solid var(--fx-linea)' }}>
                 <th style={TH_S}>Aprendiz</th>
                 <th style={TH_S}>Estado</th>
                 <th style={TH_S}>Alternativa</th>
@@ -322,11 +322,11 @@ export function AprendicesPracticaTable({ aprendices: aprendicesProp, onOpen, so
                 <Fragment key={a.numero_documento}>
                   {nuevoGrupo && (
                     <tr>
-                      <td colSpan={cols} style={{ padding: '12px 14px 7px', background: '#fbfbfc', borderTop: i === 0 ? 'none' : '2px solid #ececef' }}>
+                      <td colSpan={cols} style={{ padding: '12px 14px 7px', background: 'var(--fx-superficie-1)', borderTop: i === 0 ? 'none' : '2px solid var(--fx-linea)' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <Ic n={gm.icon} s={13} style={{ color: gm.color }}/>
                           <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: gm.color }}>{casoNombre(a.caso)}</span>
-                          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600, color: '#a1a1aa' }}>{conteoPorCaso(a.caso)}</span>
+                          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600, color: 'var(--fx-tinta-4)' }}>{conteoPorCaso(a.caso)}</span>
                         </div>
                       </td>
                     </tr>
@@ -336,36 +336,36 @@ export function AprendicesPracticaTable({ aprendices: aprendicesProp, onOpen, so
                     onMouseEnter={e => entrar(a, e.currentTarget)}
                     onMouseLeave={cerrar}
                     className={clicable ? 'nx-row' : undefined}
-                    style={{ borderBottom: i < aprendices.length - 1 ? '1px solid #f1f1f3' : 'none', cursor: clicable ? 'pointer' : 'default' }}
+                    style={{ borderBottom: i < aprendices.length - 1 ? '1px solid var(--fx-superficie-2)' : 'none', cursor: clicable ? 'pointer' : 'default' }}
                   >
                     <td style={TD_S}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <Ava name={a.nombre_completo} size={22}/>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{a.nombre_completo}</div>
-                          <div style={{ fontSize: 10.5, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>{a.tipo_documento} {a.numero_documento}</div>
+                          <div style={{ color: 'var(--fx-tinta)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{a.nombre_completo}</div>
+                          <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-3)', fontFamily: '"JetBrains Mono", monospace' }}>{a.tipo_documento} {a.numero_documento}</div>
                         </div>
                       </div>
                     </td>
                     <td style={TD_S}><Bdg tone={badge.tone}>{badge.label}</Bdg></td>
                     <td style={TD_S}>
                       {a.modalidad
-                        ? <span style={{ fontSize: 12, color: '#3f3f46' }}>{MODALIDAD_LABEL[a.modalidad] ?? a.modalidad}</span>
-                        : <span style={{ fontSize: 11.5, color: '#a1a1aa' }}>Sin elegir</span>}
+                        ? <span style={{ fontSize: 12, color: 'var(--fx-tinta-2)' }}>{MODALIDAD_LABEL[a.modalidad] ?? a.modalidad}</span>
+                        : <span style={{ fontSize: 11.5, color: 'var(--fx-tinta-4)' }}>Sin elegir</span>}
                     </td>
                     <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
-                      <span style={{ fontFamily: '"JetBrains Mono", monospace', color: '#15803d' }}>{a.ra_aprobados ?? '—'}/{a.total_ra ?? '—'}</span>
+                      <span style={{ fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-ok)' }}>{a.ra_aprobados ?? '—'}/{a.total_ra ?? '—'}</span>
                       {(a.ra_no_aprobados ?? 0) > 0 && (
-                        <span style={{ fontSize: 11, color: '#b91c1c', marginLeft: 8 }} title="Resultados de aprendizaje no aprobados">· {a.ra_no_aprobados} no aprob.</span>
+                        <span style={{ fontSize: 11, color: 'var(--fx-atraso)', marginLeft: 8 }} title="Resultados de aprendizaje no aprobados">· {a.ra_no_aprobados} no aprob.</span>
                       )}
                     </td>
-                    <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: '#52525b', whiteSpace: 'nowrap' }}>{fdISO(a.fecha_reporte)}</td>
+                    <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: 'var(--fx-tinta-2)', whiteSpace: 'nowrap' }}>{fdISO(a.fecha_reporte)}</td>
                     {onOpen && (
                       <td style={{ ...TD_S, textAlign: 'right', whiteSpace: 'nowrap', width: 1 }}>
                         {clicable && a.etapa_id
-                          ? <span title="Ver seguimientos" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, color: '#4f46e5' }}>Ver <Ic n="chevronRight" s={13}/></span>
+                          ? <span title="Ver seguimientos" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, color: 'var(--fx-morado)' }}>Ver <Ic n="chevronRight" s={13}/></span>
                           : soloConEtapa
-                            ? <span style={{ fontSize: 11, color: '#c4c4c8' }}>Sin etapa</span>
+                            ? <span style={{ fontSize: 11, color: 'var(--fx-linea-2)' }}>Sin etapa</span>
                             : null}
                       </td>
                     )}

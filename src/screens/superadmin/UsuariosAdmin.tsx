@@ -71,7 +71,7 @@ type UsuarioModal =
   | { kind: 'reset';      u: UsuarioRow }
   | { kind: 'reset-done'; u: UsuarioRow; password: string }
 
-function IconBtn({ icon, title, onClick, color = '#71717a' }: {
+function IconBtn({ icon, title, onClick, color = 'var(--fx-tinta-3)' }: {
   icon: 'edit' | 'key' | 'x' | 'check' | 'eye' | 'fileText'; title: string; onClick: () => void; color?: string
 }) {
   return (
@@ -89,11 +89,11 @@ function CopyField({ value }: { value: string }) {
   "use no memo"
   const [copied, setCopied] = useState(false)
   return (
-    <div style={{ display: 'flex', gap: 8, background: '#fff', border: '1px solid #c7d2fe', borderRadius: 6, padding: '8px 10px', alignItems: 'center' }}>
-      <code style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 14, fontWeight: 600, color: '#0a0a0b', flex: 1 }}>{value}</code>
+    <div style={{ display: 'flex', gap: 8, background: 'var(--fx-superficie)', border: '1px solid var(--fx-morado-linea)', borderRadius: 6, padding: '8px 10px', alignItems: 'center' }}>
+      <code style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 14, fontWeight: 600, color: 'var(--fx-tinta)', flex: 1 }}>{value}</code>
       <button
         onClick={() => { try { navigator.clipboard?.writeText(value) } catch { /* noop */ } setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#71717a', padding: 4 }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fx-tinta-3)', padding: 4 }}
         aria-label="Copiar"
       >
         <Ic n={copied ? 'check' : 'copy'} s={15}/>
@@ -125,10 +125,10 @@ type Vista = 'instructores' | 'equipo' | 'aprendices'
 type Semaforo = 'ACTIVO' | 'TIBIO' | 'INACTIVO' | 'NUNCA_ENTRO'
 
 const SEMAFORO: Record<Semaforo, { label: string; color: string; sub: string }> = {
-  ACTIVO:      { label: 'Activo',      color: '#16a34a', sub: 'Entra y registra seguimientos' },
-  TIBIO:       { label: 'Tibio',       color: '#f59e0b', sub: 'Entra, pero no registra hace más de 2 semanas' },
-  INACTIVO:    { label: 'Inactivo',    color: '#e11d48', sub: 'No entra hace un mes o tiene aprendices sin registros' },
-  NUNCA_ENTRO: { label: 'Nunca entró', color: '#a1a1aa', sub: 'Todavía no ha iniciado sesión' },
+  ACTIVO:      { label: 'Activo',      color: 'var(--fx-ok)', sub: 'Entra y registra seguimientos' },
+  TIBIO:       { label: 'Tibio',       color: 'var(--fx-aviso)', sub: 'Entra, pero no registra hace más de 2 semanas' },
+  INACTIVO:    { label: 'Inactivo',    color: 'var(--fx-atraso)', sub: 'No entra hace un mes o tiene aprendices sin registros' },
+  NUNCA_ENTRO: { label: 'Nunca entró', color: 'var(--fx-tinta-4)', sub: 'Todavía no ha iniciado sesión' },
 }
 
 interface Resumen {
@@ -167,7 +167,7 @@ function AnilloMini({ valor, total, color }: { valor: number; total: number; col
   const r = 26, c = 2 * Math.PI * r, p = total ? valor / total : 0
   return (
     <svg width={64} height={64} viewBox="0 0 64 64" className="us-anillo" aria-hidden>
-      <circle cx={32} cy={32} r={r} fill="none" stroke="#eef0f5" strokeWidth={7}/>
+      <circle cx={32} cy={32} r={r} fill="none" stroke="var(--fx-linea)" strokeWidth={7}/>
       <circle cx={32} cy={32} r={r} fill="none" stroke={color} strokeWidth={7} strokeLinecap="round"
         strokeDasharray={c} strokeDashoffset={listo ? c * (1 - p) : c} transform="rotate(-90 32 32)"/>
       <text x={32} y={36} textAnchor="middle">{Math.round(p * 100)}%</text>
@@ -180,7 +180,7 @@ function Pulso({ r }: { r: Resumen }) {
   return (
     <div className="us-pulso">
       <div className="us-pulso__card" style={{ animationDelay: '0ms' }}>
-        <AnilloMini valor={r.instructores.entraron} total={r.instructores.total} color="#6366f1"/>
+        <AnilloMini valor={r.instructores.entraron} total={r.instructores.total} color="var(--fx-morado)"/>
         <div>
           <div className="us-pulso__titulo">Instructores que han entrado</div>
           <div className="us-pulso__valor">{num(r.instructores.entraron)} <small>de {num(r.instructores.total)}</small></div>
@@ -188,7 +188,7 @@ function Pulso({ r }: { r: Resumen }) {
         </div>
       </div>
       <div className="us-pulso__card" style={{ animationDelay: '70ms' }}>
-        <AnilloMini valor={r.coordinadores.entraron} total={r.coordinadores.total} color="#0ea5a4"/>
+        <AnilloMini valor={r.coordinadores.entraron} total={r.coordinadores.total} color="var(--fx-info)"/>
         <div>
           <div className="us-pulso__titulo">Coordinadores que han entrado</div>
           <div className="us-pulso__valor">{num(r.coordinadores.entraron)} <small>de {num(r.coordinadores.total)}</small></div>
@@ -309,14 +309,14 @@ function UsuariosList() {
   const acciones = (u: UsuarioRow) => (
     <div className="us-acciones" onClick={e => e.stopPropagation()}>
       {u.rol === 'INSTRUCTOR' && avance.has(u.id) &&
-        <IconBtn icon="eye" title="Ver sus aprendices" color="#4f46e5" onClick={() => { setParams({ vista: 'aprendices', instructor: u.id }); setPage(0) }}/>}
+        <IconBtn icon="eye" title="Ver sus aprendices" color="var(--fx-morado)" onClick={() => { setParams({ vista: 'aprendices', instructor: u.id }); setPage(0) }}/>}
       {(u.rol === 'INSTRUCTOR' || u.rol === 'COORD_ACADEMICO') &&
-        <IconBtn icon="fileText" title="Firma" color="#7c3aed" onClick={() => setFirmaUser(u)}/>}
+        <IconBtn icon="fileText" title="Firma" color="var(--fx-morado)" onClick={() => setFirmaUser(u)}/>}
       <IconBtn icon="edit" title="Editar" onClick={() => navigate(`${u.id}/editar`, { relative: 'path' })}/>
       <IconBtn icon="key" title="Restablecer contraseña" onClick={() => { setActionError(null); setModal({ kind: 'reset', u }) }}/>
       {isActivo(u)
-        ? <IconBtn icon="x" title="Desactivar" color="#b91c1c" onClick={() => { setActionError(null); setModal({ kind: 'desactivar', u }) }}/>
-        : <IconBtn icon="check" title="Activar" color="#15803d" onClick={() => { setActionError(null); setModal({ kind: 'activar', u }) }}/>}
+        ? <IconBtn icon="x" title="Desactivar" color="var(--fx-atraso)" onClick={() => { setActionError(null); setModal({ kind: 'desactivar', u }) }}/>
+        : <IconBtn icon="check" title="Activar" color="var(--fx-ok)" onClick={() => { setActionError(null); setModal({ kind: 'activar', u }) }}/>}
     </div>
   )
 
@@ -481,7 +481,7 @@ function UsuariosList() {
                       <span>última conexión</span>
                     </div>
                     {activo
-                      ? <span className="us-sem-chip" style={{ '--c': '#16a34a' } as CSSProperties}><i/>Activo</span>
+                      ? <span className="us-sem-chip" style={{ '--c': 'var(--fx-ok)' } as CSSProperties}><i/>Activo</span>
                       : <span className="us-sem-chip us-sem-chip--off">Desactivado</span>}
                     {acciones(u)}
                   </div>

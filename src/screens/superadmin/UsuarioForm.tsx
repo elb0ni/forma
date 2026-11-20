@@ -52,10 +52,10 @@ function Field({ label, hint, required, full, children }: {
   return (
     <div style={full ? { gridColumn: '1 / -1' } : undefined}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#27272a' }}>
-          {label}{required && <span style={{ color: '#b91c1c' }}> *</span>}
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)' }}>
+          {label}{required && <span style={{ color: 'var(--fx-atraso)' }}> *</span>}
         </span>
-        {hint && <span style={{ fontSize: 11, color: '#71717a' }}>{hint}</span>}
+        {hint && <span style={{ fontSize: 11, color: 'var(--fx-tinta-3)' }}>{hint}</span>}
       </div>
       {children}
     </div>
@@ -67,7 +67,7 @@ function Seg({ name, value, onChange, options }: {
   options: { value: string; label: string; icon?: 'user' | 'target' | 'shield' }[]
 }) {
   return (
-    <div className="seg" style={{ display: 'inline-flex', padding: 2, background: '#f1f1f3', borderRadius: 8, border: '1px solid #e4e4e7' }}>
+    <div className="seg" style={{ display: 'inline-flex', padding: 2, background: 'var(--fx-superficie-2)', borderRadius: 8, border: '1px solid var(--fx-linea)' }}>
       {options.map(o => (
         <Fragment key={o.value}>
           <input type="radio" name={name} id={`${name}-${o.value}`} checked={value === o.value} onChange={() => onChange(o.value)}/>
@@ -183,15 +183,15 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
     <div style={{ maxWidth: 960, paddingBottom: 48 }}>
       <button
         onClick={onCancel}
-        style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center' }}
+        style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center' }}
       >
         <Ic n="arrowLeft" s={14}/>Usuarios
       </button>
 
-      <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)', marginBottom: 4 }}>
         {editando ? 'Editar usuario' : 'Crear usuario'}
       </h2>
-      <div style={{ fontSize: 13, color: '#52525b', marginBottom: 24 }}>
+      <div style={{ fontSize: 13, color: 'var(--fx-tinta-2)', marginBottom: 24 }}>
         {editando ? 'Actualiza los datos y la asignación del usuario.' : 'Se generará una contraseña temporal.'}
       </div>
 
@@ -199,7 +199,7 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
         {/* Columna principal */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card style={{ padding: 24 }}>
-            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 16 }}>
+            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, marginBottom: 16 }}>
               Información personal
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -219,8 +219,8 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
               </Field>
             </div>
 
-            <div style={{ borderTop: '1px solid #e4e4e7', marginTop: 20, paddingTop: 20 }}>
-              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 16 }}>
+            <div style={{ borderTop: '1px solid var(--fx-linea)', marginTop: 20, paddingTop: 20 }}>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, marginBottom: 16 }}>
                 Asignación
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -256,9 +256,9 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
           </Card>
 
           {error && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 14px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8 }}>
-              <Ic n="alert" s={15} style={{ color: '#b91c1c', flexShrink: 0 }}/>
-              <span style={{ fontSize: 12.5, color: '#b91c1c' }}>{error}</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 14px', background: 'var(--fx-atraso-suave)', border: '1px solid var(--fx-atraso-linea)', borderRadius: 8 }}>
+              <Ic n="alert" s={15} style={{ color: 'var(--fx-atraso)', flexShrink: 0 }}/>
+              <span style={{ fontSize: 12.5, color: 'var(--fx-atraso)' }}>{error}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -272,19 +272,19 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
         {/* Columna lateral */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {!editando && (
-            <Card style={{ padding: 20, background: 'rgba(238,242,255,.7)', border: '1px solid #c7d2fe' }}>
+            <Card style={{ padding: 20, background: 'var(--fx-morado-suave)', border: '1px solid var(--fx-morado-linea)' }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                <Ic n="key" s={15} style={{ color: '#312e81' }}/>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#312e81' }}>Contraseña temporal</div>
+                <Ic n="key" s={15} style={{ color: 'var(--fx-morado-tinta)' }}/>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fx-morado-tinta)' }}>Contraseña temporal</div>
               </div>
-              <div style={{ fontSize: 11.5, color: '#312e81', opacity: 0.8, marginBottom: 10 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--fx-morado-tinta)', opacity: 0.8, marginBottom: 10 }}>
                 El usuario debe cambiarla en su primer acceso.
               </div>
-              <div style={{ display: 'flex', gap: 8, background: '#fff', border: '1px solid #c7d2fe', borderRadius: 6, padding: '6px 10px', alignItems: 'center' }}>
-                <code style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 14, fontWeight: 600, color: '#0a0a0b', flex: 1 }}>{password}</code>
+              <div style={{ display: 'flex', gap: 8, background: 'var(--fx-superficie)', border: '1px solid var(--fx-morado-linea)', borderRadius: 6, padding: '6px 10px', alignItems: 'center' }}>
+                <code style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 14, fontWeight: 600, color: 'var(--fx-tinta)', flex: 1 }}>{password}</code>
                 <button
                   onClick={() => { try { navigator.clipboard?.writeText(password) } catch { /* noop */ } setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#71717a', padding: 4 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fx-tinta-3)', padding: 4 }}
                 >
                   <Ic n={copied ? 'check' : 'copy'} s={14}/>
                 </button>
@@ -293,12 +293,12 @@ export function UsuarioForm({ usuario, onCancel, onSaved }: {
           )}
 
           <Card style={{ padding: 20 }}>
-            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 12 }}>
+            <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, marginBottom: 12 }}>
               Permisos del rol
             </div>
             {permisos.map(([l, on]) => (
-              <div key={l} style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 12.5, color: on ? '#18181b' : '#71717a' }}>
-                <Ic n={on ? 'check' : 'x'} s={13} style={{ color: on ? '#15803d' : '#a1a1aa', flexShrink: 0, marginTop: 1 }}/>
+              <div key={l} style={{ display: 'flex', gap: 8, marginBottom: 8, fontSize: 12.5, color: on ? 'var(--fx-tinta)' : 'var(--fx-tinta-3)' }}>
+                <Ic n={on ? 'check' : 'x'} s={13} style={{ color: on ? 'var(--fx-ok)' : 'var(--fx-tinta-4)', flexShrink: 0, marginTop: 1 }}/>
                 {l}
               </div>
             ))}

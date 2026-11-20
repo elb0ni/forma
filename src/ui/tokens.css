@@ -1,83 +1,100 @@
 /* ─── Sistema visual de FORMA (rediseño) ──────────────────────────────────────
-   Todo color del rediseño sale de aquí. Paleta cálida (papel y grafito) con el
-   morado de la marca en versión amigable, y estados apagados que siempre van
-   acompañados de una forma y una palabra.
+   Todo color del rediseño sale de aquí. Blanco con el morado de FORMA (el del
+   login), grises fríos y estados limpios sin café, que siempre van
+   acompañados de una forma y una palabra (PLAN_REDISENO, versión 3).
 
-   Las pantallas nuevas se envuelven en <Lienzo> (data-ui="nuevo"). Mientras el
-   resto de la app use el modo oscuro por inversión (index.css), ese contenedor
-   deshace la inversión y aplica la paleta oscura real de abajo. */
+   Toda la app usa estos tokens; ningún color se escribe a mano (lo cuida el
+   lint). El modo oscuro cambia los valores, no invierte la pantalla. */
 
-[data-ui='nuevo'] {
-  --fx-bg: #f7f5f1;
+/* Los tokens valen para toda la app (:root); el lienzo nuevo agrega el halo. */
+:root, [data-ui='nuevo'] {
+  --fx-bg: #ffffff;
   --fx-superficie: #ffffff;
-  --fx-superficie-2: #f2eee7;
-  --fx-tinta: #26221e;
-  --fx-tinta-2: #5d564e;
-  --fx-tinta-3: #8b8379;
-  --fx-linea: #e7e1d7;
-  --fx-linea-2: #d4ccbf;
+  --fx-superficie-1: #fafafb;
+  --fx-superficie-2: #f4f4f6;
+  --fx-tinta: #18181b;
+  --fx-tinta-2: #52525b;
+  --fx-tinta-3: #71717a;
+  --fx-tinta-4: #a1a1aa;
+  --fx-linea: #e8e8ec;
+  --fx-linea-2: #d9d9e0;
 
-  --fx-morado: #6c5ccf;
-  --fx-morado-tinta: #4d409f;
-  --fx-morado-suave: #eeebfa;
-  --fx-morado-linea: #cfc8f2;
+  /* morado FORMA (el del login) */
+  --fx-morado: #7c3aed;
+  --fx-morado-tinta: #6d28d9;
+  --fx-morado-suave: #f5f3ff;
+  --fx-morado-linea: #ddd6fe;
   --fx-sobre-morado: #ffffff;
+  --fx-halo: rgba(124, 58, 237, 0.07);
 
-  --fx-ok: #4f7d4a;
-  --fx-ok-suave: #e8f0e4;
-  --fx-aviso: #8f6a22;
-  --fx-aviso-suave: #f6eedb;
-  --fx-atraso: #9c4a37;
-  --fx-atraso-suave: #f7e6e0;
-  --fx-info: #46707e;
-  --fx-info-suave: #e3eef1;
+  /* estados limpios, sin café */
+  --fx-ok: #079455;
+  --fx-ok-suave: #ecfdf3;
+  --fx-ok-linea: #abefc6;
+  --fx-aviso: #dc6803;
+  --fx-aviso-suave: #fffaeb;
+  --fx-aviso-linea: #fedf89;
+  --fx-atraso: #d92d20;
+  --fx-atraso-suave: #fef3f2;
+  --fx-atraso-linea: #fecdca;
+  --fx-info: #1570ef;
+  --fx-info-suave: #eff8ff;
+  --fx-info-linea: #b2ddff;
 
-  --fx-sombra: 0 1px 2px rgba(38, 34, 30, 0.05), 0 8px 24px -16px rgba(38, 34, 30, 0.18);
+  --fx-sombra: 0 1px 2px rgba(24, 24, 27, 0.04), 0 8px 24px -18px rgba(24, 24, 27, 0.16);
   --fx-radio: 10px;
   --fx-radio-chico: 6px;
 
   --fx-letra: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --fx-letra-num: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  background: var(--fx-bg);
-  color: var(--fx-tinta);
-  font-family: var(--fx-letra);
   color-scheme: light;
 }
 
-html[data-theme='dark'] [data-ui='nuevo'] {
-  /* deshace la inversión global de index.css */
-  filter: invert(1) hue-rotate(180deg);
-  --fx-bg: #191715;
-  --fx-superficie: #211e1b;
-  --fx-superficie-2: #2a2622;
-  --fx-tinta: #ede8e1;
-  --fx-tinta-2: #bcb3a8;
-  --fx-tinta-3: #8e867b;
-  --fx-linea: #35302a;
-  --fx-linea-2: #4a433b;
+[data-ui='nuevo'] {
+  /* fondo B: blanco con un halo morado muy suave arriba */
+  background:
+    radial-gradient(1100px 280px at 50% -140px, var(--fx-halo), transparent 70%),
+    var(--fx-bg);
+  color: var(--fx-tinta);
+  font-family: var(--fx-letra);
+}
 
-  --fx-morado: #a497ef;
-  --fx-morado-tinta: #cbc2ff;
-  --fx-morado-suave: #2c2745;
-  --fx-morado-linea: #4a4280;
-  --fx-sobre-morado: #191715;
+/* Modo oscuro real: los mismos nombres con otros valores (sin invertir nada). */
+html[data-theme='dark'], html[data-theme='dark'] [data-ui='nuevo'] {
+  --fx-bg: #0f0f12;
+  --fx-superficie: #17171b;
+  --fx-superficie-1: #1a1a1f;
+  --fx-superficie-2: #1f1f24;
+  --fx-tinta: #f4f4f5;
+  --fx-tinta-2: #b4b4bd;
+  --fx-tinta-3: #85858f;
+  --fx-tinta-4: #63636c;
+  --fx-linea: #2a2a31;
+  --fx-linea-2: #3a3a43;
 
-  --fx-ok: #8fbd88;
-  --fx-ok-suave: #23301f;
-  --fx-aviso: #d6ad5c;
-  --fx-aviso-suave: #352b18;
-  --fx-atraso: #e08f7b;
-  --fx-atraso-suave: #3a231d;
-  --fx-info: #8cbccb;
-  --fx-info-suave: #1d2e33;
+  --fx-morado: #a78bfa;
+  --fx-morado-tinta: #c4b5fd;
+  --fx-morado-suave: #221a3d;
+  --fx-morado-linea: #4c3a8a;
+  --fx-sobre-morado: #0f0f12;
+  --fx-halo: rgba(167, 139, 250, 0.12);
+
+  --fx-ok: #47cd89;
+  --fx-ok-suave: #0b2a1c;
+  --fx-ok-linea: #145a3a;
+  --fx-aviso: #fdb022;
+  --fx-aviso-suave: #2e2008;
+  --fx-aviso-linea: #5c4110;
+  --fx-atraso: #f97066;
+  --fx-atraso-suave: #3a1512;
+  --fx-atraso-linea: #6e2a24;
+  --fx-info: #53b1fd;
+  --fx-info-suave: #0b2440;
+  --fx-info-linea: #1a4a7a;
 
   --fx-sombra: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px -16px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
-/* las imágenes dentro del lienzo ya no necesitan re-invertirse */
-html[data-theme='dark'] [data-ui='nuevo'] img,
-html[data-theme='dark'] [data-ui='nuevo'] canvas,
-html[data-theme='dark'] [data-ui='nuevo'] video {
-  filter: none;
-}
+/* Las firmas son trazos oscuros sobre transparente: en oscuro necesitan papel. */
+html[data-theme='dark'] img[src^='data:image'] { background: #ffffff; border-radius: 4px; }

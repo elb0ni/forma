@@ -37,8 +37,8 @@ export function faseFicha(f: {
 export const FASE_META: Record<FaseFicha, {
   label: string; icon: IcName; fg: string; bg: string; bd: string; dot: string
 }> = {
-  PROXIMA:     { label: 'Próxima a práctica', icon: 'calendar',    fg: '#3730a3', bg: '#eef2ff', bd: '#c7d2fe', dot: '#6366f1' },
-  EN_PRACTICA: { label: 'En práctica',        icon: 'briefcase',   fg: '#4338ca', bg: '#e0e7ff', bd: '#a5b4fc', dot: '#4f46e5' },
-  EN_CIERRE:   { label: 'En cierre',          icon: 'clock',       fg: '#a16207', bg: '#fef9c3', bd: '#fde68a', dot: '#ca8a04' },
-  FINALIZADA:  { label: 'Finalizada',         icon: 'checkCircle', fg: '#52525b', bg: '#f1f1f3', bd: '#e4e4e7', dot: '#a1a1aa' },
+  PROXIMA:     { label: 'Próxima a práctica', icon: 'calendar',    fg: 'var(--fx-morado-tinta)', bg: 'var(--fx-morado-suave)', bd: 'var(--fx-morado-linea)', dot: 'var(--fx-morado)' },
+  EN_PRACTICA: { label: 'En práctica',        icon: 'briefcase',   fg: 'var(--fx-morado-tinta)', bg: 'var(--fx-morado-suave)', bd: 'var(--fx-morado-linea)', dot: 'var(--fx-morado)' },
+  EN_CIERRE:   { label: 'En cierre',          icon: 'clock',       fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)', bd: 'var(--fx-aviso-linea)', dot: 'var(--fx-aviso)' },
+  FINALIZADA:  { label: 'Finalizada',         icon: 'checkCircle', fg: 'var(--fx-tinta-2)', bg: 'var(--fx-superficie-2)', bd: 'var(--fx-linea)', dot: 'var(--fx-tinta-4)' },
 }

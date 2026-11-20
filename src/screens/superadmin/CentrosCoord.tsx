@@ -27,19 +27,11 @@ function Sk({ w, h, r = 5, delay = 0 }: { w: string | number; h: number; r?: num
 const plural = (n: number, sing: string, plur = sing + 's') => `${n} ${n === 1 ? sing : plur}`
 
 // ─── Card de centro (rail izquierdo) ─────────────────────────────────────────
-function CentroCard({ c, tone, escala, active, onClick }: {
-  c: CentroResumen; tone: string; escala: number; active: boolean; onClick: () => void
+// Tarjeta de catálogo (v3): qué es el centro y cómo está armado. Las cifras
+// de seguimiento (fichas en práctica, sin instructor…) viven solo en Inicio.
+function CentroCard({ c, tone, active, onClick }: {
+  c: CentroResumen; tone: string; escala?: number; active: boolean; onClick: () => void
 }) {
-  const enPractica = c.fichas_en_practica
-  const conInstr   = enPractica - c.fichas_sin_instructor
-  const cobertura  = enPractica > 0 ? Math.round((conInstr / enPractica) * 100) : 0
-  // La barra = qué parte del total de fichas en práctica de la regional lleva
-  // este centro (por eso es dinámica); el color señala la cobertura de instructor.
-  const share  = enPractica > 0 ? Math.round((enPractica / escala) * 100) : 0
-  const barPct = enPractica > 0 ? Math.max(4, share) : 0
-  const barCol = c.fichas_sin_instructor === 0 ? '#16a34a'
-    : cobertura >= 60 ? '#c2410c' : '#dc2626'
-
   return (
     <button
       onClick={onClick}
@@ -49,39 +41,14 @@ function CentroCard({ c, tone, escala, active, onClick }: {
       <div className="cc-card__top">
         <span className="cc-card__badge" style={{ background: tone }}><Ic n="shield" s={13}/></span>
         <span className="cc-card__name">{centroLabel(c.nombre)}</span>
-        {!c.activo
-          ? <Bdg tone="neutral">Inactivo</Bdg>
-          : c.fichas_sin_instructor > 0
-            ? <span className="cc-card__flag" title="Fichas en práctica sin instructor asignado">{c.fichas_sin_instructor} sin instructor</span>
-            : enPractica > 0
-              ? <span className="cc-card__flag cc-card__flag--ok"><Ic n="check" s={10}/></span>
-              : null}
+        {!c.activo && <Bdg tone="neutral">Inactivo</Bdg>}
       </div>
-
       <div className="cc-card__stat">
-        <b style={{ color: enPractica > 0 ? '#0a0a0b' : '#a1a1aa' }}>{enPractica}</b> en práctica
-        <span className="cc-card__dotsep">·</span>
-        <b>{c.aprendices_en_practica}</b> aprendices
+        {c.codigo ? <><b>{c.codigo}</b><span className="cc-card__dotsep">·</span></> : null}
+        {c.ciudad || '—'}
       </div>
-
-      {enPractica > 0 ? (
-        <>
-          <div className="cc-card__bar" title={`${share}% de las fichas en práctica de la regional`}>
-            <span style={{ width: `${barPct}%`, background: barCol }}/>
-          </div>
-          <div className="cc-card__cov">
-            {share}% de la regional
-            <span className="cc-card__dotsep">·</span>
-            {conInstr}/{enPractica} con instructor
-          </div>
-        </>
-      ) : (
-        <div className="cc-card__nopract">sin práctica activa</div>
-      )}
-
       <div className="cc-card__foot">
-        <span>{c.coordinaciones} coord · {plural(c.instructores_total, 'instructor', 'instructores')}</span>
-        {c.proxima_a_practica && <ProxPill iso={c.proxima_a_practica}/>}
+        <span>{plural(c.coordinaciones, 'coordinación', 'coordinaciones')} · {plural(c.instructores_total, 'instructor', 'instructores')}</span>
       </div>
     </button>
   )
@@ -103,15 +70,15 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
   const enPractica = c.fichas_en_practica
   const conInstr   = enPractica - c.fichas_sin_instructor
   const pct        = enPractica > 0 ? Math.round((conInstr / enPractica) * 100) : 0
-  const covCol     = enPractica === 0 ? '#d4d4d8'
-    : c.fichas_sin_instructor === 0 ? '#16a34a'
-    : pct >= 60 ? '#c2410c' : '#dc2626'
+  const covCol     = enPractica === 0 ? 'var(--fx-linea-2)'
+    : c.fichas_sin_instructor === 0 ? 'var(--fx-ok)'
+    : pct >= 60 ? 'var(--fx-aviso)' : 'var(--fx-atraso)'
 
   const chips = [
     c.fichas_sin_instructor > 0 && {
       cls: 'cc-chip--warn', icon: 'user' as const,
       label: `${plural(c.fichas_sin_instructor, 'ficha')} sin instructor`,
-      hint: 'Fichas en etapa práctica sin instructor de seguimiento asignado.',
+      hint: 'Fichas en etapa productiva sin instructor de seguimiento asignado.',
     },
     c.etapas_por_cerrar > 0 && {
       cls: 'cc-chip--amber', icon: 'clock' as const,
@@ -149,7 +116,7 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
             title={c.activo ? 'Desactivar centro' : 'Activar centro'}
             onClick={onToggleCentro}
             disabled={busy}
-            style={{ color: c.activo ? '#b91c1c' : '#15803d' }}
+            style={{ color: c.activo ? 'var(--fx-atraso)' : 'var(--fx-ok)' }}
           >
             <Ic n={c.activo ? 'x' : 'check'} s={14}/>
           </button>
@@ -181,9 +148,9 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
         <div className="cc-kpi">
           <div className="cc-kpi__label">Próxima a práctica</div>
           <div className="cc-kpi__value" style={{ fontSize: 15 }}>
-            {c.proxima_a_practica ? <ProxPill iso={c.proxima_a_practica}/> : <span style={{ color: '#c4c4cc', fontSize: 13 }}>Sin fecha próxima</span>}
+            {c.proxima_a_practica ? <ProxPill iso={c.proxima_a_practica}/> : <span style={{ color: 'var(--fx-linea-2)', fontSize: 13 }}>Sin fecha próxima</span>}
           </div>
-          <div className="cc-kpi__sub">siguiente ficha que entra a etapa práctica</div>
+          <div className="cc-kpi__sub">siguiente ficha que entra a etapa productiva</div>
         </div>
       </div>
 
@@ -220,7 +187,7 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
           {coords.map(co => (
             <div key={co.id} className={`cc-coord${co.activa ? '' : ' cc-coord--off'}`}>
               <button className="cc-coord__main" onClick={() => onOpenCoord(co.id)} title="Ver detalle de la coordinación">
-                <span className="cc-coord__dot" style={{ background: co.activa ? '#16a34a' : '#a1a1aa' }}/>
+                <span className="cc-coord__dot" style={{ background: co.activa ? 'var(--fx-ok)' : 'var(--fx-tinta-4)' }}/>
                 <span className="cc-coord__body">
                   <span className="cc-coord__name" title={co.nombre}>
                     {co.nombre.replace(/^Coordinaci[oó]n Acad[eé]mica de /i, '')}
@@ -233,7 +200,7 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
                   <span><b>{co.aprendices_en_practica}</b> aprend.</span>
                   {co.fichas_sin_instructor > 0 && <span className="cc-coord__warn">{co.fichas_sin_instructor} sin instr</span>}
                 </span>
-                <Ic n="chevronRight" s={14} style={{ color: '#c4c4cc', flexShrink: 0 }}/>
+                <Ic n="chevronRight" s={14} style={{ color: 'var(--fx-linea-2)', flexShrink: 0 }}/>
               </button>
               <button className="cc-icon-btn" title="Editar coordinación" onClick={() => onEditCoord(co)}><Ic n="edit" s={13}/></button>
               <button
@@ -241,7 +208,7 @@ function CentroPanel({ c, tone, busy, onEditCentro, onToggleCentro, onNuevaCoord
                 title={co.activa ? 'Desactivar' : 'Activar'}
                 onClick={() => onToggleCoord(co)}
                 disabled={busy}
-                style={{ color: co.activa ? '#b91c1c' : '#15803d' }}
+                style={{ color: co.activa ? 'var(--fx-atraso)' : 'var(--fx-ok)' }}
               >
                 <Ic n={co.activa ? 'x' : 'check'} s={13}/>
               </button>
@@ -383,13 +350,13 @@ function CentrosList() {
       </>}
     >
       {(modal.kind === 'crear-coord' || modal.kind === 'editar-coord') && (
-        <div style={{ fontSize: 12.5, color: '#71717a', marginBottom: 12 }}>
-          Centro: <strong style={{ color: '#3f3f46' }}>{modal.centro.nombre}</strong>
+        <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', marginBottom: 12 }}>
+          Centro: <strong style={{ color: 'var(--fx-tinta-2)' }}>{modal.centro.nombre}</strong>
         </div>
       )}
       <div style={{ display: 'grid', gap: 12 }}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500, color: '#27272a', marginBottom: 6 }}>Nombre</div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)', marginBottom: 6 }}>Nombre</div>
           <input
             className="nx-input" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
             placeholder={esCentroModal ? 'ej. CFTAM Cazucá' : 'ej. Coordinación de Teleinformática'} autoFocus
@@ -400,31 +367,31 @@ function CentrosList() {
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: '#27272a', marginBottom: 6 }}>Código</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)', marginBottom: 6 }}>Código</div>
                 <input className="nx-input" value={form.codigo} onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))} placeholder="9203" style={{ fontFamily: '"JetBrains Mono", monospace' }}/>
               </div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: '#27272a', marginBottom: 6 }}>Ciudad</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)', marginBottom: 6 }}>Ciudad</div>
                 <input className="nx-input" value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))} placeholder="Barranquilla"/>
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#27272a', marginBottom: 6 }}>Regional</div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)', marginBottom: 6 }}>Regional</div>
               <input className="nx-input" value={form.regional} onChange={e => setForm(f => ({ ...f, regional: e.target.value }))} placeholder="Atlántico"/>
             </div>
           </>
         )}
       </div>
-      {error && <div style={{ marginTop: 10, fontSize: 12.5, color: '#b91c1c' }}>{error}</div>}
+      {error && <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--fx-atraso)' }}>{error}</div>}
     </Modal>
   )
 
   const header = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
       <div>
-        <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>Centros y coordinaciones</h2>
-        <div style={{ fontSize: 13, color: '#52525b', marginTop: 4, maxWidth: 640 }}>
-          El estado de la etapa práctica por centro: cobertura de instructor, aprendices en práctica y alertas.
+        <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)' }}>Centros y coordinaciones</h2>
+        <div style={{ fontSize: 13, color: 'var(--fx-tinta-2)', marginTop: 4, maxWidth: 640 }}>
+          El estado de la etapa productiva por centro: cobertura de instructor, aprendices en práctica y alertas.
           Entra a una coordinación para ver su detalle.
         </div>
       </div>
@@ -458,9 +425,9 @@ function CentrosList() {
       <div className="cc-view">
         {header}
         <Card style={{ padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <Ic n="alert" s={22} style={{ color: '#b91c1c' }}/>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>No se pudieron cargar los centros</div>
-          <div style={{ fontSize: 12.5, color: '#71717a' }}>Revisa la conexión con el servidor e inténtalo de nuevo.</div>
+          <Ic n="alert" s={22} style={{ color: 'var(--fx-atraso)' }}/>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>No se pudieron cargar los centros</div>
+          <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>Revisa la conexión con el servidor e inténtalo de nuevo.</div>
           <Btn variant="secondary" icon="refresh" onClick={retry}>Reintentar</Btn>
         </Card>
       </div>
@@ -484,16 +451,16 @@ function CentrosList() {
         <span className="cc-summary__sep">·</span>
         <span><span className="cc-summary__n">{aprendices}</span> aprendices en práctica</span>
         <span className="cc-summary__sep">·</span>
-        <span style={{ color: sinInstr > 0 ? '#c2410c' : '#52525b' }}>
-          <span className="cc-summary__n" style={{ color: sinInstr > 0 ? '#c2410c' : undefined }}>{sinInstr}</span> sin instructor
+        <span style={{ color: sinInstr > 0 ? 'var(--fx-aviso)' : 'var(--fx-tinta-2)' }}>
+          <span className="cc-summary__n" style={{ color: sinInstr > 0 ? 'var(--fx-aviso)' : undefined }}>{sinInstr}</span> sin instructor
         </span>
       </div>
 
       {centros.length === 0 ? (
         <Card style={{ padding: 40, textAlign: 'center' }}>
-          <Ic n="shield" s={22} style={{ color: '#a1a1aa' }}/>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b', marginTop: 10 }}>Sin centros registrados</div>
-          <div style={{ fontSize: 12.5, color: '#71717a', marginTop: 4 }}>Crea el primer centro de formación para empezar.</div>
+          <Ic n="shield" s={22} style={{ color: 'var(--fx-tinta-4)' }}/>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fx-tinta)', marginTop: 10 }}>Sin centros registrados</div>
+          <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', marginTop: 4 }}>Crea el primer centro de formación para empezar.</div>
         </Card>
       ) : (
         <div className="cc-layout">
@@ -502,7 +469,7 @@ function CentrosList() {
               <CentroCard
                 key={c.id}
                 c={c}
-                tone={toneById.get(c.id) ?? '#4f46e5'}
+                tone={toneById.get(c.id) ?? 'var(--fx-morado)'}
                 escala={totalEnPractica}
                 active={selected?.id === c.id}
                 onClick={() => setSelectedId(c.id)}
@@ -513,7 +480,7 @@ function CentrosList() {
           {selected && (
             <CentroPanel
               c={selected}
-              tone={toneById.get(selected.id) ?? '#4f46e5'}
+              tone={toneById.get(selected.id) ?? 'var(--fx-morado)'}
               busy={busy}
               onEditCentro={() => openEditarCentro(selected)}
               onToggleCentro={() => toggleCentro(selected)}

@@ -53,9 +53,9 @@ export function BitacorasTab({ etapaId, crono, aprendizNombre, onChanged }: {
         </div>
         <div className="bit-resumen">
           <div className="bit-resumen__item"><strong>{resumen.aprobadas}/{resumen.total}</strong><span>Aprobadas</span></div>
-          <div className="bit-resumen__item"><strong style={{ color: resumen.por_revisar ? '#2563eb' : undefined }}>{resumen.por_revisar}</strong><span>Por revisar</span></div>
-          <div className="bit-resumen__item"><strong style={{ color: resumen.devueltas ? '#ca8a04' : undefined }}>{resumen.devueltas}</strong><span>Devueltas</span></div>
-          <div className="bit-resumen__item"><strong style={{ color: resumen.vencidas ? '#dc2626' : undefined }}>{resumen.vencidas}</strong><span>Vencidas sin entregar</span></div>
+          <div className="bit-resumen__item"><strong style={{ color: resumen.por_revisar ? 'var(--fx-info)' : undefined }}>{resumen.por_revisar}</strong><span>Por revisar</span></div>
+          <div className="bit-resumen__item"><strong style={{ color: resumen.devueltas ? 'var(--fx-aviso)' : undefined }}>{resumen.devueltas}</strong><span>Devueltas</span></div>
+          <div className="bit-resumen__item"><strong style={{ color: resumen.vencidas ? 'var(--fx-atraso)' : undefined }}>{resumen.vencidas}</strong><span>Vencidas sin entregar</span></div>
         </div>
 
         {err && <div className="cron-aviso cron-aviso--err" style={{ margin: '0 16px 16px', width: 'auto' }}>{err}</div>}
@@ -69,12 +69,12 @@ export function BitacorasTab({ etapaId, crono, aprendizNombre, onChanged }: {
                 <button
                   key={b.numero}
                   className={`bit-celda${sel === b.numero ? ' bit-celda--sel' : ''}${b.vencida ? ' bit-celda--vencida' : ''}`}
-                  style={{ borderLeftColor: b.vencida ? '#dc2626' : meta.color }}
+                  style={{ borderLeftColor: b.vencida ? 'var(--fx-atraso)' : meta.color }}
                   onClick={() => setSel(sel === b.numero ? null : b.numero)}
                 >
                   <span className="bit-celda__n">
                     N.º {b.numero}
-                    {b.total_actividades > 0 && <span style={{ fontSize: 10.5, color: '#a1a1aa', fontWeight: 500 }}>{b.total_actividades} act.</span>}
+                    {b.total_actividades > 0 && <span style={{ fontSize: 10.5, color: 'var(--fx-tinta-4)', fontWeight: 500 }}>{b.total_actividades} act.</span>}
                   </span>
                   <span className="bit-celda__p">{fdia(b.periodo_inicio, false)} – {fdia(b.periodo_fin, false)}</span>
                   <Bdg tone={b.vencida ? 'err' : meta.tone}>{b.vencida ? 'Vencida' : meta.label}</Bdg>
@@ -194,10 +194,10 @@ function DetalleBitacora({ etapaId, b, onRevisada }: {
     <div className="bit-detalle">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#18181b' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>
             Bitácora N.º {b.numero} · {fdia(b.periodo_inicio)} – {fdia(b.periodo_fin)}
           </div>
-          <div style={{ fontSize: 11.5, color: '#71717a' }}>
+          <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)' }}>
             Plazo de entrega: {fdia(b.fecha_limite)}
             {b.entregada_at && <> · entregada {fd(b.entregada_at)}</>}
             {b.revisada_at && <> · revisada {fd(b.revisada_at)}</>}
@@ -209,7 +209,7 @@ function DetalleBitacora({ etapaId, b, onRevisada }: {
       </div>
 
       {actividades.length === 0 ? (
-        <div style={{ fontSize: 12, color: '#a1a1aa' }}>
+        <div style={{ fontSize: 12, color: 'var(--fx-tinta-4)' }}>
           {b.estado === 'FUTURA' ? 'Esta quincena aún no empieza.' : 'El aprendiz todavía no ha registrado actividades.'}
         </div>
       ) : (
@@ -233,7 +233,7 @@ function DetalleBitacora({ etapaId, b, onRevisada }: {
       )}
 
       {b.observacion_instructor && b.estado !== 'ENTREGADA' && (
-        <div className="cron-aviso" style={{ color: '#3f3f46', background: '#f7f7f9', borderColor: '#e4e4e7' }}>
+        <div className="cron-aviso" style={{ color: 'var(--fx-tinta-2)', background: 'var(--fx-superficie-1)', borderColor: 'var(--fx-linea)' }}>
           <strong>Tu observación:</strong> {b.observacion_instructor}
         </div>
       )}

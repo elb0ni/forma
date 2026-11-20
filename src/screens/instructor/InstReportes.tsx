@@ -42,30 +42,30 @@ export function InstReportes() {
 
   return (
     <div style={{ maxWidth: 1280 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b', marginBottom: 24 }}>Reportes</h2>
+      <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)', marginBottom: 24 }}>Reportes</h2>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24, alignItems: 'start' }}>
         {/* Parámetros */}
         <Card style={{ padding: 20, position: 'sticky', top: 80 }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 600, marginBottom: 14 }}>Parámetros</div>
+          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', fontWeight: 600, marginBottom: 14 }}>Parámetros</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Lbl text="Inicio desde"><input type="date" className="nx-input" value={desde} onChange={e => setDesde(e.target.value)}/></Lbl>
             <Lbl text="Inicio hasta"><input type="date" className="nx-input" value={hasta} onChange={e => setHasta(e.target.value)}/></Lbl>
           </div>
 
-          <div style={{ borderTop: '1px solid #e4e4e7', marginTop: 18, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ borderTop: '1px solid var(--fx-linea)', marginTop: 18, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Btn variant="primary" icon="download" style={{ width: '100%', justifyContent: 'center' }} onClick={() => window.print()}>Descargar PDF</Btn>
             <Btn variant="secondary" icon="download" style={{ width: '100%', justifyContent: 'center' }} onClick={() => window.print()}>Imprimir</Btn>
             <Btn variant="ghost" icon="fileText" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setFirmaOpen(true)}>Mi firma</Btn>
-            <div style={{ fontSize: 11, color: '#71717a', textAlign: 'center' }}>Tu firma certifica los seguimientos de etapa productiva.</div>
+            <div style={{ fontSize: 11, color: 'var(--fx-tinta-3)', textAlign: 'center' }}>Tu firma certifica los seguimientos de etapa productiva.</div>
           </div>
         </Card>
         {firmaOpen && <FirmaModal userId="me" onClose={() => setFirmaOpen(false)}/>}
 
         {/* Vista previa */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b', marginBottom: 4 }}>Vista previa</div>
-          <div style={{ fontSize: 11.5, color: '#52525b', marginBottom: 12 }}>aprendices en etapa productiva a tu cargo</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)', marginBottom: 4 }}>Vista previa</div>
+          <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-2)', marginBottom: 12 }}>aprendices en etapa productiva a tu cargo</div>
 
           {etapas === null ? <Card style={{ padding: 40 }}><LoadingBlock minHeight={320}/></Card>
             : <ReportePreview instructorNombre={user?.nombre_completo ?? '—'} centro={user?.centro_formacion ?? '—'} etapas={enRango} desde={desde} hasta={hasta}/>}
@@ -93,45 +93,45 @@ function ReportePreview({ instructorNombre, centro, etapas, desde, hasta }: {
 
   return (
     <Card style={{ padding: 40, display: 'flex', flexDirection: 'column', minHeight: 600 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e4e4e7', paddingBottom: 18, marginBottom: 18 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--fx-linea)', paddingBottom: 18, marginBottom: 18 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <BrandMark size={20}/>
           <div>
             <div style={{ fontSize: 12, fontWeight: 600 }}>FORMA</div>
-            <div style={{ fontSize: 9, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Reporte de etapa productiva</div>
+            <div style={{ fontSize: 9, color: 'var(--fx-tinta-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Reporte de etapa productiva</div>
           </div>
         </div>
-        <div style={{ textAlign: 'right', fontSize: 10, color: '#71717a' }}>
+        <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--fx-tinta-3)' }}>
           <div>Generado · {fd(new Date().toISOString())}</div>
           <div style={{ fontFamily: '"JetBrains Mono", monospace' }}>{centro}</div>
         </div>
       </div>
 
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>Instructor de práctica</div>
-        <div style={{ fontSize: 18, fontWeight: 600, color: '#0a0a0b', marginTop: 4 }}>{instructorNombre}</div>
-        <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, color: '#71717a', marginTop: 2 }}>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)' }}>Instructor de seguimiento</div>
+        <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--fx-tinta)', marginTop: 4 }}>{instructorNombre}</div>
+        <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, color: 'var(--fx-tinta-3)', marginTop: 2 }}>
           Inicio de etapa entre {fd(desde)} — {fd(hasta)}
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 18 }}>
         {stats.map(([l, v]) => (
-          <div key={l} style={{ border: '1px solid #e4e4e7', borderRadius: 6, padding: 10 }}>
-            <div style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>{l}</div>
-            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 18, fontWeight: 600, color: '#0a0a0b', marginTop: 4 }}>{v}</div>
+          <div key={l} style={{ border: '1px solid var(--fx-linea)', borderRadius: 6, padding: 10 }}>
+            <div style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)' }}>{l}</div>
+            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 18, fontWeight: 600, color: 'var(--fx-tinta)', marginTop: 4 }}>{v}</div>
           </div>
         ))}
       </div>
 
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', marginBottom: 8 }}>Aprendices</div>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)', marginBottom: 8 }}>Aprendices</div>
         {conTono.length === 0 ? (
-          <div style={{ fontSize: 12, color: '#71717a', padding: '20px 0' }}>No hay registros en el rango seleccionado.</div>
+          <div style={{ fontSize: 12, color: 'var(--fx-tinta-3)', padding: '20px 0' }}>No hay registros en el rango seleccionado.</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a' }}>
+              <tr style={{ borderBottom: '1px solid var(--fx-linea)', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-3)' }}>
                 {['Aprendiz', 'Modalidad', 'Inicio', 'Estado'].map(h => (
                   <th key={h} style={{ padding: '6px 0', textAlign: h === 'Estado' ? 'right' : 'left', fontWeight: 600 }}>{h}</th>
                 ))}
@@ -139,10 +139,10 @@ function ReportePreview({ instructorNombre, centro, etapas, desde, hasta }: {
             </thead>
             <tbody>
               {conTono.map(({ e, tono }) => (
-                <tr key={e.id} style={{ borderBottom: '1px solid #f1f1f3' }}>
-                  <td style={{ padding: '6px 0', fontWeight: 600, color: '#0a0a0b' }}>{e.aprendiz_nombre ?? `#${e.aprendiz_id}`}</td>
-                  <td style={{ padding: '6px 0', color: '#3f3f46' }}>{MODALIDAD_LABEL[e.modalidad]}</td>
-                  <td style={{ padding: '6px 0', fontFamily: '"JetBrains Mono", monospace', color: '#27272a' }}>{fd(e.fecha_inicio)}</td>
+                <tr key={e.id} style={{ borderBottom: '1px solid var(--fx-superficie-2)' }}>
+                  <td style={{ padding: '6px 0', fontWeight: 600, color: 'var(--fx-tinta)' }}>{e.aprendiz_nombre ?? `#${e.aprendiz_id}`}</td>
+                  <td style={{ padding: '6px 0', color: 'var(--fx-tinta-2)' }}>{MODALIDAD_LABEL[e.modalidad]}</td>
+                  <td style={{ padding: '6px 0', fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta)' }}>{fd(e.fecha_inicio)}</td>
                   <td style={{ padding: '6px 0', textAlign: 'right' }}><Bdg tone={tono.tone}>{CASO_LABEL[tono.caso]}</Bdg></td>
                 </tr>
               ))}
@@ -151,7 +151,7 @@ function ReportePreview({ instructorNombre, centro, etapas, desde, hasta }: {
         )}
       </div>
 
-      <div style={{ fontSize: 9.5, color: '#71717a', marginTop: 14, paddingTop: 10, borderTop: '1px solid #e4e4e7', display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ fontSize: 9.5, color: 'var(--fx-tinta-3)', marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--fx-linea)', display: 'flex', justifyContent: 'space-between' }}>
         <span>FORMA · Seguimiento de etapa productiva</span>
         <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>página 1 / 1</span>
       </div>
@@ -162,7 +162,7 @@ function ReportePreview({ instructorNombre, centro, etapas, desde, hasta }: {
 function Lbl({ text, children }: { text: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 500, color: '#27272a', marginBottom: 6 }}>{text}</div>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)', marginBottom: 6 }}>{text}</div>
       {children}
     </div>
   )

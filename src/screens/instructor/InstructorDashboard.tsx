@@ -14,7 +14,7 @@ const BASE = '/dashboard/instructor'
 
 const SECTION_PATH: Record<string, string> = {
   'inst-home':             BASE,
-  'inst-agenda':           `${BASE}/agenda?vista=calendario`,
+  'inst-agenda':           `${BASE}?vista=calendario`,
   'inst-fichas':           `${BASE}/fichas`,
   'inst-etapa-productiva': `${BASE}/etapa-productiva`,
   'inst-historial':        `${BASE}/historial`,
@@ -46,6 +46,7 @@ export function InstructorDashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const { title, section } = headerFor(location.pathname)
+  const vistaCalendario = new URLSearchParams(location.search).get('vista') === 'calendario'
 
   function onNav(id: string) {
     navigate(SECTION_PATH[id] ?? BASE)
@@ -58,21 +59,26 @@ export function InstructorDashboard() {
   return (
     <Shell current={section} onNav={onNav} title={title} breadcrumb={['Instructor', title]}>
       <Routes>
+        {/* Hoy y su vista Calendario son una sola página (?vista=calendario). */}
         <Route index element={
-          <Hoy
-            onAbrir={abrirEtapa('hoy')}
-            onFicha={id => navigate(`${BASE}/fichas/${id}`)}
-            onNuevo={() => navigate(`${BASE}/etapa-productiva/nueva`)}
-            onCalendario={() => navigate(`${BASE}/agenda?vista=calendario`)}
-            onAprendices={() => navigate(`${BASE}/etapa-productiva`)}
-          />
+          vistaCalendario ? (
+            <InstAgenda onVerEtapaProductiva={abrirEtapa('agenda')} onVerFicha={id => navigate(`${BASE}/fichas/${id}`)}/>
+          ) : (
+            <Hoy
+              onAbrir={abrirEtapa('hoy')}
+              onFicha={id => navigate(`${BASE}/fichas/${id}`)}
+              onNuevo={() => navigate(`${BASE}/etapa-productiva/nueva`)}
+              onCalendario={() => navigate(`${BASE}?vista=calendario`)}
+              onAprendices={() => navigate(`${BASE}/etapa-productiva`)}
+            />
+          )
         }/>
 
         <Route path="fichas/*" element={<InstFichas/>}/>
 
         <Route path="etapa-productiva" element={<Outlet/>}>
           <Route index element={
-            <Aprendices onAbrir={abrirEtapa('aprendices')} onNuevo={() => navigate('nueva')} onHistorial={() => navigate(`${BASE}/historial`)}/>
+            <Aprendices onAbrir={abrirEtapa('aprendices')} onNuevo={() => navigate('nueva')} onHistorial={() => navigate(`${BASE}/historial`)} onFicha={id => navigate(`${BASE}/fichas/${id}`)}/>
           }/>
           <Route path="nueva" element={
             <NuevoRegistro onCancel={() => navigate('..')} onCreated={id => navigate(`../${id}`, { replace: true })}/>
@@ -80,12 +86,7 @@ export function InstructorDashboard() {
           <Route path=":etapaId" element={<EtapaProductivaDetalleRoute/>}/>
         </Route>
 
-        <Route path="agenda" element={
-          <InstAgenda
-            onVerEtapaProductiva={abrirEtapa('agenda')}
-            onVerFicha={id => navigate(`${BASE}/fichas/${id}`)}
-          />
-        }/>
+        <Route path="agenda" element={<Navigate to={`${BASE}?vista=calendario`} replace/>}/>
 
         <Route path="historial" element={<InstHistorial onOpenEtapa={id => navigate(`${BASE}/historial/${id}`)}/>}/>
         <Route path="historial/:etapaId" element={<HistorialEtapaRoute/>}/>

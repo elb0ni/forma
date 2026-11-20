@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Shell } from '../../components/Shell'
-import { DashboardHome } from './DashboardHome'
 import { ProgramasFormacion } from './ProgramasFormacion'
 import { FichasAdmin } from '../shared/FichasAdmin'
 import { CentrosCoord } from './CentrosCoord'
@@ -10,6 +9,7 @@ import { Integridad } from './Integridad'
 import { Asignacion } from '../panorama/Asignacion'
 import { Panorama } from '../panorama/Panorama'
 import { Datos } from '../panorama/Datos'
+import { EquipoRutas } from '../panorama/Equipo'
 import { Catalogo } from './CatalogoVista'
 import { useAuthStore } from '../../store/auth'
 
@@ -23,6 +23,7 @@ const SECTION_PATH: Record<string, string> = {
   'admin-fichas':    `${BASE}/fichas`,
   'admin-asignacion': `${BASE}/asignacion`,
   'admin-centros':   `${BASE}/centros`,
+  'admin-equipo':    `${BASE}/equipo`,
   'admin-usuarios':  `${BASE}/usuarios`,
   'admin-reportes':  `${BASE}/reportes`,
   'admin-integridad': `${BASE}/integridad`,
@@ -36,26 +37,28 @@ const SECTION_BY_SEGMENT: Record<string, string> = {
   programas:   'admin-programas',
   fichas:      'admin-fichas',
   asignacion:  'admin-asignacion',
-  instructores: 'admin-usuarios',
+  instructores: 'admin-equipo',
   centros:     'admin-centros',
+  equipo:      'admin-equipo',
   usuarios:    'admin-usuarios',
   reportes:    'admin-reportes',
-  integridad:  'admin-integridad',
+  integridad:  'admin-datos',
   datos:       'admin-datos',
   catalogo:    'admin-catalogo',
 }
 
 const ADMIN_TITLES: Record<string, string> = {
-  'admin-home':      'Dashboard',
-  'admin-panorama':  'Panorama',
+  'admin-home':      'Inicio',
+  'admin-panorama':  'Seguimiento',
   'admin-programas': 'Programas de formación',
   'admin-fichas':    'Fichas en etapa productiva',
   'admin-asignacion': 'Asignación de instructores',
   'admin-centros':   'Centros y coordinaciones',
-  'admin-usuarios':  'Gestión de usuarios',
+  'admin-equipo':    'Equipo',
+  'admin-usuarios':  'Cuentas de usuario',
   'admin-reportes':  'Reportes ejecutivos',
-  'admin-integridad': 'Integridad de datos',
-  'admin-datos':     'Datos',
+  'admin-integridad': 'SofiaPlus y datos',
+  'admin-datos':     'SofiaPlus y datos',
   'admin-catalogo':  'Catálogo del centro',
 }
 
@@ -89,20 +92,21 @@ export function SuperAdminDashboard() {
     <Shell current={navItem} onNav={onNav} title={title} breadcrumb={breadcrumb}>
       <Routes>
         <Route index element={
-          <DashboardHome
-            onNav={onNav}
+          <Panorama
+            rutaEtapa={(f, e) => `${BASE}/fichas/${f}/etapa/${e}`}
+            rutaAsignacion={`${BASE}/asignacion`}
             onOpenFicha={id => navigate(`${BASE}/fichas/${id}`)}
           />
         }/>
-        <Route path="panorama" element={
-          <Panorama rutaEtapa={(f, e) => `${BASE}/fichas/${f}/etapa/${e}`} rutaAsignacion={`${BASE}/asignacion`}/>
-        }/>
+        {/* Panorama y el Dashboard se unieron en Inicio (PLAN_REDISENO v3). */}
+        <Route path="panorama" element={<Navigate to={BASE} replace/>}/>
         <Route path="programas/*" element={<ProgramasFormacion/>}/>
         <Route path="disenos" element={<Navigate to={`${BASE}/integridad/disenos`} replace/>}/>
         <Route path="fichas/*" element={<FichasAdmin/>}/>
         <Route path="asignacion" element={<Asignacion rutaFicha={id => `${BASE}/fichas/${id}`}/>}/>
         {/* Los instructores se ven ahora en Usuarios (con su actividad y detalle). */}
-        <Route path="instructores/*" element={<Navigate to={`${BASE}/usuarios`} replace/>}/>
+        <Route path="instructores/*" element={<Navigate to={`${BASE}/equipo`} replace/>}/>
+        <Route path="equipo/*" element={<EquipoRutas rutaCuentas={`${BASE}/usuarios`}/>}/>
         <Route path="centros/*" element={<CentrosCoord/>}/>
         <Route path="usuarios/*" element={<UsuariosAdmin/>}/>
         <Route path="reportes" element={<ReportesAdmin/>}/>

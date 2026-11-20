@@ -7,12 +7,12 @@ import type { IcName } from '../../components/ui'
 export type StatusTone = 'ok' | 'done' | 'warn' | 'risk' | 'crit' | 'off'
 
 export const SM: Record<StatusTone, { label: string; fg: string; bg: string; line: string; dot: string }> = {
-  ok:   { label: 'EN CAMINO',   fg: '#15803d', bg: '#dcfce7', line: '#86efac', dot: '#16a34a' },
-  done: { label: 'COMPLETADO',  fg: '#15803d', bg: '#dcfce7', line: '#86efac', dot: '#16a34a' },
-  warn: { label: 'ATENCIÓN',    fg: '#a16207', bg: '#fef9c3', line: '#fde68a', dot: '#ca8a04' },
-  risk: { label: 'RIESGO',      fg: '#c2410c', bg: '#ffedd5', line: '#fed7aa', dot: '#ea580c' },
-  crit: { label: 'CRÍTICO',     fg: '#b91c1c', bg: '#fee2e2', line: '#fecaca', dot: '#dc2626' },
-  off:  { label: 'SIN INICIAR', fg: '#52525b', bg: '#f1f1f3', line: '#d4d4d8', dot: '#a1a1aa' },
+  ok:   { label: 'EN CAMINO',   fg: 'var(--fx-ok)', bg: 'var(--fx-ok-suave)', line: 'var(--fx-ok-linea)', dot: 'var(--fx-ok)' },
+  done: { label: 'COMPLETADO',  fg: 'var(--fx-ok)', bg: 'var(--fx-ok-suave)', line: 'var(--fx-ok-linea)', dot: 'var(--fx-ok)' },
+  warn: { label: 'ATENCIÓN',    fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)', line: 'var(--fx-aviso-linea)', dot: 'var(--fx-aviso)' },
+  risk: { label: 'RIESGO',      fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)', line: 'var(--fx-aviso-linea)', dot: 'var(--fx-aviso)' },
+  crit: { label: 'CRÍTICO',     fg: 'var(--fx-atraso)', bg: 'var(--fx-atraso-suave)', line: 'var(--fx-atraso-linea)', dot: 'var(--fx-atraso)' },
+  off:  { label: 'SIN INICIAR', fg: 'var(--fx-tinta-2)', bg: 'var(--fx-superficie-2)', line: 'var(--fx-linea-2)', dot: 'var(--fx-tinta-4)' },
 }
 
 export function statusFromAvance(avance: number): StatusTone {
@@ -66,7 +66,7 @@ export function centroLabel(nombre: string): string {
 // Paleta estable para los (siempre pocos) centros de formación. El color se
 // asigna por posición ordenando los centros por id, para que sea consistente
 // entre la pantalla de Programas y la de Centros.
-export const CENTRO_TONES = ['#4f46e5', '#0d9488', '#c2410c', '#7c3aed', '#be123c', '#0369a1']
+export const CENTRO_TONES = ['var(--fx-morado)', 'var(--fx-info)', 'var(--fx-aviso)', 'var(--fx-morado)', 'var(--fx-atraso)', 'var(--fx-info)']
 export function centroTone(idx: number): string {
   return CENTRO_TONES[((idx % CENTRO_TONES.length) + CENTRO_TONES.length) % CENTRO_TONES.length]
 }
@@ -75,11 +75,11 @@ export function centroTone(idx: number): string {
 // muestra los días que faltan, o el mes/año si falta bastante.
 export function ProxPill({ iso }: { iso: string | null }) {
   const d = diasHasta(iso)
-  if (d == null || !iso) return <span style={{ color: '#d4d4d8', fontSize: 12 }}>—</span>
+  if (d == null || !iso) return <span style={{ color: 'var(--fx-linea-2)', fontSize: 12 }}>—</span>
 
-  const tone = d <= 7 ? { fg: '#b91c1c', bg: '#fee2e2' }
-    : d <= 30 ? { fg: '#c2410c', bg: '#ffedd5' }
-    : { fg: '#52525b', bg: '#f4f4f5' }
+  const tone = d <= 7 ? { fg: 'var(--fx-atraso)', bg: 'var(--fx-atraso-suave)' }
+    : d <= 30 ? { fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)' }
+    : { fg: 'var(--fx-tinta-2)', bg: 'var(--fx-superficie-2)' }
 
   const text = d > 60
     ? new Date(iso).toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })
@@ -119,7 +119,7 @@ export function Pill({ status = 'ok', size = 'md', label }: {
 
 // ─── Donut ───────────────────────────────────────────────────────────────────────
 
-export function Donut({ value = 0, size = 56, stroke = 6, color = '#4f46e5', children }: {
+export function Donut({ value = 0, size = 56, stroke = 6, color = 'var(--fx-morado)', children }: {
   value?: number; size?: number; stroke?: number; color?: string; children?: ReactNode
 }) {
   const r = (size - stroke) / 2
@@ -128,7 +128,7 @@ export function Donut({ value = 0, size = 56, stroke = 6, color = '#4f46e5', chi
   return (
     <div style={{ position: 'relative', width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#f1f1f3" strokeWidth={stroke} fill="none"/>
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--fx-superficie-2)" strokeWidth={stroke} fill="none"/>
         <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="round"
           strokeDasharray={circ} strokeDashoffset={off} transform={`rotate(-90 ${size / 2} ${size / 2})`}/>
       </svg>
@@ -143,16 +143,16 @@ export function Stepper({ value, onChange, step = 0.5, min = 0, max = 12, suffix
   value: number; onChange: (v: number) => void; step?: number; min?: number; max?: number; suffix?: string
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', height: 40, border: '1px solid #e4e4e7', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', alignItems: 'center', height: 40, border: '1px solid var(--fx-linea)', borderRadius: 8, background: 'var(--fx-superficie)', overflow: 'hidden' }}>
       <button onClick={() => onChange(Math.max(min, +(value - step).toFixed(2)))}
-        style={{ width: 40, height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: '#52525b' }}>
+        style={{ width: 40, height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--fx-tinta-2)' }}>
         <Ic n="minus" s={14}/>
       </button>
-      <div style={{ flex: 1, textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 16, fontWeight: 600, color: '#0a0a0b' }}>
-        {value.toFixed(step < 1 ? 1 : 0)} <span style={{ fontSize: 11, color: '#71717a', fontWeight: 400 }}>{suffix}</span>
+      <div style={{ flex: 1, textAlign: 'center', fontFamily: '"JetBrains Mono", monospace', fontSize: 16, fontWeight: 600, color: 'var(--fx-tinta)' }}>
+        {value.toFixed(step < 1 ? 1 : 0)} <span style={{ fontSize: 11, color: 'var(--fx-tinta-3)', fontWeight: 400 }}>{suffix}</span>
       </div>
       <button onClick={() => onChange(Math.min(max, +(value + step).toFixed(2)))}
-        style={{ width: 40, height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: '#52525b' }}>
+        style={{ width: 40, height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--fx-tinta-2)' }}>
         <Ic n="plus" s={14}/>
       </button>
     </div>
@@ -166,7 +166,7 @@ export function Seg({ name, value, onChange, options }: {
   options: { value: string; label: string; icon?: IcName }[]
 }) {
   return (
-    <div className="seg" style={{ display: 'inline-flex', padding: 2, background: '#f1f1f3', borderRadius: 8, border: '1px solid #e4e4e7' }}>
+    <div className="seg" style={{ display: 'inline-flex', padding: 2, background: 'var(--fx-superficie-2)', borderRadius: 8, border: '1px solid var(--fx-linea)' }}>
       {options.map(o => (
         <span key={o.value} style={{ display: 'contents' }}>
           <input type="radio" name={name} id={`${name}-${o.value}`} checked={value === o.value} onChange={() => onChange(o.value)}/>
@@ -185,12 +185,12 @@ export function InlineAlert({ tone = 'info', icon, title, children, style }: {
   tone?: AlertTone; icon?: IcName; title?: string; children?: ReactNode; style?: CSSProperties
 }) {
   const ts: Record<AlertTone, CSSProperties> = {
-    info:    { background: '#eef2ff', border: '1px solid #c7d2fe', color: '#312e81' },
-    warn:    { background: '#fef9c3', border: '1px solid #fde68a', color: '#a16207' },
-    risk:    { background: '#ffedd5', border: '1px solid #fed7aa', color: '#c2410c' },
-    crit:    { background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c' },
-    ok:      { background: '#dcfce7', border: '1px solid #86efac', color: '#15803d' },
-    neutral: { background: '#f1f1f3', border: '1px solid #e4e4e7', color: '#27272a' },
+    info:    { background: 'var(--fx-morado-suave)', border: '1px solid var(--fx-morado-linea)', color: 'var(--fx-morado-tinta)' },
+    warn:    { background: 'var(--fx-aviso-suave)', border: '1px solid var(--fx-aviso-linea)', color: 'var(--fx-aviso)' },
+    risk:    { background: 'var(--fx-aviso-suave)', border: '1px solid var(--fx-aviso-linea)', color: 'var(--fx-aviso)' },
+    crit:    { background: 'var(--fx-atraso-suave)', border: '1px solid var(--fx-atraso-linea)', color: 'var(--fx-atraso)' },
+    ok:      { background: 'var(--fx-ok-suave)', border: '1px solid var(--fx-ok-linea)', color: 'var(--fx-ok)' },
+    neutral: { background: 'var(--fx-superficie-2)', border: '1px solid var(--fx-linea)', color: 'var(--fx-tinta)' },
   }
   return (
     <div style={{ ...ts[tone], display: 'flex', gap: 12, padding: 14, borderRadius: 8, ...style }}>
@@ -215,15 +215,15 @@ export function WizSteps({ steps, current }: { steps: string[]; current: number 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <div style={{
                 width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center',
-                fontSize: 11, fontWeight: 600, border: `2px solid ${state === 'todo' ? '#d4d4d8' : '#4f46e5'}`,
-                background: state === 'done' ? '#4f46e5' : '#fff',
-                color: state === 'done' ? '#fff' : state === 'now' ? '#4f46e5' : '#a1a1aa',
+                fontSize: 11, fontWeight: 600, border: `2px solid ${state === 'todo' ? 'var(--fx-linea-2)' : 'var(--fx-morado)'}`,
+                background: state === 'done' ? 'var(--fx-morado)' : 'var(--fx-superficie)',
+                color: state === 'done' ? 'var(--fx-superficie)' : state === 'now' ? 'var(--fx-morado)' : 'var(--fx-tinta-4)',
               }}>
                 {state === 'done' ? '✓' : i + 1}
               </div>
-              <span style={{ fontSize: 12, fontWeight: 500, color: state === 'todo' ? '#a1a1aa' : '#18181b' }}>{s}</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: state === 'todo' ? 'var(--fx-tinta-4)' : 'var(--fx-tinta)' }}>{s}</span>
             </div>
-            {i < steps.length - 1 && <div style={{ flex: 1, height: 1, background: i < current ? '#4f46e5' : '#e4e4e7' }}/>}
+            {i < steps.length - 1 && <div style={{ flex: 1, height: 1, background: i < current ? 'var(--fx-morado)' : 'var(--fx-linea)' }}/>}
           </span>
         )
       })}
@@ -233,11 +233,11 @@ export function WizSteps({ steps, current }: { steps: string[]; current: number 
 
 // ─── Estados de carga / vacío / error ────────────────────────────────────────────────
 
-export function Spinner({ size = 16, color = '#4f46e5' }: { size?: number; color?: string }) {
+export function Spinner({ size = 16, color = 'var(--fx-morado)' }: { size?: number; color?: string }) {
   return (
     <span className="spin" style={{
       width: size, height: size, borderRadius: '50%', display: 'inline-block',
-      border: `2px solid ${color}33`, borderTopColor: color,
+      border: `2px solid color-mix(in srgb, ${color} 20%, transparent)`, borderTopColor: color,
     }}/>
   )
 }
@@ -248,12 +248,12 @@ export function CenterState({ icon, title, sub }: { icon: IcName; title: string;
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       minHeight: 280, gap: 12, textAlign: 'center',
     }}>
-      <div style={{ width: 48, height: 48, borderRadius: 12, background: '#f1f1f3', display: 'grid', placeItems: 'center' }}>
-        <Ic n={icon} s={22} style={{ color: '#a1a1aa' }}/>
+      <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--fx-superficie-2)', display: 'grid', placeItems: 'center' }}>
+        <Ic n={icon} s={22} style={{ color: 'var(--fx-tinta-4)' }}/>
       </div>
       <div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#0a0a0b' }}>{title}</div>
-        {sub && <div style={{ fontSize: 13, color: '#71717a', marginTop: 4, maxWidth: 380 }}>{sub}</div>}
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fx-tinta)' }}>{title}</div>
+        {sub && <div style={{ fontSize: 13, color: 'var(--fx-tinta-3)', marginTop: 4, maxWidth: 380 }}>{sub}</div>}
       </div>
     </div>
   )
@@ -261,7 +261,7 @@ export function CenterState({ icon, title, sub }: { icon: IcName; title: string;
 
 export function LoadingBlock({ minHeight = 280 }: { minHeight?: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight, gap: 10, color: '#71717a' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight, gap: 10, color: 'var(--fx-tinta-3)' }}>
       <Spinner/>
       <span style={{ fontSize: 13 }}>Cargando…</span>
     </div>

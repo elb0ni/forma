@@ -57,8 +57,8 @@ const CASO_FILT_LABEL: Record<CasoFilt, string> = {
 }
 
 const SEL: React.CSSProperties = {
-  height: 34, padding: '0 10px', border: '1px solid #e4e4e7', borderRadius: 8,
-  fontSize: 12.5, background: '#fff', color: '#18181b',
+  height: 34, padding: '0 10px', border: '1px solid var(--fx-linea)', borderRadius: 8,
+  fontSize: 12.5, background: 'var(--fx-superficie)', color: 'var(--fx-tinta)',
   fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none',
 }
 
@@ -86,7 +86,7 @@ function cmpAsc(a: EtapaProductiva, b: EtapaProductiva, col: SortCol): number {
 // un coordinador/admin hace drill-down sobre OTRO instructor (ver
 // shared/InstructorDetalle.tsx) se pasa su id explícito y se oculta el CTA de
 // creación, porque el wizard de "nuevo registro" asume el contexto del
-// usuario logueado como instructor de práctica.
+// usuario logueado como instructor de seguimiento.
 export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
   onOpen: (etapaId: number) => void; onNuevo?: () => void; instructorId?: string
 }) {
@@ -208,7 +208,7 @@ export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
     groupBy === 'modalidad' ? e.modalidad : tonoEtapa(e).caso
   const groupLabel = (k: string): { label: string; color: string } =>
     groupBy === 'modalidad'
-      ? { label: MODALIDAD_LABEL[k as ModalidadEtapaProductiva], color: '#4f46e5' }
+      ? { label: MODALIDAD_LABEL[k as ModalidadEtapaProductiva], color: 'var(--fx-morado)' }
       : { label: CASO_TONO_META[k as CasoTono].label, color: CASO_TONO_META[k as CasoTono].color }
 
   const filtered = all
@@ -230,7 +230,7 @@ export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
   const cols = COLS.length + 1
 
   const theadRow = (
-    <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
+    <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', borderBottom: '1px solid var(--fx-linea)' }}>
       {COLS.map(c => {
         const on = sortCol === c.key
         return (
@@ -256,15 +256,15 @@ export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <div style={{ marginTop: 2, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 700, color: '#4f46e5', lineHeight: 1 }}>
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 700, color: 'var(--fx-morado)', lineHeight: 1 }}>
               {activasCount.toLocaleString('es-CO')}
             </span>
-            <span style={{ fontSize: 13, color: '#52525b' }}>
+            <span style={{ fontSize: 13, color: 'var(--fx-tinta-2)' }}>
               aprendices en seguimiento activo
               {' · '}<span>{enCursoCount.toLocaleString('es-CO')} en curso</span>
-              {sinJuicioCount > 0 && <> · <span style={{ color: '#a16207' }}>{sinJuicioCount.toLocaleString('es-CO')} falta juicio</span></>}
-              {' · '}<span style={{ color: '#a1a1aa' }}>{all.length.toLocaleString('es-CO')} en total</span>
-              {aprobadoCount > 0 && <> · <span style={{ color: '#15803d' }}>{aprobadoCount.toLocaleString('es-CO')} aprobados</span></>}
+              {sinJuicioCount > 0 && <> · <span style={{ color: 'var(--fx-aviso)' }}>{sinJuicioCount.toLocaleString('es-CO')} falta juicio</span></>}
+              {' · '}<span style={{ color: 'var(--fx-tinta-4)' }}>{all.length.toLocaleString('es-CO')} en total</span>
+              {aprobadoCount > 0 && <> · <span style={{ color: 'var(--fx-ok)' }}>{aprobadoCount.toLocaleString('es-CO')} aprobados</span></>}
             </span>
           </div>
         </div>
@@ -352,8 +352,8 @@ export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
       ) : filtered.length === 0 ? (
         <Card>
           <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <Ic n={q ? 'search' : 'briefcase'} s={26} style={{ color: '#a1a1aa' }}/>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0a0a0b' }}>
+            <Ic n={q ? 'search' : 'briefcase'} s={26} style={{ color: 'var(--fx-tinta-4)' }}/>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>
               {q ? `Sin resultados para "${search.trim()}"` : 'Ninguna etapa coincide con el filtro'}
             </div>
           </div>
@@ -374,11 +374,11 @@ export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
                       <Fragment key={e.id}>
                         {g && (
                           <tr>
-                            <td colSpan={cols} style={{ padding: '11px 14px 7px', background: '#fbfbfc', borderTop: i === 0 ? 'none' : '2px solid #ececef' }}>
+                            <td colSpan={cols} style={{ padding: '11px 14px 7px', background: 'var(--fx-superficie-1)', borderTop: i === 0 ? 'none' : '2px solid var(--fx-linea)' }}>
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{ width: 8, height: 8, borderRadius: 2, background: g.color, flexShrink: 0 }}/>
                                 <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.color }}>{g.label}</span>
-                                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600, color: '#a1a1aa' }}>{groupCount(gk)}</span>
+                                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600, color: 'var(--fx-tinta-4)' }}>{groupCount(gk)}</span>
                               </span>
                             </td>
                           </tr>
@@ -386,28 +386,28 @@ export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
                         <tr
                           className="nx-row"
                           onClick={() => onOpen(e.id)}
-                          style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}
+                          style={{ borderBottom: '1px solid var(--fx-superficie-2)', cursor: 'pointer' }}
                         >
                           <td style={TD_S}>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                               <Ava name={e.aprendiz_nombre ?? '?'} size={22}/>
                               <div style={{ minWidth: 0 }}>
-                                <div style={{ color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{e.aprendiz_nombre ?? `#${e.aprendiz_id}`}</div>
-                                <div style={{ fontSize: 10.5, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>{e.aprendiz_documento ?? '—'}</div>
+                                <div style={{ color: 'var(--fx-tinta)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{e.aprendiz_nombre ?? `#${e.aprendiz_id}`}</div>
+                                <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-3)', fontFamily: '"JetBrains Mono", monospace' }}>{e.aprendiz_documento ?? '—'}</div>
                               </div>
                             </div>
                           </td>
-                          <td style={{ ...TD_S, color: '#3f3f46' }}>{MODALIDAD_LABEL[e.modalidad]}</td>
+                          <td style={{ ...TD_S, color: 'var(--fx-tinta-2)' }}>{MODALIDAD_LABEL[e.modalidad]}</td>
                           <td style={TD_S}>
                             {e.empresa_nombre
-                              ? <span style={{ color: '#27272a', display: 'inline-block', maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'bottom' }}>{e.empresa_nombre}</span>
-                              : <span style={{ color: '#c4c4c8' }}>—</span>}
+                              ? <span style={{ color: 'var(--fx-tinta)', display: 'inline-block', maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'bottom' }}>{e.empresa_nombre}</span>
+                              : <span style={{ color: 'var(--fx-linea-2)' }}>—</span>}
                           </td>
-                          <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#27272a', whiteSpace: 'nowrap' }}>{fd(e.fecha_inicio)}</td>
-                          <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#52525b', whiteSpace: 'nowrap' }}>{fd(e.fecha_fin_estimada)}</td>
+                          <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: 'var(--fx-tinta)', whiteSpace: 'nowrap' }}>{fd(e.fecha_inicio)}</td>
+                          <td style={{ ...TD_S, fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: 'var(--fx-tinta-2)', whiteSpace: 'nowrap' }}>{fd(e.fecha_fin_estimada)}</td>
                           <td style={TD_S}><Bdg tone={tono.tone}>{tono.label}</Bdg></td>
                           <td style={{ ...TD_S, textAlign: 'right' }}>
-                            <Ic n="chevronRight" s={16} style={{ color: '#d4d4d8' }}/>
+                            <Ic n="chevronRight" s={16} style={{ color: 'var(--fx-linea-2)' }}/>
                           </td>
                         </tr>
                       </Fragment>
@@ -431,7 +431,7 @@ export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
   )
 }
 
-// ─── Nuevo registro: ficha → (instructor de práctica, si falta) → aprendiz → datos ─
+// ─── Nuevo registro: ficha → (instructor de seguimiento, si falta) → aprendiz → datos ─
 
 type Paso =
   | { kind: 'ficha' }
@@ -445,7 +445,7 @@ export function NuevoRegistro({ onCancel, onCreated }: { onCancel: () => void; o
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <button onClick={onCancel} style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
+      <button onClick={onCancel} style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
         <Ic n="arrowLeft" s={14}/>Cancelar
       </button>
       {paso.kind === 'ficha' && (
@@ -491,7 +491,7 @@ function PasoFicha({ onSeleccion }: {
       const r = await api.get(`/asignaciones-practica/activa?ficha_id=${f.id}`)
       onSeleccion(f.id, f.numero_ficha, f.coordinacion_academica_id, !!r.data)
     } catch {
-      setError('No se pudo verificar el instructor de práctica de esta ficha. Intenta de nuevo.')
+      setError('No se pudo verificar el instructor de seguimiento de esta ficha. Intenta de nuevo.')
     } finally {
       setVerificando(null)
     }
@@ -504,19 +504,19 @@ function PasoFicha({ onSeleccion }: {
     <div>
       <SectionIntro title="Selecciona la ficha" sub="Busca por número de ficha del aprendiz que va a iniciar o ya está en etapa productiva."/>
       <input className="nx-input" placeholder="Número de ficha…" value={q} onChange={e => setQ(e.target.value)} autoFocus/>
-      {error && <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 10 }}>{error}</div>}
-      {!fichas && !error && <div style={{ fontSize: 12.5, color: '#71717a', marginTop: 12 }}>Cargando fichas…</div>}
+      {error && <div style={{ fontSize: 12, color: 'var(--fx-atraso)', marginTop: 10 }}>{error}</div>}
+      {!fichas && !error && <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', marginTop: 12 }}>Cargando fichas…</div>}
       {fichas && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
-          {view.length === 0 && q && <div style={{ fontSize: 12.5, color: '#71717a' }}>Sin resultados para "{q}".</div>}
+          {view.length === 0 && q && <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>Sin resultados para "{q}".</div>}
           {view.map(f => (
             <button key={f.id} onClick={() => seleccionar(f)} disabled={verificando != null} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left',
-              padding: '10px 14px', border: '1px solid #e4e4e7', borderRadius: 8, background: '#fff',
+              padding: '10px 14px', border: '1px solid var(--fx-linea)', borderRadius: 8, background: 'var(--fx-superficie)',
               cursor: verificando != null ? 'default' : 'pointer', fontFamily: 'inherit', opacity: verificando != null && verificando !== f.id ? 0.5 : 1,
             }}>
-              <span style={{ fontSize: 13, fontWeight: 600, fontFamily: '"JetBrains Mono", monospace', color: '#18181b' }}>{f.numero_ficha}</span>
-              {verificando === f.id ? <Spinner/> : f.programa_nombre && <span style={{ fontSize: 12, color: '#71717a' }}>{f.programa_nombre}</span>}
+              <span style={{ fontSize: 13, fontWeight: 600, fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta)' }}>{f.numero_ficha}</span>
+              {verificando === f.id ? <Spinner/> : f.programa_nombre && <span style={{ fontSize: 12, color: 'var(--fx-tinta-3)' }}>{f.programa_nombre}</span>}
             </button>
           ))}
         </div>
@@ -525,60 +525,46 @@ function PasoFicha({ onSeleccion }: {
   )
 }
 
-function PasoInstructorPractica({ fichaId, numeroFicha, coordinacionId, onBack, onAsignado }: {
+// Decisión v3 (Fase 15): el instructor ya no se asigna una ficha solo; la
+// pide y la coordinación aprueba desde Asignación.
+function PasoInstructorPractica({ fichaId, numeroFicha, coordinacionId, onBack }: {
   fichaId: number; numeroFicha: string; coordinacionId: number | null; onBack: () => void; onAsignado: () => void
 }) {
   "use no memo"
-  const [instructores, setInstructores] = useState<{ id: string; nombre_completo: string }[] | null>(null)
-  const [instructorId, setInstructorId] = useState('')
-  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
+  const [nota, setNota] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [hecho, setHecho] = useState(false)
 
-  useEffect(() => {
-    if (coordinacionId == null) { setInstructores([]); return }
-    api.get(`/usuarios?rol=INSTRUCTOR&coordinacion_id=${coordinacionId}`).then(r => setInstructores(r.data)).catch(() => setInstructores([]))
-  }, [coordinacionId])
-
-  async function guardar() {
-    if (!instructorId) return
+  async function pedir() {
     setBusy(true); setErr(null)
     try {
-      await api.post('/asignaciones-practica', { ficha_id: fichaId, instructor_id: instructorId, fecha_inicio: fecha })
-      onAsignado()
-    } catch (e: any) {
-      setErr(e?.response?.data?.message ?? 'No se pudo asignar el instructor.')
+      await api.post('/asignar/solicitudes', { ficha_id: fichaId, nota: nota.trim() || undefined })
+      setHecho(true)
+    } catch (e: unknown) {
+      setErr((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'No se pudo enviar la solicitud.')
     } finally { setBusy(false) }
   }
 
   return (
     <div>
-      <SectionIntro title="Asigna el instructor de práctica"
-        sub={`La ficha ${numeroFicha} todavía no tiene un instructor de seguimiento a etapa productiva — se asigna una sola vez para todos sus aprendices, no por cada uno.`}/>
+      <SectionIntro title="Esta ficha no tiene instructor de seguimiento"
+        sub={`Para registrar aprendices de la ficha ${numeroFicha}, pídela: tu coordinación la aprueba desde Asignación y te queda asignada a ti.`}/>
       <Card style={{ padding: 20 }}>
         {coordinacionId == null ? (
-          <div style={{ fontSize: 12.5, color: '#b91c1c' }}>Esta ficha no tiene coordinación académica asignada; no se puede asignar instructor de práctica.</div>
+          <div style={{ fontSize: 12.5, color: 'var(--fx-atraso)' }}>Esta ficha no tiene coordinación académica; avisa a tu coordinación.</div>
+        ) : hecho ? (
+          <div style={{ fontSize: 13.5, color: 'var(--fx-ok)', fontWeight: 550 }}>Listo. Le llegó tu solicitud a la coordinación; cuando la apruebe, la ficha aparece en tus aprendices.</div>
         ) : (
-          <>
-            <Field label="Instructor" required>
-              <select className="nx-input" value={instructorId} onChange={e => setInstructorId(e.target.value)} disabled={!instructores}>
-                <option value="">{instructores ? 'Selecciona un instructor…' : 'Cargando…'}</option>
-                {instructores?.map(i => <option key={i.id} value={i.id}>{i.nombre_completo}</option>)}
-              </select>
-            </Field>
-            {instructores && instructores.length === 0 && (
-              <div style={{ fontSize: 11.5, color: '#71717a', marginTop: 8 }}>No hay instructores en la coordinación académica de esta ficha.</div>
-            )}
-            <Field label="Desde" style={{ marginTop: 14, maxWidth: 220 }}>
-              <input type="date" className="nx-input" value={fecha} onChange={e => setFecha(e.target.value)}/>
-            </Field>
-          </>
+          <Field label="Nota para la coordinación (opcional)">
+            <input className="nx-input" value={nota} maxLength={300} onChange={e => setNota(e.target.value)} placeholder="Por ejemplo: la acompañé en la lectiva"/>
+          </Field>
         )}
       </Card>
-      {err && <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ fontSize: 12, color: 'var(--fx-atraso)', marginTop: 10 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
         <Btn variant="secondary" onClick={onBack} disabled={busy}>Cambiar ficha</Btn>
-        <Btn variant="accent" icon="check" disabled={!instructorId || busy} onClick={guardar}>{busy ? 'Asignando…' : 'Asignar y continuar'}</Btn>
+        {!hecho && coordinacionId != null && <Btn variant="accent" icon="check" disabled={busy} onClick={pedir}>{busy ? 'Enviando…' : 'Pedir esta ficha'}</Btn>}
       </div>
     </div>
   )
@@ -598,20 +584,20 @@ function PasoAprendiz({ fichaId, numeroFicha, onBack, onSeleccion }: {
   return (
     <div>
       <SectionIntro title="Selecciona el aprendiz" sub={`Aprendices registrados en la ficha ${numeroFicha || fichaId}.`}/>
-      {error && <div style={{ fontSize: 12, color: '#b91c1c' }}>{error}</div>}
-      {!aprendices && !error && <div style={{ fontSize: 12.5, color: '#71717a' }}>Cargando…</div>}
+      {error && <div style={{ fontSize: 12, color: 'var(--fx-atraso)' }}>{error}</div>}
+      {!aprendices && !error && <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>Cargando…</div>}
       {aprendices && aprendices.length === 0 && (
-        <div style={{ fontSize: 12.5, color: '#71717a' }}>Esta ficha no tiene aprendices cargados todavía.</div>
+        <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>Esta ficha no tiene aprendices cargados todavía.</div>
       )}
       {aprendices && aprendices.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
           {aprendices.map(a => (
             <button key={a.id} onClick={() => onSeleccion(a)} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left',
-              padding: '10px 14px', border: '1px solid #e4e4e7', borderRadius: 8, background: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+              padding: '10px 14px', border: '1px solid var(--fx-linea)', borderRadius: 8, background: 'var(--fx-superficie)', cursor: 'pointer', fontFamily: 'inherit',
             }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#18181b' }}>{a.nombre_completo}</span>
-              <span style={{ fontSize: 12, fontFamily: '"JetBrains Mono", monospace', color: '#71717a' }}>{a.numero_documento}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fx-tinta)' }}>{a.nombre_completo}</span>
+              <span style={{ fontSize: 12, fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta-3)' }}>{a.numero_documento}</span>
             </button>
           ))}
         </div>
@@ -806,13 +792,13 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
       {/* Mismo encabezado + tarjeta de progreso que el detalle de la etapa:
           crear y ver deben leerse como la misma pantalla. */}
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 600, color: '#0a0a0b' }}>{aprendiz.nombre_completo}</h2>
-        <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: '#52525b' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--fx-tinta)' }}>{aprendiz.nombre_completo}</h2>
+        <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: 'var(--fx-tinta-2)' }}>
           <Tag>{MODALIDAD_LABEL[modalidad]}</Tag>
           {tieneEmpresa && empresaNombre.trim() && <span>{empresaNombre.trim()}</span>}
-          <span style={{ color: '#d4d4d8' }}>·</span>
+          <span style={{ color: 'var(--fx-linea-2)' }}>·</span>
           <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{aprendiz.numero_documento}</span>
-          <span style={{ color: '#d4d4d8' }}>·</span>
+          <span style={{ color: 'var(--fx-linea-2)' }}>·</span>
           <Bdg tone={badge.tone}>{badge.label}</Bdg>
         </div>
       </div>
@@ -849,13 +835,13 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
             {ajusteManual ? (
               <input type="date" className="nx-input" value={fechaFinManual} onChange={e => setFechaFinManual(e.target.value)}/>
             ) : (
-              <div className="nx-input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#f7f7f9' }}>
-                <span style={{ color: calc.fecha ? '#18181b' : '#a1a1aa' }}>
+              <div className="nx-input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--fx-superficie-1)' }}>
+                <span style={{ color: calc.fecha ? 'var(--fx-tinta)' : 'var(--fx-tinta-4)' }}>
                   {calc.fecha ? fd(calc.fecha) : 'Elige la fecha de inicio'}
                 </span>
                 {calc.fecha && (
                   <button type="button" onClick={() => { setFechaFinManual(calc.fecha); setAjusteManual(true) }}
-                    style={{ background: 'none', border: 'none', color: '#4f46e5', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
+                    style={{ background: 'none', border: 'none', color: 'var(--fx-morado)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
                     ajustar
                   </button>
                 )}
@@ -863,11 +849,11 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
             )}
           </Campo>
           {fechaInicio && (
-            <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: '#71717a', marginTop: -4 }}>
+            <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--fx-tinta-3)', marginTop: -4 }}>
               {ajusteManual ? (
                 <>Fecha puesta a mano.{' '}
                   <button type="button" onClick={() => setAjusteManual(false)}
-                    style={{ background: 'none', border: 'none', color: '#4f46e5', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, padding: 0 }}>
+                    style={{ background: 'none', border: 'none', color: 'var(--fx-morado)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, padding: 0 }}>
                     volver al cálculo
                   </button>
                 </>
@@ -906,7 +892,7 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
               ? <Dato valor={aprendiz.email_institucional}/>
               : <input className="nx-input" value={aprCorreoInst} onChange={e => setAprCorreoInst(e.target.value)} placeholder="@sena.edu.co"/>}
           </Campo>
-          <span className="g23-col2" style={{ fontSize: 11.5, color: '#71717a' }}>
+          <span className="g23-col2" style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)' }}>
             Debe quedar al menos un correo: personal o institucional.
           </span>
         </Bloque>
@@ -948,10 +934,10 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
             <span className="g23-bloque__n">{tieneEmpresa ? 5 : 4}</span>
             <span className="g23-toggle__t">Persona en situación de discapacidad</span>
             <span className="g23-toggle__hint">si aplica</span>
-            <Ic n={apoyoAbierto ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: '#a1a1aa' }}/>
+            <Ic n={apoyoAbierto ? 'chevronDown' : 'chevronRight'} s={15} style={{ color: 'var(--fx-tinta-4)' }}/>
           </button>
           {apoyoAbierto && (
-            <div className="g23-bloque__body g23-bloque__body--3" style={{ borderTop: '1px solid #f1f1f3' }}>
+            <div className="g23-bloque__body g23-bloque__body--3" style={{ borderTop: '1px solid var(--fx-superficie-2)' }}>
               <Campo label="Nombre de quien lo asiste">
                 <input className="nx-input" value={asisteNombre} onChange={e => setAsisteNombre(e.target.value)}/>
               </Campo>
@@ -965,7 +951,7 @@ export function CrearEtapaProductivaForm({ aprendiz, onBack, onCreated }: { apre
           )}
         </section>
 
-        {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
+        {err && <div style={{ fontSize: 12, color: 'var(--fx-atraso)' }}>{err}</div>}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
           <Btn variant="secondary" onClick={onBack} disabled={busy}>Volver</Btn>

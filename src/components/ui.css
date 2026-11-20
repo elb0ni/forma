@@ -23,11 +23,11 @@
 .btn--lg { padding: 0 16px; height: 40px; font-size: 14px;   }
 
 /* variants */
-.btn--primary   { background: #0a0a0b; color: #fff;    border: 1px solid #0a0a0b;   }
-.btn--accent    { background: #4f46e5; color: #fff;    border: 1px solid #4338ca;   }
-.btn--secondary { background: #fff;    color: #18181b; border: 1px solid #e4e4e7;   }
-.btn--ghost     { background: transparent; color: #27272a; border: none;            }
-.btn--danger    { background: #fff;    color: #b91c1c; border: 1px solid #fecaca;   }
+.btn--primary   { background: var(--fx-tinta); color: var(--fx-superficie);    border: 1px solid var(--fx-tinta);   }
+.btn--accent    { background: var(--fx-morado); color: var(--fx-superficie);    border: 1px solid var(--fx-morado-tinta);   }
+.btn--secondary { background: var(--fx-superficie);    color: var(--fx-tinta); border: 1px solid var(--fx-linea);   }
+.btn--ghost     { background: transparent; color: var(--fx-tinta); border: none;            }
+.btn--danger    { background: var(--fx-superficie);    color: var(--fx-atraso); border: 1px solid var(--fx-atraso-linea);   }
 
 /* ─── Badge ─────────────────────────────────────────────────────────── */
 .bdg {
@@ -43,15 +43,15 @@
   font-family: "JetBrains Mono", monospace;
 }
 
-.bdg--neutral { background: #f1f1f3; color: #27272a; border: 1px solid #e4e4e7; }
-.bdg--accent  { background: #eef2ff; color: #312e81; border: 1px solid #c7d2fe; }
-.bdg--outline { background: #fff;    color: #3f3f46; border: 1px solid #e4e4e7; }
-.bdg--ok      { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-.bdg--warn    { background: #fef9c3; color: #a16207; border: 1px solid #fde68a; }
-.bdg--err     { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-.bdg--blue    { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.bdg--green   { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-.bdg--purple  { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+.bdg--neutral { background: var(--fx-superficie-2); color: var(--fx-tinta); border: 1px solid var(--fx-linea); }
+.bdg--accent  { background: var(--fx-morado-suave); color: var(--fx-morado-tinta); border: 1px solid var(--fx-morado-linea); }
+.bdg--outline { background: var(--fx-superficie);    color: var(--fx-tinta-2); border: 1px solid var(--fx-linea); }
+.bdg--ok      { background: var(--fx-ok-suave); color: var(--fx-ok); border: 1px solid var(--fx-ok-linea); }
+.bdg--warn    { background: var(--fx-aviso-suave); color: var(--fx-aviso); border: 1px solid var(--fx-aviso-linea); }
+.bdg--err     { background: var(--fx-atraso-suave); color: var(--fx-atraso); border: 1px solid var(--fx-atraso-linea); }
+.bdg--blue    { background: var(--fx-info-suave); color: var(--fx-info); border: 1px solid var(--fx-info-linea); }
+.bdg--green   { background: var(--fx-ok-suave); color: var(--fx-ok); border: 1px solid var(--fx-ok-linea); }
+.bdg--purple  { background: var(--fx-morado-suave); color: var(--fx-morado-tinta); border: 1px solid var(--fx-morado-linea); }
 
 /* ─── Modal ─────────────────────────────────────────────────────────── */
 .modal-overlay {
@@ -65,8 +65,8 @@
 }
 
 .modal-card {
-  background: #fff;
-  border: 1px solid #e4e4e7;
+  background: var(--fx-superficie);
+  border: 1px solid var(--fx-linea);
   border-radius: 14px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
   max-width: 100%;
@@ -78,7 +78,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px;
-  border-bottom: 1px solid #f1f1f3;
+  border-bottom: 1px solid var(--fx-superficie-2);
 }
 
 .modal-head__title {
@@ -87,7 +87,7 @@
   gap: 8px;
   font-size: 14.5px;
   font-weight: 600;
-  color: #0a0a0b;
+  color: var(--fx-tinta);
 }
 
 .modal-head__close {
@@ -98,10 +98,10 @@
   border: none;
   border-radius: 7px;
   background: none;
-  color: #71717a;
+  color: var(--fx-tinta-3);
   cursor: pointer;
 }
-.modal-head__close:hover { background: #f1f1f3; }
+.modal-head__close:hover { background: var(--fx-superficie-2); }
 
 .modal-body { padding: 18px; }
 
@@ -110,8 +110,8 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 14px 18px;
-  border-top: 1px solid #f1f1f3;
-  background: #fafafa;
+  border-top: 1px solid var(--fx-superficie-2);
+  background: var(--fx-superficie-1);
 }
 
 /* ─── Paginación ────────────────────────────────────────────────────── */
@@ -126,11 +126,11 @@
 
 .pager__info {
   font-size: 12.5px;
-  color: #71717a;
+  color: var(--fx-tinta-3);
 }
 
 .pager__info strong {
-  color: #3f3f46;
+  color: var(--fx-tinta-2);
   font-weight: 600;
   font-family: "JetBrains Mono", monospace;
 }
@@ -148,10 +148,10 @@
   padding: 0 8px;
   display: grid;
   place-items: center;
-  border: 1px solid #e4e4e7;
+  border: 1px solid var(--fx-linea);
   border-radius: 7px;
-  background: #fff;
-  color: #3f3f46;
+  background: var(--fx-superficie);
+  color: var(--fx-tinta-2);
   font-size: 12.5px;
   font-family: "JetBrains Mono", monospace;
   cursor: pointer;
@@ -160,8 +160,8 @@
 
 .pager__btn:hover:not(:disabled),
 .pager__num:hover {
-  border-color: #c7d2fe;
-  background: #f5f3ff;
+  border-color: var(--fx-morado-linea);
+  background: var(--fx-morado-suave);
 }
 
 .pager__btn:disabled {
@@ -171,16 +171,16 @@
 
 .pager__num--active,
 .pager__num--active:hover {
-  background: #4f46e5;
-  border-color: #4f46e5;
-  color: #fff;
+  background: var(--fx-morado);
+  border-color: var(--fx-morado);
+  color: var(--fx-superficie);
   font-weight: 600;
 }
 
 /* ─── Card ──────────────────────────────────────────────────────────── */
 .card {
-  background: #fff;
-  border: 1px solid #e4e4e7;
+  background: var(--fx-superficie);
+  border: 1px solid var(--fx-linea);
   border-radius: 12px;
 }
 
@@ -197,9 +197,9 @@
   border-radius: 4px;
   font-size: 10.5px;
   font-weight: 500;
-  border: 1px solid #e4e4e7;
-  background: #fff;
-  color: #3f3f46;
+  border: 1px solid var(--fx-linea);
+  background: var(--fx-superficie);
+  color: var(--fx-tinta-2);
   font-family: "JetBrains Mono", monospace;
 }
 
@@ -212,7 +212,7 @@
 
 .prog__track {
   flex: 1;
-  background: #f1f1f3;
+  background: var(--fx-superficie-2);
   overflow: hidden;
 }
 
@@ -224,7 +224,7 @@
 .prog__label {
   font-family: "JetBrains Mono", monospace;
   font-size: 12px;
-  color: #52525b;
+  color: var(--fx-tinta-2);
   width: 36px;
   text-align: right;
 }
@@ -240,7 +240,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #52525b;
+  color: var(--fx-tinta-2);
   font-weight: 600;
 }
 
@@ -255,7 +255,7 @@
   font-family: "JetBrains Mono", monospace;
   font-size: 28px;
   font-weight: 600;
-  color: #0a0a0b;
+  color: var(--fx-tinta);
   line-height: 1;
 }
 
@@ -267,17 +267,17 @@
 .metric__sub {
   margin-top: 6px;
   font-size: 12px;
-  color: #52525b;
+  color: var(--fx-tinta-2);
 }
 
 /* ─── Tooltip (Tip) ─────────────────────────────────────────────────── */
 .tip-trigger {
-  border-bottom: 1px dotted #b4b4bb;
+  border-bottom: 1px dotted var(--fx-tinta-4);
   outline: none;
 }
 .tip-trigger:focus-visible {
   border-radius: 2px;
-  box-shadow: 0 0 0 2px #c7d2fe;
+  box-shadow: 0 0 0 2px var(--fx-morado-linea);
 }
 
 .tip-pop {
@@ -287,8 +287,8 @@
   max-width: 300px;
   padding: 9px 12px;
   border-radius: 9px;
-  background: #1c1c1f;
-  color: #f4f4f5;
+  background: var(--fx-tinta);
+  color: var(--fx-superficie-2);
   font-size: 11.5px;
   line-height: 1.5;
   box-shadow: 0 12px 34px -10px rgba(9, 9, 11, 0.4);

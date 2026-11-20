@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { Ic, BrandMark, Ava } from './ui'
 import type { IcName } from './ui'
 import { SettingsModal } from './SettingsModal'
+import { AmbitoSelector } from './Ambito'
+import { Buscador } from './Buscador'
+import { useAmbito } from '../store/ambito'
 import { useAuthStore } from '../store/auth'
 import type { UserRole } from '../types'
 import api from '../lib/api'
@@ -20,54 +23,57 @@ interface NavItem {
   seccion?: string
 }
 
-// Nav del coordinador (COORD_ACADEMICO)
+// Menús (PLAN_REDISENO v3): lo del día a día arriba; lo que se usa poco,
+// en una sección aparte. Nombres del glosario: "etapa productiva",
+// "instructor de seguimiento".
 const COORD_NAV: NavItem[] = [
-  { id: 'coord-home',         label: 'Mi coordinación',        icon: 'home'   },
-  { id: 'coord-fichas',       label: 'Fichas en práctica',     icon: 'folder' },
-  { id: 'coord-instructores', label: 'Instructores de práctica', icon: 'users'  },
-  { id: 'coord-asignacion',   label: 'Asignación',             icon: 'layers' },
-  { id: 'coord-reportes',     label: 'Reportes',               icon: 'trend'  },
-  { id: 'coord-alertas',      label: 'Alertas',                icon: 'bell'   },
-  { id: 'coord-resumen',      label: 'Dashboard anterior',     icon: 'trend', seccion: 'Más' },
+  { id: 'coord-home',         label: 'Mi coordinación', icon: 'home'   },
+  { id: 'coord-fichas',       label: 'Fichas',          icon: 'folder' },
+  { id: 'coord-asignacion',   label: 'Asignación',      icon: 'layers' },
+  { id: 'coord-instructores', label: 'Equipo',          icon: 'users'  },
+  { id: 'coord-reportes',     label: 'Reportes',        icon: 'trend'  },
+  { id: 'coord-alertas',      label: 'Alertas',         icon: 'bell',  seccion: 'Más' },
 ]
 
 const NAV: Record<UserRole, NavItem[]> = {
   SUPER_ADMIN: [
-    { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
-    { id: 'admin-panorama',  label: 'Panorama',    icon: 'trend'     },
-    { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
-    { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
-    { id: 'admin-asignacion', label: 'Asignación', icon: 'layers'    },
-    { id: 'admin-centros',   label: 'Centros',     icon: 'shield'    },
-    { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
-    { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
-    { id: 'admin-integridad', label: 'Integridad', icon: 'checkCircle' },
-    { id: 'admin-datos',     label: 'Datos',       icon: 'list'      },
+    { id: 'admin-home',       label: 'Inicio',      icon: 'home'      },
+    { id: 'admin-fichas',     label: 'Fichas',      icon: 'briefcase' },
+    { id: 'admin-asignacion', label: 'Asignación',  icon: 'layers'    },
+    { id: 'admin-equipo',     label: 'Equipo',      icon: 'users'     },
+    { id: 'admin-reportes',   label: 'Reportes',    icon: 'trend'     },
+    { id: 'admin-centros',    label: 'Centros y coordinaciones', icon: 'shield', seccion: 'Configuración' },
+    { id: 'admin-programas',  label: 'Programas',   icon: 'layers'    },
+    { id: 'admin-usuarios',   label: 'Cuentas de usuario', icon: 'user' },
+    { id: 'admin-datos',      label: 'SofiaPlus y datos', icon: 'list' },
   ],
   // Mismas pantallas que el super admin, acotadas a su centro por el backend.
-  // Integridad (PE-04, catálogo regional) queda solo para el super admin.
   SUBDIRECTOR: [
-    { id: 'admin-home',      label: 'Dashboard',   icon: 'home'      },
-    { id: 'admin-panorama',  label: 'Panorama',    icon: 'trend'     },
-    { id: 'admin-programas', label: 'Programas',   icon: 'layers'    },
-    { id: 'admin-fichas',    label: 'Fichas',      icon: 'briefcase' },
-    { id: 'admin-asignacion', label: 'Asignación', icon: 'layers'    },
-    { id: 'admin-centros',   label: 'Mi centro',   icon: 'shield'    },
-    { id: 'admin-usuarios',  label: 'Usuarios',    icon: 'users'     },
-    { id: 'admin-reportes',  label: 'Reportes',    icon: 'trend'     },
-    { id: 'admin-catalogo',  label: 'Catálogo',    icon: 'checkCircle', seccion: 'Datos' },
-    { id: 'admin-datos',     label: 'Salud de los datos', icon: 'list' },
+    { id: 'admin-home',       label: 'Inicio',      icon: 'home'      },
+    { id: 'admin-fichas',     label: 'Fichas',      icon: 'briefcase' },
+    { id: 'admin-asignacion', label: 'Asignación',  icon: 'layers'    },
+    { id: 'admin-equipo',     label: 'Equipo',      icon: 'users'     },
+    { id: 'admin-reportes',   label: 'Reportes',    icon: 'trend'     },
+    { id: 'admin-centros',    label: 'Mi centro',   icon: 'shield', seccion: 'Configuración' },
+    { id: 'admin-programas',  label: 'Programas',   icon: 'layers'    },
+    { id: 'admin-usuarios',   label: 'Cuentas de usuario', icon: 'user' },
+    { id: 'admin-catalogo',   label: 'Catálogo',    icon: 'checkCircle' },
+    { id: 'admin-datos',      label: 'Salud de los datos', icon: 'list' },
   ],
   COORD_ACADEMICO: COORD_NAV,
-  // Rediseño: lo del día a día arriba; el resto, en "Más".
   INSTRUCTOR: [
     { id: 'inst-home', label: 'Hoy', icon: 'home' },
     { id: 'inst-etapa-productiva', label: 'Aprendices', icon: 'users' },
-    { id: 'inst-agenda', label: 'Calendario', icon: 'calendar', seccion: 'Más' },
-    { id: 'inst-fichas', label: 'Mis fichas', icon: 'folder' },
-    { id: 'inst-historial', label: 'Historial', icon: 'clock' },
     { id: 'inst-reportes', label: 'Reportes', icon: 'trend' },
   ],
+}
+
+// Ámbito de quien entra, escrito: lo que ve en FORMA.
+const AMBITO: Record<UserRole, string> = {
+  SUPER_ADMIN:     'Regional Atlántico',
+  SUBDIRECTOR:     'Subdirección de centro',
+  COORD_ACADEMICO: 'Coordinación académica',
+  INSTRUCTOR:      'Instructor de seguimiento',
 }
 
 // Iniciales del centro para el badge del sidebar (ej. "Centro Nacional Colombo
@@ -115,14 +121,13 @@ function Sidebar({ current, onNav }: SidebarProps) {
         {/* Centro */}
         <div className="sidebar__centro">
           <div className="sidebar__centro-inner">
-            <div className="sidebar__centro-badge">{centroSigla(user.centro_formacion)}</div>
+            <div className="sidebar__centro-badge">{user.rol === 'SUPER_ADMIN' ? 'RA' : centroSigla(user.centro_formacion)}</div>
             <div className="sidebar__centro-info">
               <div className="sidebar__centro-name">
-                {user.centro_formacion || 'Centro de formación'}
+                {user.rol === 'SUPER_ADMIN' ? 'Los 4 centros' : (user.centro_formacion || 'Centro de formación')}
               </div>
-              <div className="sidebar__centro-org">SENA</div>
+              <div className="sidebar__centro-org">{AMBITO[user.rol]}</div>
             </div>
-            <Ic n="chevronDown" s={12} style={{ color: '#71717a' }} />
           </div>
         </div>
 
@@ -141,7 +146,7 @@ function Sidebar({ current, onNav }: SidebarProps) {
                 onClick={() => onNav(it.id)}
                 className={`sidebar__nav-btn${active ? ' sidebar__nav-btn--active' : ''}`}
               >
-                <Ic n={it.icon} s={15} style={{ color: active ? '#0a0a0b' : '#71717a' }} />
+                <Ic n={it.icon} s={15} style={{ color: active ? 'var(--fx-morado)' : 'var(--fx-tinta-3)' }} />
                 <span style={{ flex: 1, textAlign: 'left' }}>{it.label}</span>
                 {it.badge !== undefined && (
                   <span className={`sidebar__nav-badge ${typeof it.badge === 'number' ? 'sidebar__nav-badge--number' : 'sidebar__nav-badge--text'}`}>
@@ -157,7 +162,7 @@ function Sidebar({ current, onNav }: SidebarProps) {
             Cuenta
           </div>
           <button className="sidebar__nav-btn" onClick={() => setIsOpenModal(true)}>
-            <Ic n="cog" s={15} style={{ color: '#71717a' }} />
+            <Ic n="cog" s={15} style={{ color: 'var(--fx-tinta-3)' }} />
             Ajustes
           </button>
         </nav>
@@ -202,6 +207,7 @@ function Header({ title, subtitle, breadcrumb, actions, onMenu }: HeaderProps) {
   async function logout() {
     setOpen(false)
     await api.post('/auth/logout').catch(() => { })
+    useAmbito.getState().setCentro(null)
     clearUser()
     navigate('/login', { replace: true })
   }
@@ -218,7 +224,7 @@ function Header({ title, subtitle, breadcrumb, actions, onMenu }: HeaderProps) {
           <div className="shell-header__breadcrumb">
             {breadcrumb.map((b, i) => (
               <span key={i} className="shell-header__breadcrumb-item">
-                {i > 0 && <Ic n="chevronRight" s={11} style={{ color: '#a1a1aa' }} />}
+                {i > 0 && <Ic n="chevronRight" s={11} style={{ color: 'var(--fx-tinta-4)' }} />}
                 <span className={i === breadcrumb.length - 1 ? 'shell-header__breadcrumb-item--last' : ''}>{b}</span>
               </span>
             ))}
@@ -231,6 +237,8 @@ function Header({ title, subtitle, breadcrumb, actions, onMenu }: HeaderProps) {
       </div>
 
       <div className="shell-header__actions">
+        <Buscador />
+        <AmbitoSelector />
         {actions}
         <div className="shell-header__divider" />
 
@@ -246,7 +254,7 @@ function Header({ title, subtitle, breadcrumb, actions, onMenu }: HeaderProps) {
                 {ROL_LABEL[user.rol]}
               </div>
             </div>
-            <Ic n="chevronDown" s={12} style={{ color: '#71717a' }} />
+            <Ic n="chevronDown" s={12} style={{ color: 'var(--fx-tinta-3)' }} />
           </button>
 
           {open && (
@@ -262,7 +270,7 @@ function Header({ title, subtitle, breadcrumb, actions, onMenu }: HeaderProps) {
                 {/* Logout */}
                 <div className="shell-header__dropdown-actions">
                   <button onClick={logout} className="shell-header__logout-btn">
-                    <Ic n="logout" s={14} style={{ color: '#71717a' }} />
+                    <Ic n="logout" s={14} style={{ color: 'var(--fx-tinta-3)' }} />
                     Cerrar sesión
                   </button>
                 </div>

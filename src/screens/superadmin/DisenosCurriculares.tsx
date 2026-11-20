@@ -399,7 +399,7 @@ export function DisenosCurriculares() {
                 </div>
                 <span className="dis-grupo__cuenta"><b>{ok}</b> de {g.filas.length} programas con diseño</span>
               </div>
-              <Ic n={abiertoG ? 'chevronUp' : 'chevronDown'} s={15} style={{ color: '#a1a1aa', flexShrink: 0 }}/>
+              <Ic n={abiertoG ? 'chevronUp' : 'chevronDown'} s={15} style={{ color: 'var(--fx-tinta-4)', flexShrink: 0 }}/>
             </button>
             {abiertoG && (
               <div className="prog-table-scroll dis-grupo__tabla">

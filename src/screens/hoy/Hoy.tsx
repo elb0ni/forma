@@ -67,7 +67,10 @@ export function Hoy({ onAbrir, onFicha, onNuevo, onCalendario, onAprendices }: {
           <h1 className="fx-titulo">Hoy</h1>
         </div>
         <div className="hoy-acciones">
-          <Boton tipo="suave" onClick={onCalendario}>Ver calendario</Boton>
+          <div className="fx-vistas" role="tablist" aria-label="Vista">
+            <button type="button" role="tab" aria-selected data-on>Esta semana</button>
+            <button type="button" role="tab" aria-selected={false} onClick={onCalendario}>Calendario</button>
+          </div>
           <Boton onClick={onAprendices}>Todos mis aprendices</Boton>
         </div>
       </header>

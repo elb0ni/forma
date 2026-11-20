@@ -48,7 +48,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
-  color: #b91c1c;
+  color: #d92d20;
 }
 
 .login__info-box {
@@ -77,12 +77,12 @@
 }
 
 .field__required {
-  color: #b91c1c;
+  color: #d92d20;
 }
 
 .field__error {
   font-size: 11px;
-  color: #b91c1c;
+  color: #d92d20;
   margin-top: 4px;
   display: block;
 }

@@ -117,18 +117,18 @@ export interface DocumentoBitacora {
 }
 
 export const MOMENTO_META: Record<TipoMomentoCron, { n: number; label: string; ventana: string; color: string; bg: string }> = {
-  PLANEACION:  { n: 1, label: 'Planeación',          ventana: 'Primeras 2 semanas',       color: '#4f46e5', bg: '#eef2ff' },
-  SEGUIMIENTO: { n: 2, label: 'Seguimiento parcial', ventana: 'A mitad de la etapa',      color: '#0891b2', bg: '#ecfeff' },
-  EVALUACION:  { n: 3, label: 'Evaluación final',    ventana: 'Últimos 15 días',          color: '#7c3aed', bg: '#f5f3ff' },
+  PLANEACION:  { n: 1, label: 'Planeación',          ventana: 'Primeras 2 semanas',       color: 'var(--fx-morado)', bg: 'var(--fx-morado-suave)' },
+  SEGUIMIENTO: { n: 2, label: 'Seguimiento parcial', ventana: 'A mitad de la etapa',      color: 'var(--fx-info)', bg: 'var(--fx-info-suave)' },
+  EVALUACION:  { n: 3, label: 'Evaluación final',    ventana: 'Últimos 15 días',          color: 'var(--fx-morado)', bg: 'var(--fx-morado-suave)' },
 }
 
 export const ESTADO_BITACORA_META: Record<EstadoBitacora, { label: string; tone: 'neutral' | 'outline' | 'ok' | 'warn' | 'err' | 'blue' | 'purple'; color: string }> = {
-  FUTURA:    { label: 'Aún no inicia', tone: 'outline', color: '#d4d4d8' },
-  PENDIENTE: { label: 'Sin diligenciar', tone: 'neutral', color: '#a1a1aa' },
-  BORRADOR:  { label: 'Borrador',      tone: 'neutral', color: '#71717a' },
-  ENTREGADA: { label: 'Por revisar',   tone: 'blue',    color: '#2563eb' },
-  DEVUELTA:  { label: 'Devuelta',      tone: 'warn',    color: '#ca8a04' },
-  APROBADA:  { label: 'Aprobada',      tone: 'ok',      color: '#15803d' },
+  FUTURA:    { label: 'Aún no inicia', tone: 'outline', color: 'var(--fx-linea-2)' },
+  PENDIENTE: { label: 'Sin diligenciar', tone: 'neutral', color: 'var(--fx-tinta-4)' },
+  BORRADOR:  { label: 'Borrador',      tone: 'neutral', color: 'var(--fx-tinta-3)' },
+  ENTREGADA: { label: 'Por revisar',   tone: 'blue',    color: 'var(--fx-info)' },
+  DEVUELTA:  { label: 'Devuelta',      tone: 'warn',    color: 'var(--fx-aviso)' },
+  APROBADA:  { label: 'Aprobada',      tone: 'ok',      color: 'var(--fx-ok)' },
 }
 
 // Fechas "aaaa-mm-dd" sin pasar por UTC (new Date('2026-09-24') en Colombia

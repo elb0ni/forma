@@ -53,7 +53,7 @@ interface Evento {
   extra: VisitaExtra | null
 }
 
-const EXTRA_META = { corto: 'S+', label: 'Seguimiento adicional', color: '#ea580c', bg: '#fff7ed' }
+const EXTRA_META = { corto: 'S+', label: 'Seguimiento adicional', color: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)' }
 const metaDe = (t: TipoMomentoCron | 'EXTRA') =>
   t === 'EXTRA' ? EXTRA_META : { corto: `M${MOMENTO_META[t].n}`, label: `Visita ${MOMENTO_META[t].n} · ${MOMENTO_META[t].label}`, color: MOMENTO_META[t].color, bg: MOMENTO_META[t].bg }
 
@@ -189,7 +189,7 @@ export function CronogramaTab({ etapaId, crono, onChanged, onIrA }: {
                           <span
                             key={e.key}
                             className={`cron-pill${e.origen === 'SUGERIDO' ? ' cron-pill--sug' : ''}${e.origen === 'REALIZADO' ? ' cron-pill--hecha' : ''}${e.vencido ? ' cron-pill--venc' : ''}`}
-                            style={{ color: mt.color, borderColor: mt.color, background: e.origen === 'SUGERIDO' ? '#fff' : `${mt.color}1f` }}
+                            style={{ color: mt.color, borderColor: mt.color, background: e.origen === 'SUGERIDO' ? 'var(--fx-superficie)' : `color-mix(in srgb, ${mt.color} 12%, transparent)` }}
                             title={`${mt.label} · ${e.origen === 'REALIZADO' ? 'realizada' : e.origen === 'PROGRAMADO' ? 'agendada' : 'sugerida'}`}
                           >
                             {e.origen === 'REALIZADO' && <Ic n="check" s={9}/>}{mt.corto}<span className="cron-pill__txt"> {e.tipo === 'EXTRA' ? 'Adicional' : MOMENTO_META[e.tipo].label.split(' ')[0]}</span>
@@ -215,13 +215,13 @@ export function CronogramaTab({ etapaId, crono, onChanged, onIrA }: {
               <span className="cal-punto" style={{ background: EXTRA_META.color, borderColor: EXTRA_META.color }}/>Seguimiento adicional
             </span>
             <span className="cal-leyenda__item">
-              <span className="cron-pill cron-pill--sug" style={{ color: '#71717a', borderColor: '#a1a1aa' }}>M</span>Sugerida (sin agendar)
+              <span className="cron-pill cron-pill--sug" style={{ color: 'var(--fx-tinta-3)', borderColor: 'var(--fx-tinta-4)' }}>M</span>Sugerida (sin agendar)
             </span>
             <span className="cal-leyenda__item">
-              <span className="cron-pill" style={{ color: '#4f46e5', borderColor: '#4f46e5', background: '#4f46e51f' }}>M</span>Agendada
+              <span className="cron-pill" style={{ color: 'var(--fx-morado)', borderColor: 'var(--fx-morado)', background: '#4f46e51f' }}>M</span>Agendada
             </span>
             <span className="cal-leyenda__item">
-              <span style={{ width: 12, height: 10, borderRadius: 3, background: '#eef2ff', display: 'inline-block' }}/>Días para hacerla
+              <span style={{ width: 12, height: 10, borderRadius: 3, background: 'var(--fx-morado-suave)', display: 'inline-block' }}/>Días para hacerla
             </span>
           </div>
         </div>
@@ -273,7 +273,7 @@ export function CronogramaTab({ etapaId, crono, onChanged, onIrA }: {
               {diaEventos.length === 0 && <div className="cron-card__vacio">No hay visitas ese día.</div>}
               {diaEventos.map(e => (
                 <div key={e.key} className="cron-dia__ev">
-                  <span className="cal-item__tag" style={{ color: metaDe(e.tipo).color, background: `${metaDe(e.tipo).color}14` }}>{metaDe(e.tipo).corto}</span>
+                  <span className="cal-item__tag" style={{ color: metaDe(e.tipo).color, background: `color-mix(in srgb, ${metaDe(e.tipo).color} 8%, transparent)` }}>{metaDe(e.tipo).corto}</span>
                   {metaDe(e.tipo).label}
                 </div>
               ))}
@@ -297,7 +297,7 @@ export function CronogramaTab({ etapaId, crono, onChanged, onIrA }: {
           </div>
           <div className="cron-card" style={{ overflow: 'hidden' }}>
             {obligatorias.map((e, i) => (
-              <div key={e.key} style={{ borderBottom: i < obligatorias.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
+              <div key={e.key} style={{ borderBottom: i < obligatorias.length - 1 ? '1px solid var(--fx-superficie-2)' : 'none' }}>
                 {fila(e)}
               </div>
             ))}
@@ -316,7 +316,7 @@ export function CronogramaTab({ etapaId, crono, onChanged, onIrA }: {
               <div className="cron-card__vacio">Ninguno. Agrega los que necesites, por ejemplo si hay problemas con el aprendiz o la empresa.</div>
             )}
             {adicionales.map((e, i) => (
-              <div key={e.key} style={{ borderBottom: i < adicionales.length - 1 ? '1px solid #f1f1f3' : 'none' }}>
+              <div key={e.key} style={{ borderBottom: i < adicionales.length - 1 ? '1px solid var(--fx-superficie-2)' : 'none' }}>
                 {fila(e)}
               </div>
             ))}
@@ -379,7 +379,7 @@ function EventoFila({ e, hoy, abierto, onToggle, etapaId, onChanged, onAgendar, 
         <span className="cal-item__tag" style={{
           color: meta.color,
           borderColor: sugerido ? meta.color : 'transparent',
-          background: sugerido ? 'transparent' : `${meta.color}14`,
+          background: sugerido ? 'transparent' : `color-mix(in srgb, ${meta.color} 8%, transparent)`,
           borderStyle: sugerido ? 'dashed' : 'solid',
         }}>{meta.corto}</span>
         <span className="cal-item__body">
@@ -387,7 +387,7 @@ function EventoFila({ e, hoy, abierto, onToggle, etapaId, onChanged, onAgendar, 
           <span className="cal-item__meta">{fdia(e.fecha)}{m?.visita?.hora && e.origen === 'PROGRAMADO' ? ` · ${m.visita.hora}` : ''}{m?.visita && e.origen === 'PROGRAMADO' ? ` · ${modo(m.visita.modalidad)}` : ''}</span>
         </span>
         <span className={`cal-item__estado cal-item__estado--${claseEstado}`}>{estado}</span>
-        <Ic n={abierto ? 'chevronDown' : 'chevronRight'} s={14} style={{ color: '#d4d4d8', flexShrink: 0 }}/>
+        <Ic n={abierto ? 'chevronDown' : 'chevronRight'} s={14} style={{ color: 'var(--fx-linea-2)', flexShrink: 0 }}/>
       </button>
       {abierto && (
         <div className="cron-fila-det">

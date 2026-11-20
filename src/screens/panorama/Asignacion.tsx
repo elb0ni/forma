@@ -2,13 +2,17 @@
 // Una pantalla para coordinación, subdirección y dirección regional: cuántos
 // aprendices habrá en práctica los próximos 3 meses contra los cupos, qué
 // fichas no tienen instructor y, para cada una, a quién conviene asignarla.
+// v3 (Fase 15): el panel Asignar (ficha, aprendices sueltos o repartir), las
+// solicitudes de los instructores y liberar a un instructor.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import { useAuthStore } from '../../store/auth'
+import { useAmbito } from '../../store/ambito'
 import { Lienzo, Frase, Estado, Panel, Boton, PanelLateral } from '../../ui'
 import { fdia } from '../../ui/estados'
 import { MesesCapacidad, Medidor } from './comun'
+import { AsignarPanel } from './AsignarPanel'
 import { miles } from './formato'
 import type { Mes } from './formato'
 import './panorama.css'
@@ -28,8 +32,6 @@ interface Resumen {
   hoy: string; cupo_defecto: number | null; capacidad: number
   instructores: InstructorCap[]; meses: Mes[]; cola: FichaCola[]; alertas: Alerta[]
 }
-interface Sugerencia { id: string; nombre: string; coordinacion: string | null; cupo: number; carga: number; libre: number; razones: string[]; avisos: string[] }
-interface Sugerencias { ficha: { id: number; numero_ficha: string; programa: string | null; aprendices: number }; sugerencias: Sugerencia[] }
 interface Opcion { id: number; nombre: string }
 
 
@@ -38,8 +40,10 @@ const msg = (e: unknown, d: string) => (e as { response?: { data?: { message?: s
 export function Asignacion({ rutaFicha }: { rutaFicha: (fichaId: number) => string }) {
   const user = useAuthStore((s) => s.user)
   const rol = user?.rol
-  const [centro, setCentro] = useState<string>('')
-  const [coord, setCoord] = useState<string>('')
+  // El centro y la coordinación salen del ámbito elegido arriba (Fase 14).
+  const amb = useAmbito()
+  const centro = rol === 'SUPER_ADMIN' && amb.centroId ? String(amb.centroId) : ''
+  const coord = (rol === 'SUPER_ADMIN' || rol === 'SUBDIRECTOR') && amb.coordId ? String(amb.coordId) : ''
   const [centros, setCentros] = useState<Opcion[]>([])
   const [coords, setCoords] = useState<Opcion[]>([])
   const [d, setD] = useState<Resumen | null>(null)
@@ -98,22 +102,12 @@ export function Asignacion({ rutaFicha }: { rutaFicha: (fichaId: number) => stri
           <h1 className="fx-titulo">Asignación de instructores</h1>
         </div>
         <div className="pan-filtros">
-          {rol === 'SUPER_ADMIN' && (
-            <select value={centro} onChange={(e) => { setCentro(e.target.value); setCoord('') }} aria-label="Centro">
-              <option value="">Los 4 centros</option>
-              {centros.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          )}
-          {(rol === 'SUBDIRECTOR' || (rol === 'SUPER_ADMIN' && centro)) && coords.length > 0 && (
-            <select value={coord} onChange={(e) => setCoord(e.target.value)} aria-label="Coordinación">
-              <option value="">Todas las coordinaciones</option>
-              {coords.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          )}
         </div>
       </header>
 
       <Frase tono={peor || pronto ? 'atraso' : 'ok'}>{frase}</Frase>
+
+      <Solicitudes centro={centro} coord={coord} onCambio={cargar} onAbrir={(id, numero) => setFicha(d.cola.find((f) => f.id === id) ?? { id, numero_ficha: numero } as FichaCola)}/>
 
       <Panel titulo="Los próximos 3 meses" accion={<span className="fx-texto-3">{d.instructores.length} instructores · {miles(d.capacidad)} cupos</span>}>
         <MesesCapacidad meses={d.meses}/>
@@ -170,14 +164,14 @@ export function Asignacion({ rutaFicha }: { rutaFicha: (fichaId: number) => stri
 
       <PanelLateral
         abierto={!!ficha} onCerrar={() => setFicha(null)} ancho={600}
-        titulo={ficha ? `Asignar la ficha ${ficha.numero_ficha}` : ''}
+        titulo={ficha ? `Asignar · ficha ${ficha.numero_ficha}` : ''}
         sub={ficha ? `${ficha.programa ?? ''} · ${ficha.sin_asignar} aprendices sin instructor` : undefined}
       >
         {ficha && (
-          <Asistente
-            ficha={ficha} hoy={d.hoy} rutaFicha={rutaFicha(ficha.id)}
-            onAsignada={() => { setFicha(null); cargar() }}
-          />
+          <>
+            <AsignarPanel fichaId={ficha.id} onCambio={cargar}/>
+            <p className="fx-texto-3 pan-nota"><Link to={rutaFicha(ficha.id)}>Abrir la ficha</Link></p>
+          </>
         )}
       </PanelLateral>
     </Lienzo>
@@ -236,7 +230,7 @@ function Instructores({ lista, coordVisible, onCambio }: { lista: InstructorCap[
     <div className="fx-tabla-envoltura">
       {err && <p className="pan-error">{err}</p>}
       <table className="fx-tabla pan-tabla">
-        <thead><tr><th>Instructor</th><th>Lleva</th><th/><th>Libres</th><th>Cupo</th></tr></thead>
+        <thead><tr><th>Instructor</th><th>Lleva</th><th/><th>Libres</th><th>Cupo</th><th/></tr></thead>
         <tbody>
           {orden.map((i) => (
             <tr key={i.id}>
@@ -262,6 +256,7 @@ function Instructores({ lista, coordVisible, onCambio }: { lista: InstructorCap[
                   </Boton>
                 )}
               </td>
+              <td><Liberar instructor={i} onCambio={onCambio}/></td>
             </tr>
           ))}
         </tbody>
@@ -270,63 +265,66 @@ function Instructores({ lista, coordVisible, onCambio }: { lista: InstructorCap[
   )
 }
 
-function Asistente({ ficha, hoy, rutaFicha, onAsignada }: { ficha: FichaCola; hoy: string; rutaFicha: string; onAsignada: () => void }) {
-  const [s, setS] = useState<Sugerencias | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const [ocupado, setOcupado] = useState<string | null>(null)
 
+// Solicitudes de fichas que hicieron los instructores (decisión v3: el
+// instructor pide, la coordinación aprueba).
+interface SolicitudF { id: number; ficha_id: number; numero_ficha: string; programa: string | null; instructor: string; nota: string | null; fecha: string | null }
+function Solicitudes({ centro, coord, onCambio, onAbrir }: { centro: string; coord: string; onCambio: () => void; onAbrir: (fichaId: number, numero: string) => void }) {
+  const [l, setL] = useState<SolicitudF[]>([])
+  const [n, setN] = useState(0)
   useEffect(() => {
+    const q = new URLSearchParams()
+    if (centro) q.set('centro_id', centro)
+    if (coord) q.set('coordinacion_id', coord)
     let vivo = true
-    api.get<Sugerencias>(`/capacidad/sugerencias?ficha_id=${ficha.id}`)
-      .then((r) => { if (vivo) setS(r.data) })
-      .catch((e) => { if (vivo) setErr(msg(e, 'No se pudieron calcular las sugerencias.')) })
+    api.get<SolicitudF[]>(`/asignar/solicitudes?${q}`).then((r) => { if (vivo) setL(r.data) }).catch(() => { if (vivo) setL([]) })
     return () => { vivo = false }
-  }, [ficha.id])
-
-  async function asignar(id: string) {
-    setOcupado(id); setErr(null)
-    try {
-      await api.post('/asignaciones-practica', { ficha_id: ficha.id, instructor_id: id, fecha_inicio: ficha.inicio > hoy ? ficha.inicio : hoy })
-      onAsignada()
-    } catch (e) {
-      setErr(msg(e, 'No se pudo asignar.'))
-      setOcupado(null)
-    }
+  }, [centro, coord, n])
+  if (!l.length) return null
+  async function resolver(id: number, accion: 'aprobar' | 'rechazar') {
+    await api.post(`/asignar/solicitudes/${id}/${accion}`).catch(() => undefined)
+    setN(n + 1); onCambio()
   }
-
-  if (!s) return <p className="fx-texto-3">{err ?? 'Buscando a quién conviene…'}</p>
   return (
-    <div className="pan-asistente">
-      <p className="fx-texto-2" style={{ margin: 0 }}>
-        Ordenados por: cupo libre, misma coordinación, experiencia en el programa y municipio.
-      </p>
-      {err && <p className="pan-error">{err}</p>}
-      {s.sugerencias.length === 0 && <p className="fx-texto-3">No hay instructores con cupo en este ámbito.</p>}
-      {s.sugerencias.map((x, k) => (
-        <div key={x.id} className="pan-sug" data-primera={k === 0 || undefined}>
-          <div className="pan-sug-cab">
-            <div>
-              <div className="pan-prog">{x.nombre}</div>
-              {x.coordinacion && <div className="fx-texto-3">{x.coordinacion}</div>}
-            </div>
-            <div className="pan-sug-carga fx-num">
-              <Medidor carga={x.carga} cupo={x.cupo}/>
-              <span className="fx-texto-3">{x.carga} de {x.cupo}</span>
-            </div>
-          </div>
-          <ul className="pan-razones">
-            {x.razones.map((r) => <li key={r} data-tipo="si">{r}</li>)}
-            {x.avisos.map((r) => <li key={r} data-tipo="ojo">{r}</li>)}
-          </ul>
-          <Boton tipo={k === 0 ? 'principal' : undefined} disabled={!!ocupado} onClick={() => void asignar(x.id)}>
-            {ocupado === x.id ? 'Asignando…' : `Asignar a ${x.nombre.split(' ')[0]}`}
-          </Boton>
-        </div>
-      ))}
-      <p className="fx-texto-3 pan-nota">
-        ¿Nadie tiene cupo para todos? Reparte la ficha entre varios instructores, aprendiz por aprendiz, desde{' '}
-        <Link to={rutaFicha}>el detalle de la ficha</Link>.
-      </p>
-    </div>
+    <Panel titulo="Instructores que pidieron una ficha" accion={<span className="fx-texto-3 fx-num">{l.length}</span>}>
+      <ul className="pan-lista">
+        {l.map((x) => (
+          <li key={x.id} className="asg-sol-fila">
+            <span className="fx-texto-3 fx-num">{fdia(x.fecha)}</span>
+            <span>
+              <strong>{x.instructor}</strong> pide la ficha{' '}
+              <button type="button" className="hoy-enlace" onClick={() => onAbrir(x.ficha_id, x.numero_ficha)}>{x.numero_ficha}</button>
+              <span className="fx-texto-3"> · {x.programa ?? ''}</span>
+              {x.nota && <span className="fx-texto-2"> · “{x.nota}”</span>}
+            </span>
+            <span className="asg-acciones">
+              <Boton tipo="principal" onClick={() => void resolver(x.id, 'aprobar')}>Aprobar</Boton>
+              <Boton tipo="suave" onClick={() => void resolver(x.id, 'rechazar')}>Rechazar</Boton>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  )
+}
+
+// La cuarta forma: liberar a un instructor (licencia, retiro, vacaciones).
+// Sus fichas vuelven a la cola y sus aprendices sueltos, al instructor de su ficha.
+function Liberar({ instructor, onCambio }: { instructor: InstructorCap; onCambio: () => void }) {
+  const [paso, setPaso] = useState<null | { fichas: number; individuales: number; etapas: number }>(null)
+  const [err, setErr] = useState<string | null>(null)
+  if (!instructor.carga) return null
+  if (!paso) {
+    return <Boton tipo="suave" onClick={() => { api.get(`/asignar/a-cargo/${instructor.id}`).then((r) => setPaso(r.data)).catch((e) => setErr(msg(e, 'No se pudo consultar.'))) }}>Liberar</Boton>
+  }
+  return (
+    <span className="asg-liberar">
+      <span className="fx-texto-2">
+        {paso.fichas} fichas vuelven a la cola{paso.individuales ? ` y ${paso.individuales} aprendices sueltos a su ficha` : ''}.
+      </span>
+      <Boton tipo="principal" onClick={() => { api.post('/asignar/liberar', { instructor_id: instructor.id }).then(() => { setPaso(null); onCambio() }).catch((e) => setErr(msg(e, 'No se pudo liberar.'))) }}>Confirmar</Boton>
+      <Boton tipo="suave" onClick={() => setPaso(null)}>Cancelar</Boton>
+      {err && <span className="pan-error">{err}</span>}
+    </span>
   )
 }

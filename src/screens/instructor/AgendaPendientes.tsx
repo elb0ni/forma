@@ -15,9 +15,9 @@ import type { CategoriaPendiente, FichaInstructor, GrupoPendiente, Pendiente, Pe
 // tinta normal. Tonos bien separados para que urgente y "te toca" no se
 // confundan de un vistazo.
 const GRUPO: Record<GrupoPendiente, { label: string; hint: string; color: string; suave: string }> = {
-  URGENTE: { label: 'Urgente',      hint: 'Ya se pasó la fecha',               color: '#e11d48', suave: '#fff1f2' },
-  TE_TOCA: { label: 'Te toca',      hint: 'Depende de ti y ya puedes hacerlo', color: '#d97706', suave: '#fffbeb' },
-  VIGILAR: { label: 'Para vigilar', hint: 'Lo debe otro; solo para estar al tanto', color: '#64748b', suave: '#f8fafc' },
+  URGENTE: { label: 'Urgente',      hint: 'Ya se pasó la fecha',               color: 'var(--fx-atraso)', suave: 'var(--fx-atraso-suave)' },
+  TE_TOCA: { label: 'Te toca',      hint: 'Depende de ti y ya puedes hacerlo', color: 'var(--fx-aviso)', suave: 'var(--fx-aviso-suave)' },
+  VIGILAR: { label: 'Para vigilar', hint: 'Lo debe otro; solo para estar al tanto', color: 'var(--fx-tinta-2)', suave: 'var(--fx-superficie-1)' },
 }
 const GRUPOS: GrupoPendiente[] = ['URGENTE', 'TE_TOCA', 'VIGILAR']
 
@@ -162,7 +162,7 @@ export function AgendaPendientes({ data, fichas, onVerEtapa, onVerFicha }: {
     <div>
       {data.fallos.length > 0 && (
         <div className="pend-aviso">
-          <Ic n="alert" s={14} style={{ color: '#a16207', flexShrink: 0, marginTop: 1 }}/>
+          <Ic n="alert" s={14} style={{ color: 'var(--fx-aviso)', flexShrink: 0, marginTop: 1 }}/>
           <span>
             No se pudo revisar: <strong>{data.fallos.join(', ')}</strong>. Los pendientes pueden estar
             incompletos en esa parte.
@@ -221,7 +221,7 @@ export function AgendaPendientes({ data, fichas, onVerEtapa, onVerFicha }: {
 
       {alDia.length > 0 && (
         <div className="pf-aldia">
-          <Ic n="checkCircle" s={14} style={{ color: '#16a34a', flexShrink: 0 }}/>
+          <Ic n="checkCircle" s={14} style={{ color: 'var(--fx-ok)', flexShrink: 0 }}/>
           <span>Al día:</span>
           {alDia.map(f => (
             <button key={f.id} className="pf-aldia__ficha" onClick={() => onVerFicha(f.id)} title={f.programa_nombre}>

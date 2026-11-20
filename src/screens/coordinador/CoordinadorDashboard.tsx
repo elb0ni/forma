@@ -3,8 +3,7 @@ import { Shell } from '../../components/Shell'
 import { useAuthStore } from '../../store/auth'
 import { FichasAdmin } from '../shared/FichasAdmin'
 import { ReportesAdmin } from '../shared/ReportesAdmin'
-import { CoordinadorHome } from './CoordinadorHome'
-import { InstructoresPractica } from '../shared/InstructoresPractica'
+import { EquipoRutas } from '../panorama/Equipo'
 import { CoordAlertas } from './CoordAlertas'
 import { Asignacion } from '../panorama/Asignacion'
 import { Panorama } from '../panorama/Panorama'
@@ -33,9 +32,9 @@ const SECTION_BY_SEGMENT: Record<string, string> = {
 
 const COORD_TITLES: Record<string, string> = {
   'coord-home':         'Mi coordinación',
-  'coord-resumen':      'Dashboard',
-  'coord-fichas':       'Fichas en práctica',
-  'coord-instructores': 'Instructores de práctica',
+  'coord-resumen':      'Resumen anterior',
+  'coord-fichas':       'Fichas',
+  'coord-instructores': 'Equipo',
   'coord-asignacion':   'Asignación',
   'coord-reportes':     'Reportes',
   'coord-alertas':      'Alertas',
@@ -58,8 +57,8 @@ function CoordFichas() {
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         justifyContent: 'center', minHeight: 320, gap: 12, textAlign: 'center',
       }}>
-        <div style={{ fontSize: 16, fontWeight: 600, color: '#0a0a0b' }}>Sin coordinación asignada</div>
-        <div style={{ fontSize: 13, color: '#71717a', maxWidth: 360 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--fx-tinta)' }}>Sin coordinación asignada</div>
+        <div style={{ fontSize: 13, color: 'var(--fx-tinta-3)', maxWidth: 360 }}>
           Tu usuario no tiene una coordinación académica asignada. Pide a un administrador que te la asigne para gestionar fichas.
         </div>
       </div>
@@ -100,16 +99,13 @@ export function CoordinadorDashboard() {
             rutaEtapa={(f, e) => `${BASE}/fichas/${f}/etapa/${e}`}
             rutaAsignacion={`${BASE}/asignacion`}
             rutaAlertas={`${BASE}/alertas`}
-          />
-        }/>
-        <Route path="resumen" element={
-          <CoordinadorHome
-            onNav={onNav}
             onOpenFicha={id => navigate(`${BASE}/fichas/${id}`)}
           />
         }/>
+        {/* El resumen anterior se unió a Inicio (PLAN_REDISENO v3). */}
+        <Route path="resumen" element={<Navigate to={BASE} replace/>}/>
         <Route path="fichas/*" element={<CoordFichas/>}/>
-        <Route path="instructores/*" element={<InstructoresPractica/>}/>
+        <Route path="instructores/*" element={<EquipoRutas/>}/>
         <Route path="asignacion" element={<Asignacion rutaFicha={id => `${BASE}/fichas/${id}`}/>}/>
         <Route path="reportes" element={<CoordReportes/>}/>
         <Route path="alertas" element={

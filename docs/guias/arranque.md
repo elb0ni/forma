@@ -12,14 +12,14 @@
 | Min | Qué | Con quién |
 |---|---|---|
 | 0–10 | Para qué es FORMA: el GFPI-F-023 y las bitácoras en un solo lugar. "No todos entran a FORMA, pero todos quedan en FORMA" | Todos |
-| 10–25 | La subdirección y las coordinaciones asignan juntas las fichas en práctica que no tienen instructor, con la pantalla *Asignación* | Subdirección y coordinaciones |
+| 10–25 | La subdirección y las coordinaciones asignan juntas las fichas en etapa productiva que no tienen instructor, con la pantalla *Asignación* | Subdirección y coordinaciones |
 | 25–45 | Cada instructor entra, revisa *Hoy*, registra una etapa y hace una planeación de práctica | Instructores |
 | 45–55 | Portal *Mi etapa*: entrar con el documento y el código, y llenar una bitácora de prueba | Instructores (mostrar a sus aprendices) |
 | 55–60 | Cómo pedir ayuda y qué se mide en las 2 semanas | Todos |
 
 ## Las 2 semanas de piloto
-- **Revisión diaria (soporte):** *Datos* (PE-04, robot y conciliación) y las alertas abiertas.
-- **Revisión semanal con la subdirección:** en *Panorama*, lo siguiente:
+- **Revisión diaria (soporte):** *Salud de los datos* (PE-04, robot y conciliación) y las alertas abiertas.
+- **Revisión semanal con la subdirección:** en *Inicio*, lo siguiente:
   - fichas sin instructor;
   - momentos en plazo;
   - bitácoras al día y leídas.

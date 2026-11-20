@@ -2,13 +2,13 @@
 .cambiar__title {
   font-size: 21px;
   font-weight: 600;
-  color: #0a0a0b;
+  color: var(--fx-tinta);
   margin-top: 10px;
 }
 
 .cambiar__subtitle {
   font-size: 13px;
-  color: #52525b;
+  color: var(--fx-tinta-2);
   margin-top: 6px;
   margin-bottom: 20px;
 }
@@ -25,7 +25,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #71717a;
+  color: var(--fx-tinta-3);
   display: flex;
   align-items: center;
 }
@@ -46,7 +46,7 @@
 
 .cambiar__strength-label {
   font-size: 11.5px;
-  color: #52525b;
+  color: var(--fx-tinta-2);
   display: flex;
   justify-content: space-between;
 }
@@ -55,7 +55,7 @@
   margin-top: 18px;
   width: 100%;
   height: 40px;
-  color: #fff;
+  color: var(--fx-superficie);
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -78,7 +78,7 @@
   border-radius: 50%;
   display: inline-block;
   border: 2px solid rgba(255,255,255,.3);
-  border-top-color: #fff;
+  border-top-color: var(--fx-superficie);
 }
 
 .cambiar__api-error {
@@ -87,11 +87,11 @@
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
-  color: #b91c1c;
+  color: var(--fx-atraso);
 }
 
 /* ─── Field wrapper (compartido con Login) ──────────────────────────────── */
 .field__hint {
   font-size: 11px;
-  color: #71717a;
+  color: var(--fx-tinta-3);
 }

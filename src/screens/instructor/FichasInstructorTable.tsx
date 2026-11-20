@@ -39,7 +39,7 @@ function fdISO(s: string | null): string {
 function diasChip(d: number | null) {
   if (d == null) return null
   const txt = d < 0 ? `${Math.abs(d)} d vencida` : d === 0 ? 'cierra hoy' : `faltan ${d} d`
-  const color = d < 0 ? '#dc2626' : d <= 30 ? '#c2410c' : '#a1a1aa'
+  const color = d < 0 ? 'var(--fx-atraso)' : d <= 30 ? 'var(--fx-aviso)' : 'var(--fx-tinta-4)'
   return <div style={{ fontSize: 10.5, color, marginTop: 3, fontFamily: '"JetBrains Mono", monospace' }}>{txt}</div>
 }
 
@@ -63,39 +63,39 @@ function FichaFilaTabla({ f, onOpen }: { f: FichaInstructor; onOpen: (f: FichaIn
     <tr
       className="nx-row"
       onClick={() => onOpen(f)}
-      style={{ borderBottom: '1px solid #f1f1f3', cursor: 'pointer' }}
+      style={{ borderBottom: '1px solid var(--fx-superficie-2)', cursor: 'pointer' }}
     >
       <td style={TD_S}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: FASE_META[fase].dot, flexShrink: 0 }}/>
-          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: '#0a0a0b' }}># {f.numero_ficha}</span>
+          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: 'var(--fx-tinta)' }}># {f.numero_ficha}</span>
         </div>
-        <div style={{ fontSize: 10.5, color: '#a1a1aa', marginTop: 3 }}>{f.nivel_formacion}</div>
+        <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-4)', marginTop: 3 }}>{f.nivel_formacion}</div>
       </td>
       <td style={TD_S}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Tag>{f.programa_codigo}</Tag>
-          <span style={{ color: '#18181b', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ color: 'var(--fx-tinta)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {f.programa_nombre}
           </span>
         </div>
-        <div style={{ fontSize: 10.5, color: '#52525b', marginTop: 3 }}>{sub || '—'}</div>
+        <div style={{ fontSize: 10.5, color: 'var(--fx-tinta-2)', marginTop: 3 }}>{sub || '—'}</div>
       </td>
       <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
         <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12.5 }}>
-          <strong style={{ color: '#4f46e5' }}>{f.aprendices_en_seguimiento}</strong>
-          <span style={{ color: '#a1a1aa' }}>/{f.aprendices}</span>
+          <strong style={{ color: 'var(--fx-morado)' }}>{f.aprendices_en_seguimiento}</strong>
+          <span style={{ color: 'var(--fx-tinta-4)' }}>/{f.aprendices}</span>
         </span>
       </td>
       <td style={{ ...TD_S, whiteSpace: 'nowrap' }}>
-        <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#27272a' }}>
+        <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: 'var(--fx-tinta)' }}>
           {fdISO(f.fecha_fin_productiva)}
         </span>
         {f.estado === 'EN_EJECUCION' && diasChip(f.dias_restantes)}
       </td>
       <td style={TD_S}><FasePill fase={fase}/></td>
       <td style={{ ...TD_S, textAlign: 'right' }}>
-        <Ic n="chevronRight" s={16} style={{ color: '#d4d4d8' }}/>
+        <Ic n="chevronRight" s={16} style={{ color: 'var(--fx-linea-2)' }}/>
       </td>
     </tr>
   )
@@ -131,7 +131,7 @@ export function FichasInstructorTable({ fichas, onOpen, paginate = false, max }:
   const pageItems = paginate ? rows.slice(curPage * PAGE_SIZE, (curPage + 1) * PAGE_SIZE) : rows
 
   const thead = (
-    <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', borderBottom: '1px solid #e4e4e7' }}>
+    <tr style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', borderBottom: '1px solid var(--fx-linea)' }}>
       {COLS.map(c => {
         if (!paginate) return <th key={c.key} style={TH_S}>{c.label}</th>
         const on = sortCol === c.key

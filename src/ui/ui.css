@@ -136,3 +136,8 @@ html[data-theme='dark'] [data-ui='nuevo'] .fx-legado {
 }
 html[data-theme='dark'] [data-ui='nuevo'] .fx-legado img,
 html[data-theme='dark'] [data-ui='nuevo'] .fx-legado canvas { filter: invert(1) hue-rotate(180deg); }
+
+/* Selector de vista: la misma información vista de otra forma (Lista / Calendario) */
+.fx-vistas { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--fx-superficie-2); }
+.fx-vistas button { font: inherit; font-size: 13px; font-weight: 550; padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--fx-tinta-2); cursor: pointer; }
+.fx-vistas button[data-on] { background: var(--fx-superficie); color: var(--fx-morado-tinta); box-shadow: var(--fx-sombra); cursor: default; }

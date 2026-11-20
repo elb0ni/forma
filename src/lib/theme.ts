@@ -1,7 +1,6 @@
 // Tema claro/oscuro. La preferencia se guarda en el navegador (localStorage) y se
-// aplica como atributo data-theme en <html>. El modo oscuro se logra con un filtro
-// de inversión global (la app usa muchos colores inline), re-invirtiendo imágenes
-// y firmas para que se vean correctas. Ver reglas en index.css.
+// aplica como atributo data-theme en <html>, y los tokens de src/ui/tokens.css
+// cambian de valor (modo oscuro real, sin invertir la pantalla).
 
 export type Theme = 'light' | 'dark'
 

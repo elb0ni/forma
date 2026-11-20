@@ -55,7 +55,7 @@ function FichasList({ onOpen }: { onOpen: (f: FichaInstructor) => void }) {
 
   return (
     <div style={{ maxWidth: 1200 }}>
-      <div style={{ marginBottom: 4, fontSize: 13.5, color: '#52525b' }}>
+      <div style={{ marginBottom: 4, fontSize: 13.5, color: 'var(--fx-tinta-2)' }}>
         Fichas donde haces seguimiento a la etapa productiva de sus aprendices.
       </div>
 
@@ -69,13 +69,13 @@ function FichasList({ onOpen }: { onOpen: (f: FichaInstructor) => void }) {
           ))}
         </div>
         <div className="inst-search">
-          <Ic n="search" s={14} className="inst-search__icon" style={{ color: '#a1a1aa' }}/>
+          <Ic n="search" s={14} className="inst-search__icon" style={{ color: 'var(--fx-tinta-4)' }}/>
           <input className="inst-search__input" placeholder="Buscar ficha o programa…" value={q} onChange={e => setQ(e.target.value)}/>
         </div>
       </div>
 
       {view.length === 0 ? (
-        <Card><CenterState icon="folder" title="Sin fichas" sub={fichas.length === 0 ? 'Todavía no eres instructor de práctica de ninguna ficha.' : 'No hay fichas que coincidan con el filtro.'}/></Card>
+        <Card><CenterState icon="folder" title="Sin fichas" sub={fichas.length === 0 ? 'Todavía no eres instructor de seguimiento de ninguna ficha.' : 'No hay fichas que coincidan con el filtro.'}/></Card>
       ) : (
         <FichasInstructorTable fichas={view} onOpen={onOpen} paginate/>
       )}
@@ -138,7 +138,7 @@ function FichaCrearRoute() {
   if (!aprendiz) return null
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      <button onClick={() => navigate('../..', { relative: 'path' })} style={{ fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
+      <button onClick={() => navigate('../..', { relative: 'path' })} style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
         <Ic n="arrowLeft" s={14}/>Volver a la ficha
       </button>
       <CrearEtapaProductivaForm

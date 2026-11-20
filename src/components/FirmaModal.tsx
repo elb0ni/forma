@@ -67,7 +67,7 @@ export function FirmaPad({ value, onChange }: { value: string | null; onChange: 
 
   return (
     <div>
-      <div style={{ border: '1px dashed #c7d2fe', borderRadius: 10, background: '#fafafe', position: 'relative' }}>
+      <div style={{ border: '1px dashed var(--fx-morado-linea)', borderRadius: 10, background: 'var(--fx-superficie-1)', position: 'relative' }}>
         <canvas
           ref={canvasRef}
           width={520}
@@ -78,16 +78,16 @@ export function FirmaPad({ value, onChange }: { value: string | null; onChange: 
           onPointerLeave={end}
           style={{ width: '100%', height: 180, touchAction: 'none', cursor: 'crosshair', display: 'block' }}
         />
-        <div style={{ position: 'absolute', left: 12, bottom: 10, right: 12, borderTop: '1px solid #d4d4d8', pointerEvents: 'none' }}/>
+        <div style={{ position: 'absolute', left: 12, bottom: 10, right: 12, borderTop: '1px solid var(--fx-linea-2)', pointerEvents: 'none' }}/>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <span style={{ fontSize: 11.5, color: '#71717a' }}>Dibuja tu firma con el mouse o el dedo.</span>
+        <span style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)' }}>Dibuja tu firma con el mouse o el dedo.</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <label style={{ fontSize: 12, color: '#4f46e5', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <label style={{ fontSize: 12, color: 'var(--fx-morado)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Ic n="upload" s={13}/> Subir imagen
             <input type="file" accept="image/*" onChange={subir} style={{ display: 'none' }}/>
           </label>
-          <button onClick={clear} style={{ fontSize: 12, color: '#b91c1c', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Limpiar</button>
+          <button onClick={clear} style={{ fontSize: 12, color: 'var(--fx-atraso)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Limpiar</button>
         </div>
       </div>
     </div>
@@ -135,14 +135,14 @@ export function FirmaModal({ userId, nombre, onClose, onSaved }: {
           <Btn variant="accent" icon="check" onClick={guardar} disabled={busy || loading}>{busy ? 'Guardando…' : 'Guardar firma'}</Btn>
         </>
       }>
-      <div style={{ fontSize: 12.5, color: '#52525b', marginBottom: 14 }}>
+      <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', marginBottom: 14 }}>
         Esta firma aparecerá en las guías de aprendizaje y reportes descargables. Un documento es válido
         cuando lleva la firma del instructor <strong>y</strong> la del coordinador.
       </div>
       {loading
-        ? <div style={{ height: 180, display: 'grid', placeItems: 'center', color: '#a1a1aa', fontSize: 13 }}>Cargando…</div>
+        ? <div style={{ height: 180, display: 'grid', placeItems: 'center', color: 'var(--fx-tinta-4)', fontSize: 13 }}>Cargando…</div>
         : <FirmaPad value={firma} onChange={setFirma}/>}
-      {err && <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ fontSize: 12, color: 'var(--fx-atraso)', marginTop: 10 }}>{err}</div>}
     </Modal>
   )
 }

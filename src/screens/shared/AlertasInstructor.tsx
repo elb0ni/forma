@@ -6,7 +6,7 @@ import api from '../../lib/api'
 import { fd } from './parts'
 
 // ─── Alertas de práctica ─────────────────────────────────────────────────────
-// El instructor de práctica levanta alertas puntuales sobre un aprendiz
+// El instructor de seguimiento levanta alertas puntuales sobre un aprendiz
 // (inasistencia, ARL, contrato, desempeño, riesgo de deserción...) para que la
 // coordinación las vea sin entrar ficha por ficha. No ocupan espacio en la
 // pantalla: un botón compacto abre la lista en un modal y cada alerta abre su
@@ -54,15 +54,15 @@ export interface AlertaInstructor {
 }
 
 const SEV: Record<AlertaSeveridad, { label: string; color: string; tone: 'err' | 'warn' | 'blue'; rank: number }> = {
-  CRITICA: { label: 'Crítica', color: '#dc2626', tone: 'err',  rank: 0 },
-  MEDIA:   { label: 'Media',   color: '#c2410c', tone: 'warn', rank: 1 },
-  BAJA:    { label: 'Baja',    color: '#0891b2', tone: 'blue', rank: 2 },
+  CRITICA: { label: 'Crítica', color: 'var(--fx-atraso)', tone: 'err',  rank: 0 },
+  MEDIA:   { label: 'Media',   color: 'var(--fx-aviso)', tone: 'warn', rank: 1 },
+  BAJA:    { label: 'Baja',    color: 'var(--fx-info)', tone: 'blue', rank: 2 },
 }
 
 const EST: Record<AlertaEstado, { label: string; fg: string; bg: string }> = {
-  ABIERTA:    { label: 'Abierta',    fg: '#b91c1c', bg: '#fee2e2' },
-  EN_GESTION: { label: 'En gestión', fg: '#a16207', bg: '#fef9c3' },
-  CERRADA:    { label: 'Cerrada',    fg: '#3f6212', bg: '#ecfccb' },
+  ABIERTA:    { label: 'Abierta',    fg: 'var(--fx-atraso)', bg: 'var(--fx-atraso-suave)' },
+  EN_GESTION: { label: 'En gestión', fg: 'var(--fx-aviso)', bg: 'var(--fx-aviso-suave)' },
+  CERRADA:    { label: 'Cerrada',    fg: 'var(--fx-ok)', bg: 'var(--fx-ok-suave)' },
 }
 
 function hace(iso: string): string {
@@ -97,8 +97,8 @@ const rowBtn: CSSProperties = {
 function MetaFila({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div style={{ display: 'flex', gap: 10, fontSize: 12.5 }}>
-      <span style={{ width: 96, flexShrink: 0, color: '#a1a1aa' }}>{label}</span>
-      <span style={{ color: '#27272a', minWidth: 0 }}>{children}</span>
+      <span style={{ width: 96, flexShrink: 0, color: 'var(--fx-tinta-4)' }}>{label}</span>
+      <span style={{ color: 'var(--fx-tinta)', minWidth: 0 }}>{children}</span>
     </div>
   )
 }
@@ -159,14 +159,14 @@ export function AlertasInstructorButton({ coordId, fichaId, style, refreshKey }:
   // ── Trigger compacto ──
   const triggerBase: CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: 8, height: 32,
-    padding: '0 11px', borderRadius: 9, border: '1px solid #e4e4e7',
-    background: '#fff', color: '#3f3f46', fontSize: 12.5, fontWeight: 500,
+    padding: '0 11px', borderRadius: 9, border: '1px solid var(--fx-linea)',
+    background: 'var(--fx-superficie)', color: 'var(--fx-tinta-2)', fontSize: 12.5, fontWeight: 500,
     fontFamily: 'inherit', ...style,
   }
 
   if (alertas === null) {
     return (
-      <span style={{ ...triggerBase, color: '#a1a1aa', background: '#fafafa' }}>
+      <span style={{ ...triggerBase, color: 'var(--fx-tinta-4)', background: 'var(--fx-superficie-1)' }}>
         <Ic n="bell" s={14}/> Alertas…
       </span>
     )
@@ -174,7 +174,7 @@ export function AlertasInstructorButton({ coordId, fichaId, style, refreshKey }:
 
   if (pendientes.length === 0 && !hayCerradas) {
     return (
-      <span style={{ ...triggerBase, color: '#a1a1aa', background: '#fafafa' }}>
+      <span style={{ ...triggerBase, color: 'var(--fx-tinta-4)', background: 'var(--fx-superficie-1)' }}>
         <Ic n="bell" s={14}/> Sin alertas
       </span>
     )
@@ -186,7 +186,7 @@ export function AlertasInstructorButton({ coordId, fichaId, style, refreshKey }:
       onClick={() => setListaAbierta(true)}
       style={{
         ...triggerBase, cursor: 'pointer',
-        ...(alarma ? { border: '1px solid #fecaca', background: '#fff5f5', color: '#b91c1c', fontWeight: 600 } : {}),
+        ...(alarma ? { border: '1px solid var(--fx-atraso-linea)', background: 'var(--fx-atraso-suave)', color: 'var(--fx-atraso)', fontWeight: 600 } : {}),
       }}
     >
       <Ic n="bell" s={14}/>
@@ -195,12 +195,12 @@ export function AlertasInstructorButton({ coordId, fichaId, style, refreshKey }:
         <span style={{
           fontFamily: MONO, fontSize: 11, fontWeight: 700, minWidth: 18, height: 18,
           padding: '0 5px', borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          background: alarma ? '#dc2626' : '#4f46e5', color: '#fff',
+          background: alarma ? 'var(--fx-atraso)' : 'var(--fx-morado)', color: 'var(--fx-superficie)',
         }}>
           {pendientes.length}
         </span>
       )}
-      <Ic n="chevronDown" s={13} style={{ color: '#a1a1aa' }}/>
+      <Ic n="chevronDown" s={13} style={{ color: 'var(--fx-tinta-4)' }}/>
     </button>
   )
 
@@ -212,11 +212,11 @@ export function AlertasInstructorButton({ coordId, fichaId, style, refreshKey }:
         <Modal title="Alertas de práctica" icon="bell" width={480} onClose={cerrarTodo}>
           {lista.length === 0 ? (
             <div style={{ padding: '22px 12px', textAlign: 'center' }}>
-              <Ic n="checkCircle" s={20} style={{ color: '#16a34a' }}/>
-              <div style={{ fontSize: 12.5, color: '#71717a', marginTop: 6 }}>Sin alertas pendientes.</div>
+              <Ic n="checkCircle" s={20} style={{ color: 'var(--fx-ok)' }}/>
+              <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', marginTop: 6 }}>Sin alertas pendientes.</div>
             </div>
           ) : (
-            <div style={{ border: '1px solid #f1f1f3', borderRadius: 10, overflow: 'hidden auto', maxHeight: '52vh' }}>
+            <div style={{ border: '1px solid var(--fx-superficie-2)', borderRadius: 10, overflow: 'hidden auto', maxHeight: '52vh' }}>
               {lista.map((a, i) => {
                 const sev = SEV[a.severidad]
                 const cerrada = a.estado === 'CERRADA'
@@ -227,26 +227,26 @@ export function AlertasInstructorButton({ coordId, fichaId, style, refreshKey }:
                     className="nx-row"
                     style={{
                       ...rowBtn,
-                      borderBottom: i < lista.length - 1 ? '1px solid #f1f1f3' : 'none',
-                      borderLeft: `3px solid ${cerrada ? '#d4d4d8' : sev.color}`,
+                      borderBottom: i < lista.length - 1 ? '1px solid var(--fx-superficie-2)' : 'none',
+                      borderLeft: `3px solid ${cerrada ? 'var(--fx-linea-2)' : sev.color}`,
                       opacity: cerrada ? 0.6 : 1,
                     }}
                   >
                     <Ava name={a.aprendiz_nombre} size={26}/>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 600, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fx-tinta)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {a.aprendiz_nombre}
                         </span>
-                        <span style={{ fontSize: 10.5, fontFamily: MONO, color: '#a1a1aa', flexShrink: 0 }}># {a.numero_ficha}</span>
+                        <span style={{ fontSize: 10.5, fontFamily: MONO, color: 'var(--fx-tinta-4)', flexShrink: 0 }}># {a.numero_ficha}</span>
                       </span>
                       <span style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 3, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: cerrada ? '#a1a1aa' : sev.color }}>{TIPOS[a.tipo].label}</span>
-                        <span style={{ fontSize: 10.5, color: '#a1a1aa' }}>· {hace(a.created_at)}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: cerrada ? 'var(--fx-tinta-4)' : sev.color }}>{TIPOS[a.tipo].label}</span>
+                        <span style={{ fontSize: 10.5, color: 'var(--fx-tinta-4)' }}>· {hace(a.created_at)}</span>
                         <EstadoChip estado={a.estado}/>
                       </span>
                     </span>
-                    <Ic n="chevronRight" s={15} style={{ color: '#c4c4cc', flexShrink: 0 }}/>
+                    <Ic n="chevronRight" s={15} style={{ color: 'var(--fx-linea-2)', flexShrink: 0 }}/>
                   </button>
                 )
               })}
@@ -256,7 +256,7 @@ export function AlertasInstructorButton({ coordId, fichaId, style, refreshKey }:
           {hayCerradas && (
             <button
               onClick={() => setVerCerradas(v => !v)}
-              style={{ marginTop: 10, fontSize: 11.5, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+              style={{ marginTop: 10, fontSize: 11.5, color: 'var(--fx-morado)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
             >
               {verCerradas ? 'Ocultar cerradas' : 'Ver cerradas'}
             </button>
@@ -301,8 +301,8 @@ function AlertaDetalleModal({ alerta, guardando, onClose, onAvanzar }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
         <Ava name={alerta.aprendiz_nombre} size={36}/>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0b' }}>{alerta.aprendiz_nombre}</div>
-          <div style={{ fontSize: 11.5, color: '#71717a', fontFamily: MONO }}>CC {alerta.numero_documento}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fx-tinta)' }}>{alerta.aprendiz_nombre}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)', fontFamily: MONO }}>CC {alerta.numero_documento}</div>
         </div>
       </div>
 
@@ -327,19 +327,19 @@ function AlertaDetalleModal({ alerta, guardando, onClose, onAvanzar }: {
         {alerta.gestor_nombre && <MetaFila label="Gestionada por">{alerta.gestor_nombre}</MetaFila>}
       </div>
 
-      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#a1a1aa', marginBottom: 5 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--fx-tinta-4)', marginBottom: 5 }}>
         Nota del instructor
       </div>
-      <div style={{ fontSize: 12.5, color: '#27272a', lineHeight: 1.5, background: '#fafafa', border: '1px solid #f1f1f3', borderRadius: 8, padding: 11 }}>
+      <div style={{ fontSize: 12.5, color: 'var(--fx-tinta)', lineHeight: 1.5, background: 'var(--fx-superficie-1)', border: '1px solid var(--fx-superficie-2)', borderRadius: 8, padding: 11 }}>
         {alerta.nota}
       </div>
 
       {alerta.respuesta && (
         <>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#a1a1aa', margin: '12px 0 5px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--fx-tinta-4)', margin: '12px 0 5px' }}>
             Respuesta de coordinación
           </div>
-          <div style={{ fontSize: 12.5, color: '#27272a', lineHeight: 1.5, background: '#fafafa', border: '1px solid #f1f1f3', borderRadius: 8, padding: 11 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--fx-tinta)', lineHeight: 1.5, background: 'var(--fx-superficie-1)', border: '1px solid var(--fx-superficie-2)', borderRadius: 8, padding: 11 }}>
             {alerta.respuesta}
           </div>
         </>
@@ -415,7 +415,7 @@ export function NuevaAlertaButton({ fichaId, aprendices, onCreada, style }: {
             </Btn>
           </>}
         >
-          <div style={{ fontSize: 11.5, color: '#71717a', marginBottom: 14 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)', marginBottom: 14 }}>
             La coordinación de esta ficha la verá sin tener que entrar a la ficha.
           </div>
 
@@ -458,7 +458,7 @@ export function NuevaAlertaButton({ fichaId, aprendices, onCreada, style }: {
             </Campo>
 
             {error && (
-              <div style={{ fontSize: 12, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ fontSize: 12, color: 'var(--fx-atraso)', background: 'var(--fx-atraso-suave)', border: '1px solid var(--fx-atraso-linea)', borderRadius: 8, padding: '8px 10px' }}>
                 {error}
               </div>
             )}
@@ -472,7 +472,7 @@ export function NuevaAlertaButton({ fichaId, aprendices, onCreada, style }: {
 function Campo({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label style={{ display: 'block' }}>
-      <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', marginBottom: 5 }}>
+      <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fx-tinta-3)', marginBottom: 5 }}>
         {label}
       </span>
       {children}

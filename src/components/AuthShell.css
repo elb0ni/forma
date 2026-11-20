@@ -78,7 +78,7 @@
   height: 420px;
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(closest-side, rgba(79,70,229,.35) 0%, transparent 70%);
+  background: radial-gradient(closest-side, rgba(124,58,237,.35) 0%, transparent 70%);
 }
 
 .auth-shell__halo-bottom {
@@ -89,7 +89,7 @@
   height: 280px;
   border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(closest-side, rgba(99,102,241,.18) 0%, transparent 70%);
+  background: radial-gradient(closest-side, rgba(139,92,246,.18) 0%, transparent 70%);
 }
 
 .auth-shell__overlay {
@@ -113,8 +113,8 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #4f46e5;
-  box-shadow: 0 0 8px 2px rgba(79,70,229,.7);
+  background: #7c3aed;
+  box-shadow: 0 0 8px 2px rgba(124,58,237,.7);
 }
 
 .auth-shell__badge-text {

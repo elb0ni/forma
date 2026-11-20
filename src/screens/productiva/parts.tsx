@@ -24,8 +24,8 @@ export function Field({ label, hint, required, children, style }: {
   return (
     <div style={style}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#27272a' }}>{label}{required && <span style={{ color: '#b91c1c' }}> *</span>}</span>
-        {hint && <span style={{ fontSize: 11, color: '#71717a' }}>{hint}</span>}
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fx-tinta)' }}>{label}{required && <span style={{ color: 'var(--fx-atraso)' }}> *</span>}</span>
+        {hint && <span style={{ fontSize: 11, color: 'var(--fx-tinta-3)' }}>{hint}</span>}
       </div>
       {children}
     </div>
@@ -37,8 +37,8 @@ export function Field({ label, hint, required, children, style }: {
 export function SectionIntro({ title, sub }: { title: string; sub?: string }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{ fontSize: 15, fontWeight: 600, color: '#0a0a0b' }}>{title}</div>
-      {sub && <div style={{ fontSize: 12.5, color: '#52525b', marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fx-tinta)' }}>{title}</div>
+      {sub && <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', marginTop: 4 }}>{sub}</div>}
     </div>
   )
 }
@@ -55,7 +55,7 @@ export function ValoracionToggle({ value, onChange, disabled }: {
       onClick={() => onChange?.(active ? null : v)}
       style={{
         flex: 1, height: 28, fontSize: 11, fontWeight: 600, borderRadius: 6, cursor: disabled ? 'default' : 'pointer',
-        border: `1px solid ${active ? line : '#e4e4e7'}`, background: active ? bg : '#fff', color: active ? fg : '#71717a',
+        border: `1px solid ${active ? line : 'var(--fx-linea)'}`, background: active ? bg : 'var(--fx-superficie)', color: active ? fg : 'var(--fx-tinta-3)',
         fontFamily: 'inherit', whiteSpace: 'nowrap', padding: '0 8px',
       }}
     >
@@ -64,8 +64,8 @@ export function ValoracionToggle({ value, onChange, disabled }: {
   )
   return (
     <div style={{ display: 'flex', gap: 6, minWidth: 190 }}>
-      <BtnV v="SATISFACTORIO" label="Satisfactorio" active={value === 'SATISFACTORIO'} bg="#dcfce7" fg="#15803d" line="#86efac"/>
-      <BtnV v="POR_MEJORAR"   label="Por mejorar"    active={value === 'POR_MEJORAR'}   bg="#fef9c3" fg="#a16207" line="#fde68a"/>
+      <BtnV v="SATISFACTORIO" label="Satisfactorio" active={value === 'SATISFACTORIO'} bg="var(--fx-ok-suave)" fg="var(--fx-ok)" line="var(--fx-ok-linea)"/>
+      <BtnV v="POR_MEJORAR"   label="Por mejorar"    active={value === 'POR_MEJORAR'}   bg="var(--fx-aviso-suave)" fg="var(--fx-aviso)" line="var(--fx-aviso-linea)"/>
     </div>
   )
 }
@@ -90,16 +90,16 @@ export function FactoresBlock({ titulo, items, onChange, readOnly }: {
 
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f1f3', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#18181b' }}>{titulo}</div>
-        <span style={{ fontSize: 11, color: '#71717a', fontFamily: '"JetBrains Mono", monospace' }}>{completos}/{items.length}</span>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--fx-superficie-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fx-tinta)' }}>{titulo}</div>
+        <span style={{ fontSize: 11, color: 'var(--fx-tinta-3)', fontFamily: '"JetBrains Mono", monospace' }}>{completos}/{items.length}</span>
       </div>
       {items.map((f, i) => (
         <div key={f.variable} style={{
           display: 'grid', gridTemplateColumns: '1.3fr 200px 1.6fr', gap: 14, alignItems: 'start',
-          padding: '12px 16px', borderBottom: i < items.length - 1 ? '1px solid #f7f7f8' : 'none',
+          padding: '12px 16px', borderBottom: i < items.length - 1 ? '1px solid var(--fx-superficie-1)' : 'none',
         }}>
-          <div style={{ fontSize: 12.5, color: '#18181b', paddingTop: 4 }}>{f.label}</div>
+          <div style={{ fontSize: 12.5, color: 'var(--fx-tinta)', paddingTop: 4 }}>{f.label}</div>
           {readOnly ? (
             f.valor ? (
               <span style={{ alignSelf: 'start' }}>
@@ -107,12 +107,12 @@ export function FactoresBlock({ titulo, items, onChange, readOnly }: {
                   {f.valor === 'SATISFACTORIO' ? 'Satisfactorio' : 'Por mejorar'}
                 </Bdg>
               </span>
-            ) : <span style={{ fontSize: 11.5, color: '#a1a1aa' }}>Sin valorar</span>
+            ) : <span style={{ fontSize: 11.5, color: 'var(--fx-tinta-4)' }}>Sin valorar</span>
           ) : (
             <ValoracionToggle value={f.valor} onChange={v => setValor(i, v)}/>
           )}
           {readOnly ? (
-            <div style={{ fontSize: 12, color: f.observacion ? '#27272a' : '#a1a1aa' }}>{f.observacion || '—'}</div>
+            <div style={{ fontSize: 12, color: f.observacion ? 'var(--fx-tinta)' : 'var(--fx-tinta-4)' }}>{f.observacion || '—'}</div>
           ) : (
             <input className="nx-input" placeholder="Observaciones / compromisos de mejora" value={f.observacion}
               onChange={e => setObs(i, e.target.value)} style={{ padding: '6px 10px', fontSize: 12.5 }}/>
@@ -127,9 +127,9 @@ export function FactoresBlock({ titulo, items, onChange, readOnly }: {
 
 export function MetaRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f1f1f3', gap: 12 }}>
-      <span style={{ fontSize: 12, color: '#52525b', flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: 12.5, color: '#18181b', fontWeight: 500, textAlign: 'right' }}>{value}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--fx-superficie-2)', gap: 12 }}>
+      <span style={{ fontSize: 12, color: 'var(--fx-tinta-2)', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 12.5, color: 'var(--fx-tinta)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
     </div>
   )
 }
@@ -139,8 +139,8 @@ export function MetaRow({ label, value }: { label: string; value: ReactNode }) {
 export function EmptyHint({ icon, text }: { icon: IcName; text: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '28px 16px', textAlign: 'center' }}>
-      <Ic n={icon} s={20} style={{ color: '#c4c4c8' }}/>
-      <span style={{ fontSize: 12.5, color: '#71717a', maxWidth: 320 }}>{text}</span>
+      <Ic n={icon} s={20} style={{ color: 'var(--fx-linea-2)' }}/>
+      <span style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', maxWidth: 320 }}>{text}</span>
     </div>
   )
 }
@@ -195,9 +195,9 @@ export function FirmaImg({ seguimientoId, firmante, ruta, height = 40 }: {
   // Ignora un estado que quedó de otra firma (cambió seguimientoId/firmante).
   const cur = state.key === key ? state : { src: null as string | null, error: false }
 
-  if (!ruta) return <span style={{ fontSize: 11, color: '#a1a1aa' }}>Sin firmar</span>
-  if (cur.error) return <span style={{ fontSize: 11, color: '#a1a1aa' }}>Firma no disponible</span>
-  if (!cur.src) return <span className="pulse" style={{ display: 'inline-block', width: 110, height, background: '#f1f1f3', borderRadius: 4 }}/>
+  if (!ruta) return <span style={{ fontSize: 11, color: 'var(--fx-tinta-4)' }}>Sin firmar</span>
+  if (cur.error) return <span style={{ fontSize: 11, color: 'var(--fx-tinta-4)' }}>Firma no disponible</span>
+  if (!cur.src) return <span className="pulse" style={{ display: 'inline-block', width: 110, height, background: 'var(--fx-superficie-2)', borderRadius: 4 }}/>
   return <img src={cur.src} alt={`Firma · ${firmante}`} style={{ height, maxWidth: 200, objectFit: 'contain', display: 'block' }}/>
 }
 
@@ -224,10 +224,10 @@ function FirmaSlot({ seguimientoId, firmante, label, rutaActual, onUploaded }: {
 
   if (abierto) {
     return (
-      <div style={{ gridColumn: '1 / -1', border: '1px solid #c7d2fe', borderRadius: 8, padding: 12 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#27272a', marginBottom: 8 }}>{label}</div>
+      <div style={{ gridColumn: '1 / -1', border: '1px solid var(--fx-morado-linea)', borderRadius: 8, padding: 12 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fx-tinta)', marginBottom: 8 }}>{label}</div>
         <FirmaPad value={dataUrl} onChange={setDataUrl}/>
-        {err && <div style={{ fontSize: 11.5, color: '#b91c1c', marginTop: 8 }}>{err}</div>}
+        {err && <div style={{ fontSize: 11.5, color: 'var(--fx-atraso)', marginTop: 8 }}>{err}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
           <Btn variant="ghost" size="sm" onClick={() => { setAbierto(false); setDataUrl(null); setErr(null) }} disabled={busy}>Cancelar</Btn>
           <Btn variant="accent" size="sm" icon="check" onClick={guardar} disabled={busy}>{busy ? 'Guardando…' : 'Guardar firma'}</Btn>
@@ -239,19 +239,19 @@ function FirmaSlot({ seguimientoId, firmante, label, rutaActual, onUploaded }: {
   // Tarjeta con la vista previa de la firma (o el hueco vacío), como en la hoja
   // firmable: imagen, línea y rol debajo.
   return (
-    <div style={{ border: '1px solid #e4e4e7', borderRadius: 8, padding: 12, background: '#fff', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-      <div style={{ height: 72, display: 'grid', placeItems: 'center', borderRadius: 6, background: rutaActual ? '#fff' : '#fafafa', border: rutaActual ? 'none' : '1px dashed #e4e4e7' }}>
+    <div style={{ border: '1px solid var(--fx-linea)', borderRadius: 8, padding: 12, background: 'var(--fx-superficie)', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+      <div style={{ height: 72, display: 'grid', placeItems: 'center', borderRadius: 6, background: rutaActual ? 'var(--fx-superficie)' : 'var(--fx-superficie-1)', border: rutaActual ? 'none' : '1px dashed var(--fx-linea)' }}>
         {rutaActual
           ? <FirmaImg seguimientoId={seguimientoId} firmante={firmante} ruta={rutaActual} height={64}/>
-          : <span style={{ fontSize: 11, color: '#a1a1aa' }}>Sin firmar</span>}
+          : <span style={{ fontSize: 11, color: 'var(--fx-tinta-4)' }}>Sin firmar</span>}
       </div>
-      <div style={{ borderTop: '1px solid #3f3f46' }}/>
+      <div style={{ borderTop: '1px solid var(--fx-tinta-2)' }}/>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#27272a', display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-          <Ic n={rutaActual ? 'checkCircle' : 'clock'} s={13} style={{ color: rutaActual ? '#15803d' : '#a1a1aa', flexShrink: 0 }}/>{label}
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fx-tinta)', display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+          <Ic n={rutaActual ? 'checkCircle' : 'clock'} s={13} style={{ color: rutaActual ? 'var(--fx-ok)' : 'var(--fx-tinta-4)', flexShrink: 0 }}/>{label}
         </span>
         {!soloLectura && (
-          <button onClick={() => setAbierto(true)} style={{ fontSize: 11, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, whiteSpace: 'nowrap' }}>
+          <button onClick={() => setAbierto(true)} style={{ fontSize: 11, color: 'var(--fx-morado)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0, whiteSpace: 'nowrap' }}>
             {rutaActual ? 'Volver a firmar' : 'Firmar'}
           </button>
         )}
@@ -333,7 +333,7 @@ export function FirmasCaptura({ requiereJefe, value, onChange, fuente }: {
   return (
     <Card style={{ padding: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600 }}>
+        <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', fontWeight: 600 }}>
           Firmas
         </div>
         {fuente && (
@@ -343,7 +343,7 @@ export function FirmasCaptura({ requiereJefe, value, onChange, fuente }: {
             disabled={cargando}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px',
-              border: '1px solid #c7d2fe', borderRadius: 8, background: '#eef2ff', color: '#4338ca',
+              border: '1px solid var(--fx-morado-linea)', borderRadius: 8, background: 'var(--fx-morado-suave)', color: 'var(--fx-morado-tinta)',
               fontSize: 11.5, fontWeight: 600, cursor: cargando ? 'default' : 'pointer', fontFamily: 'inherit',
             }}
           >
@@ -355,11 +355,11 @@ export function FirmasCaptura({ requiereJefe, value, onChange, fuente }: {
         )}
       </div>
       {fuente && vacias && !err && (
-        <div style={{ fontSize: 11, color: '#71717a', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, color: 'var(--fx-tinta-3)', marginBottom: 12 }}>
           Ya se firmó antes en esta etapa. Puedes reutilizar esas firmas y reemplazar solo las que hagan falta.
         </div>
       )}
-      {err && <div style={{ fontSize: 11.5, color: '#b91c1c', marginBottom: 12 }}>{err}</div>}
+      {err && <div style={{ fontSize: 11.5, color: 'var(--fx-atraso)', marginBottom: 12 }}>{err}</div>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18 }}>
         <FirmaCampo key={`i${nonce}`} label="Instructor de seguimiento" value={value.instructor} onChange={v => onChange({ ...value, instructor: v })}/>
         <FirmaCampo key={`a${nonce}`} label="Aprendiz" value={value.aprendiz} onChange={v => onChange({ ...value, aprendiz: v })}/>
@@ -375,8 +375,8 @@ function FirmaCampo({ label, value, onChange }: { label: string; value: string |
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-        <Ic n={value ? 'checkCircle' : 'clock'} s={13} style={{ color: value ? '#15803d' : '#a1a1aa' }}/>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#27272a' }}>{label}</span>
+        <Ic n={value ? 'checkCircle' : 'clock'} s={13} style={{ color: value ? 'var(--fx-ok)' : 'var(--fx-tinta-4)' }}/>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fx-tinta)' }}>{label}</span>
       </div>
       <FirmaPad value={value} onChange={onChange}/>
     </div>
@@ -392,7 +392,7 @@ function MapaUbicacion({ lat, lng, alerta }: { lat: number; lng: number; alerta?
   const bbox = `${lng - d}%2C${lat - d}%2C${lng + d}%2C${lat + d}`
   const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`
   return (
-    <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${alerta ? '#fecaca' : '#e4e4e7'}`, marginLeft: 22, maxWidth: 460 }}>
+    <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${alerta ? 'var(--fx-atraso-linea)' : 'var(--fx-linea)'}`, marginLeft: 22, maxWidth: 460 }}>
       <iframe
         title="Ubicación del registro de la sesión"
         src={src}
@@ -437,20 +437,20 @@ function UbicacionSlot({ seguimientoId, lat, lng, precision, distancia, alerta, 
     const la = Number(lat), lo = Number(lng)
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#3f3f46', flexWrap: 'wrap' }}>
-          <Ic n="pin" s={14} style={{ color: alerta ? '#b91c1c' : '#15803d' }}/>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--fx-tinta-2)', flexWrap: 'wrap' }}>
+          <Ic n="pin" s={14} style={{ color: alerta ? 'var(--fx-atraso)' : 'var(--fx-ok)' }}/>
           <span>Registrado desde <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{la.toFixed(5)}, {lo.toFixed(5)}</span> · precisión ±{precision ?? '—'} m</span>
           <a
             href={`https://www.google.com/maps?q=${la},${lo}`}
             target="_blank"
             rel="noreferrer"
-            style={{ fontSize: 11.5, color: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: 3 }}
+            style={{ fontSize: 11.5, color: 'var(--fx-morado)', display: 'inline-flex', alignItems: 'center', gap: 3 }}
           >
             Abrir en Google Maps <Ic n="external" s={11}/>
           </a>
         </div>
         {distancia != null && (
-          <div style={{ fontSize: 11.5, color: alerta ? '#b91c1c' : '#71717a', marginLeft: 22 }}>
+          <div style={{ fontSize: 11.5, color: alerta ? 'var(--fx-atraso)' : 'var(--fx-tinta-3)', marginLeft: 22 }}>
             a {distancia} m de la empresa{alerta && ' · fuera del rango esperado (> 200 m)'}
           </div>
         )}
@@ -465,11 +465,11 @@ function UbicacionSlot({ seguimientoId, lat, lng, precision, distancia, alerta, 
       <button onClick={capturar} disabled={busy} style={{
         display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit', padding: 0,
       }}>
-        <Ic n="pin" s={14} style={{ color: '#a1a1aa' }}/>
-        <span style={{ fontSize: 12, color: '#3f3f46' }}>{busy ? 'Obteniendo ubicación…' : 'Capturar ubicación'}</span>
+        <Ic n="pin" s={14} style={{ color: 'var(--fx-tinta-4)' }}/>
+        <span style={{ fontSize: 12, color: 'var(--fx-tinta-2)' }}>{busy ? 'Obteniendo ubicación…' : 'Capturar ubicación'}</span>
       </button>
       )}
-      {err && <div style={{ fontSize: 11.5, color: '#b91c1c', marginTop: 6 }}>{err}</div>}
+      {err && <div style={{ fontSize: 11.5, color: 'var(--fx-atraso)', marginTop: 6 }}>{err}</div>}
     </div>
   )
 }
@@ -488,8 +488,8 @@ export function FirmasYUbicacion({ seguimiento, requiereJefe, onChanged }: {
 }) {
   return (
     <Card style={{ padding: 16 }}>
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600, marginBottom: 10 }}>
-        Firmas y ubicación {seguimiento.firmado_at && <span style={{ color: '#15803d' }}>· completas</span>}
+      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', fontWeight: 600, marginBottom: 10 }}>
+        Firmas y ubicación {seguimiento.firmado_at && <span style={{ color: 'var(--fx-ok)' }}>· completas</span>}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <FirmaSlot seguimientoId={seguimiento.id} firmante="instructor" label="Instructor de seguimiento" rutaActual={seguimiento.firma_instructor_ruta} onUploaded={onChanged}/>
@@ -498,7 +498,7 @@ export function FirmasYUbicacion({ seguimiento, requiereJefe, onChanged }: {
           <FirmaSlot seguimientoId={seguimiento.id} firmante="jefe" label="Ente co-formador" rutaActual={seguimiento.firma_jefe_ruta} onUploaded={onChanged}/>
         )}
       </div>
-      <div style={{ borderTop: '1px solid #f1f1f3', paddingTop: 10, marginTop: 14 }}>
+      <div style={{ borderTop: '1px solid var(--fx-superficie-2)', paddingTop: 10, marginTop: 14 }}>
         <UbicacionSlot
           seguimientoId={seguimiento.id}
           lat={seguimiento.ubicacion_lat} lng={seguimiento.ubicacion_lng} precision={seguimiento.ubicacion_precision_m}

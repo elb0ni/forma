@@ -61,13 +61,13 @@ export function InstAgenda({ onVerEtapaProductiva, onVerFicha }: {
     // anchas = más texto legible); las tarjetas de Pendientes van acotadas.
     <div style={{ maxWidth: vista === 'calendario' ? undefined : 1180 }}>
       <div className="agenda-head">
-        <div style={{ fontSize: 13.5, color: '#52525b' }}>
+        <div style={{ fontSize: 13.5, color: 'var(--fx-tinta-2)' }}>
           <span>{hoy}</span>
           {pend && <>: {resumen}</>}
         </div>
         <div className="agenda-vistas" role="tablist">
           <button role="tab" aria-selected={vista === 'pendientes'} className={vista === 'pendientes' ? 'sel' : ''} onClick={() => cambiar('pendientes')}>
-            <Ic n="list" s={13}/>Pendientes
+            <Ic n="list" s={13}/>Esta semana
           </button>
           <button role="tab" aria-selected={vista === 'calendario'} className={vista === 'calendario' ? 'sel' : ''} onClick={() => cambiar('calendario')}>
             <Ic n="calendar" s={13}/>Calendario

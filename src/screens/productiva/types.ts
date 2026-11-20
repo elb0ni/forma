@@ -238,7 +238,7 @@ export interface SeguimientoProductivo {
   firmado_at: string | null
 }
 
-// ─── Instructor de práctica por ficha (uno solo para toda la ficha) ────────────
+// ─── Instructor de seguimiento por ficha (uno solo para toda la ficha) ────────────
 // A diferencia de la etapa lectiva (instructor por competencia vía
 // `asignacion`), en etapa productiva un único instructor hace seguimiento a
 // todos los aprendices de la ficha. Es la fuente de la que se deriva
@@ -285,13 +285,13 @@ export type CasoTono = 'EN_CURSO' | 'SIN_JUICIO' | 'APROBADO' | 'NO_APROBADO' | 
 // seguimiento: lo que necesita gestión va primero, los estados terminales al
 // final -- se usa tanto para el filtro como para agrupar la tabla.
 export const CASO_TONO_META: Record<CasoTono, { label: string; tone: 'warn' | 'accent' | 'ok' | 'err'; color: string }> = {
-  EN_CURSO:    { label: 'En curso',           tone: 'accent', color: '#4f46e5' },
-  SIN_JUICIO:  { label: 'Falta juicio Sofia', tone: 'warn',   color: '#a16207' },
-  SUSPENDIDA:  { label: 'Suspendida',         tone: 'warn',   color: '#ca8a04' },
-  APLAZADA:    { label: 'Aplazada',           tone: 'warn',   color: '#d97706' },
-  NO_APROBADO: { label: 'No aprobado',        tone: 'err',    color: '#dc2626' },
-  APROBADO:    { label: 'Aprobado',           tone: 'ok',     color: '#16a34a' },
-  CANCELADA:   { label: 'Cancelada',          tone: 'err',    color: '#b91c1c' },
+  EN_CURSO:    { label: 'En curso',           tone: 'accent', color: 'var(--fx-morado)' },
+  SIN_JUICIO:  { label: 'Falta juicio Sofia', tone: 'warn',   color: 'var(--fx-aviso)' },
+  SUSPENDIDA:  { label: 'Suspendida',         tone: 'warn',   color: 'var(--fx-aviso)' },
+  APLAZADA:    { label: 'Aplazada',           tone: 'warn',   color: 'var(--fx-aviso)' },
+  NO_APROBADO: { label: 'No aprobado',        tone: 'err',    color: 'var(--fx-atraso)' },
+  APROBADO:    { label: 'Aprobado',           tone: 'ok',     color: 'var(--fx-ok)' },
+  CANCELADA:   { label: 'Cancelada',          tone: 'err',    color: 'var(--fx-atraso)' },
 }
 
 export const CASO_TONO_ORDER: CasoTono[] =

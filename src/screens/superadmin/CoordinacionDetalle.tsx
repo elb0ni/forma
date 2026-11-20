@@ -54,7 +54,7 @@ function InstructoresTable({ items, page, onPage, onOpen }: {
       <Card style={{ overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid #e4e4e7', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b' }}>
+            <tr style={{ borderBottom: '1px solid var(--fx-linea)', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)' }}>
               {['Instructor', 'Estado'].map(h => (
                 <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
               ))}
@@ -62,13 +62,13 @@ function InstructoresTable({ items, page, onPage, onOpen }: {
           </thead>
           <tbody>
             {rows.map(u => (
-              <tr key={u.id} className="nx-row" onClick={() => onOpen(String(u.id))} style={{ borderBottom: '1px solid #f1f1f3', opacity: u.activo ? 1 : 0.6, cursor: 'pointer' }}>
+              <tr key={u.id} className="nx-row" onClick={() => onOpen(String(u.id))} style={{ borderBottom: '1px solid var(--fx-superficie-2)', opacity: u.activo ? 1 : 0.6, cursor: 'pointer' }}>
                 <td style={{ padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Ava name={u.nombre_completo} size={30}/>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: '#18181b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.nombre_completo}</div>
-                      <div style={{ fontSize: 11, color: '#71717a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fx-tinta)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.nombre_completo}</div>
+                      <div style={{ fontSize: 11, color: 'var(--fx-tinta-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
                     </div>
                   </div>
                 </td>
@@ -114,7 +114,7 @@ export function CoordinacionDetalle() {
 
   const back = (
     <button onClick={() => navigate('../..', { relative: 'path' })} className="back-btn" style={{
-      fontSize: 12.5, color: '#52525b', display: 'flex', gap: 6, background: 'none', border: 'none',
+      fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none',
       cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'Inter, sans-serif',
     }}>
       <Ic n="arrowLeft" s={14}/>Volver a centros
@@ -123,8 +123,8 @@ export function CoordinacionDetalle() {
 
   if (error) return (
     <div>{back}<Card style={{ padding: 24 }}><div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-      <Ic n="alert" s={15} style={{ color: '#b91c1c' }}/>
-      <span style={{ fontSize: 13.5, color: '#b91c1c' }}>No se pudo cargar el detalle de la coordinación.</span>
+      <Ic n="alert" s={15} style={{ color: 'var(--fx-atraso)' }}/>
+      <span style={{ fontSize: 13.5, color: 'var(--fx-atraso)' }}>No se pudo cargar el detalle de la coordinación.</span>
     </div></Card></div>
   )
 
@@ -148,9 +148,9 @@ export function CoordinacionDetalle() {
   }).length
 
   const kpis: { label: string; value: string | number; icon: IcName; color?: string; sub?: string }[] = [
-    { label: 'Fichas activas', value: kpi.fichas_activas, icon: 'briefcase', color: '#4f46e5', sub: `${kpi.fichas_total} en total` },
-    { label: 'Instructores', value: kpi.instructores, icon: 'users', color: '#4f46e5', sub: `${kpi.instructores_con_practica} con práctica activa` },
-    { label: 'Cierran en ≤30 días', value: cierranPronto, icon: 'clock', color: cierranPronto > 0 ? '#c2410c' : '#4f46e5', sub: 'etapa productiva' },
+    { label: 'Fichas activas', value: kpi.fichas_activas, icon: 'briefcase', color: 'var(--fx-morado)', sub: `${kpi.fichas_total} en total` },
+    { label: 'Instructores', value: kpi.instructores, icon: 'users', color: 'var(--fx-morado)', sub: `${kpi.instructores_con_practica} con práctica activa` },
+    { label: 'Cierran en ≤30 días', value: cierranPronto, icon: 'clock', color: cierranPronto > 0 ? 'var(--fx-aviso)' : 'var(--fx-morado)', sub: 'etapa productiva' },
   ]
 
   return (
@@ -162,13 +162,13 @@ export function CoordinacionDetalle() {
       {/* Encabezado */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 11.5, color: '#71717a', display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-            <Ic n="shield" s={13} style={{ color: '#a1a1aa' }}/>
+          <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)', display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+            <Ic n="shield" s={13} style={{ color: 'var(--fx-tinta-4)' }}/>
             <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{c.centro.codigo}</span>
             <span>·</span><span>{c.centro.nombre}</span><span>·</span><span>{c.centro.ciudad}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 600, color: '#0a0a0b' }}>{c.nombre}</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--fx-tinta)' }}>{c.nombre}</h2>
             <Bdg tone={c.activa ? 'ok' : 'neutral'}>{c.activa ? 'Activa' : 'Inactiva'}</Bdg>
           </div>
         </div>
@@ -178,27 +178,27 @@ export function CoordinacionDetalle() {
       {/* Coordinador académico -- tira compacta (antes ocupaba una tarjeta entera) */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        padding: '9px 13px', border: '1px solid #e4e4e7', borderRadius: 10,
-        background: '#fff', marginBottom: 16,
+        padding: '9px 13px', border: '1px solid var(--fx-linea)', borderRadius: 10,
+        background: 'var(--fx-superficie)', marginBottom: 16,
       }}>
-        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#a1a1aa', flexShrink: 0 }}>
+        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--fx-tinta-4)', flexShrink: 0 }}>
           Coordinador
         </span>
         {coordinador ? (
           <>
             <Ava name={coordinador.nombre_completo} size={24}/>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#0a0a0b' }}>{coordinador.nombre_completo}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fx-tinta)' }}>{coordinador.nombre_completo}</span>
             <Bdg tone={coordinador.activo ? 'ok' : 'neutral'}>{coordinador.activo ? 'Activo' : 'Inactivo'}</Bdg>
-            <span style={{ fontSize: 12, color: '#71717a' }}>{coordinador.email}</span>
+            <span style={{ fontSize: 12, color: 'var(--fx-tinta-3)' }}>{coordinador.email}</span>
             <span style={{ flex: 1 }}/>
-            <span style={{ fontSize: 11, color: '#a1a1aa', whiteSpace: 'nowrap' }}>
-              Doc <span style={{ fontFamily: '"JetBrains Mono", monospace', color: '#52525b' }}>{coordinador.numero_documento}</span>
+            <span style={{ fontSize: 11, color: 'var(--fx-tinta-4)', whiteSpace: 'nowrap' }}>
+              Doc <span style={{ fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta-2)' }}>{coordinador.numero_documento}</span>
               {'  ·  Último acceso '}{fmtAcceso(coordinador.ultimo_acceso)}
             </span>
           </>
         ) : (
-          <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: '#a16207' }}>
-            <Ic n="alert" s={14} style={{ color: '#d97706' }}/>
+          <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: 'var(--fx-aviso)' }}>
+            <Ic n="alert" s={14} style={{ color: 'var(--fx-aviso)' }}/>
             Sin coordinador académico asignado
           </span>
         )}
@@ -209,17 +209,17 @@ export function CoordinacionDetalle() {
         {kpis.map(k => (
           <Card key={k.label} style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#52525b', fontWeight: 600 }}>{k.label}</div>
-              <Ic n={k.icon} s={15} style={{ color: k.color ?? '#a1a1aa' }}/>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fx-tinta-2)', fontWeight: 600 }}>{k.label}</div>
+              <Ic n={k.icon} s={15} style={{ color: k.color ?? 'var(--fx-tinta-4)' }}/>
             </div>
-            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 600, color: '#0a0a0b', marginTop: 10 }}>{k.value}</div>
-            {k.sub && <div style={{ fontSize: 11.5, color: '#52525b', marginTop: 4 }}>{k.sub}</div>}
+            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 26, fontWeight: 600, color: 'var(--fx-tinta)', marginTop: 10 }}>{k.value}</div>
+            {k.sub && <div style={{ fontSize: 11.5, color: 'var(--fx-tinta-2)', marginTop: 4 }}>{k.sub}</div>}
           </Card>
         ))}
       </div>
 
       {/* Pestañas: fichas · instructores */}
-      <div style={{ display: 'inline-flex', background: '#f1f1f3', borderRadius: 8, padding: 2, border: '1px solid #e4e4e7', marginBottom: 18 }}>
+      <div style={{ display: 'inline-flex', background: 'var(--fx-superficie-2)', borderRadius: 8, padding: 2, border: '1px solid var(--fx-linea)', marginBottom: 18 }}>
         {([
           { key: 'fichas',       label: 'Fichas',       icon: 'briefcase', count: kpi.fichas_total },
           { key: 'instructores', label: 'Instructores', icon: 'users',     count: instructores.length },
@@ -228,14 +228,14 @@ export function CoordinacionDetalle() {
           return (
             <button key={t.key} onClick={() => navigate(`../${t.key}`, { relative: 'path' })} style={{
               height: 30, padding: '0 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-              background: active ? '#fff' : 'transparent', color: active ? '#0a0a0b' : '#52525b',
+              background: active ? 'var(--fx-superficie)' : 'transparent', color: active ? 'var(--fx-tinta)' : 'var(--fx-tinta-2)',
               fontSize: 12.5, fontWeight: 500, fontFamily: 'Inter, sans-serif',
-              boxShadow: active ? '0 1px 2px rgba(0,0,0,.05)' : undefined,
+              boxShadow: active ? '0 1px 2px color-mix(in srgb, var(--fx-tinta) 5%, transparent)' : undefined,
               display: 'inline-flex', alignItems: 'center', gap: 7,
             }}>
-              <Ic n={t.icon} s={14} style={{ color: active ? '#4f46e5' : '#a1a1aa' }}/>
+              <Ic n={t.icon} s={14} style={{ color: active ? 'var(--fx-morado)' : 'var(--fx-tinta-4)' }}/>
               {t.label}
-              <span style={{ fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', color: active ? '#4338ca' : '#a1a1aa', background: active ? '#eef2ff' : '#e4e4e7', padding: '1px 6px', borderRadius: 10 }}>{t.count}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', color: active ? 'var(--fx-morado-tinta)' : 'var(--fx-tinta-4)', background: active ? 'var(--fx-morado-suave)' : 'var(--fx-linea)', padding: '1px 6px', borderRadius: 10 }}>{t.count}</span>
             </button>
           )
         })}
@@ -265,7 +265,7 @@ export function CoordinacionDetalle() {
 
 function EmptyBox({ text }: { text: string }) {
   return (
-    <div style={{ fontSize: 12.5, color: '#a1a1aa', padding: '18px 0', textAlign: 'center', border: '1px dashed #e4e4e7', borderRadius: 8, marginBottom: 24 }}>
+    <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-4)', padding: '18px 0', textAlign: 'center', border: '1px dashed var(--fx-linea)', borderRadius: 8, marginBottom: 24 }}>
       {text}
     </div>
   )

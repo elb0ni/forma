@@ -1,14 +1,14 @@
-// Panorama (PLAN_REDISENO, Fase 9): una sola pantalla para los tres niveles.
-//   Regional:     los 4 centros lado a lado.
-//   Centro:       sus coordinaciones lado a lado, con la capacidad del centro.
-//   Coordinación: lo que viene por instructor, la tabla de instructores y las
-//                 fichas por entrar sin instructor.
-// Se baja de nivel con un clic y se sube con la ruta de arriba. Lo que se ve
-// lo acota el backend al alcance de quien entra.
-import { useCallback, useEffect, useState } from 'react'
+// Inicio (PLAN_REDISENO v3, Fase 14): la única pantalla con cifras. Une el
+// Dashboard (las fichas por fase y cuándo cierran) y el Panorama (el
+// seguimiento, la comparación y la capacidad). El ámbito se elige arriba
+// (centro y coordinación) y un clic en una fila de la comparación lo acota.
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import { useAuthStore } from '../../store/auth'
+import { useAmbito } from '../../store/ambito'
+import type { FichaRow } from '../shared/FichasAdmin'
+import { ResumenFichas } from '../superadmin/DashboardHome'
 import { Lienzo, Frase, Estado, Panel, Boton } from '../../ui'
 import { fdia } from '../../ui/estados'
 import type { Tono } from '../../ui/estados'
@@ -45,38 +45,47 @@ interface Datos {
   instructores: InstructorP[]; coordinaciones: Grupo[]; centros: Grupo[]
 }
 
-const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : null)
 
-export function Panorama({ rutaEtapa, rutaAsignacion, rutaAlertas }: {
+export function Panorama({ rutaEtapa, rutaAsignacion, rutaAlertas, onOpenFicha }: {
   rutaEtapa: (fichaId: number, etapaId: number, tab?: string | null) => string
   rutaAsignacion: string
   rutaAlertas?: string
+  onOpenFicha?: (id: number) => void
 }) {
   const user = useAuthStore((s) => s.user)
   const rol = user?.rol
-  const [centro, setCentro] = useState<Grupo | null>(null)
-  const [coord, setCoord] = useState<Grupo | null>(null)
+  const amb = useAmbito()
+  // El coordinador no elige: el backend lo acota a su coordinación.
+  const centroId = rol === 'SUPER_ADMIN' ? amb.centroId : null
+  const coordId = rol === 'SUPER_ADMIN' || rol === 'SUBDIRECTOR' ? amb.coordId : null
   const [d, setD] = useState<Datos | null>(null)
+  const [fichas, setFichas] = useState<FichaRow[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   const cargar = useCallback(() => {
     const q = new URLSearchParams()
-    if (centro) q.set('centro_id', String(centro.id))
-    if (coord) q.set('coordinacion_id', String(coord.id))
+    if (centroId) q.set('centro_id', String(centroId))
+    if (coordId) q.set('coordinacion_id', String(coordId))
     api.get<Datos>(`/panorama?${q}`)
       .then((r) => { setD(r.data); setErr(null) })
-      .catch((e) => setErr(e?.response?.data?.message ?? 'No se pudo armar el panorama.'))
-  }, [centro, coord])
+      .catch((e) => setErr(e?.response?.data?.message ?? 'No se pudo armar el inicio.'))
+  }, [centroId, coordId])
   useEffect(cargar, [cargar])
+  useEffect(() => {
+    api.get<FichaRow[]>('/fichas').then((r) => setFichas(r.data)).catch(() => setFichas([]))
+  }, [])
+
+  const fichasAmbito = useMemo(() => (fichas ?? []).filter((f) =>
+    (!centroId || f.centro_formacion_id === centroId) && (!coordId || f.coordinacion_academica_id === coordId)), [fichas, centroId, coordId])
 
   if (err) return <Lienzo><Frase tono="atraso">{err}</Frase></Lienzo>
-  if (!d) return <Lienzo><p className="fx-texto-3">Armando el panorama…</p></Lienzo>
+  if (!d) return <Lienzo><p className="fx-texto-3">Armando el inicio…</p></Lienzo>
 
   const nivel: 'REGIONAL' | 'CENTRO' | 'COORDINACION' =
-    rol === 'COORD_ACADEMICO' || coord ? 'COORDINACION' : rol === 'SUBDIRECTOR' || centro ? 'CENTRO' : 'REGIONAL'
+    rol === 'COORD_ACADEMICO' || coordId ? 'COORDINACION' : rol === 'SUBDIRECTOR' || centroId ? 'CENTRO' : 'REGIONAL'
   const titulo = nivel === 'COORDINACION'
-    ? (coord?.nombre ?? d.coordinaciones[0]?.nombre ?? 'Mi coordinación')
-    : nivel === 'CENTRO' ? (centro?.nombre ?? d.centros[0]?.nombre ?? 'Mi centro')
+    ? (d.coordinaciones.find((c) => c.id === coordId)?.nombre ?? d.coordinaciones[0]?.nombre ?? 'Mi coordinación')
+    : nivel === 'CENTRO' ? (d.centros[0]?.nombre ?? 'Mi centro')
     : 'Regional Atlántico'
 
   const t = d.total
@@ -86,33 +95,26 @@ export function Panorama({ rutaEtapa, rutaAsignacion, rutaAlertas }: {
       ? `${miles(t.aprendices)} aprendices en etapa productiva con FORMA${t.atrasados ? `; ${t.atrasados} van atrasados` : ', todos al día en sus momentos'}.`
       : 'Todavía no hay etapas productivas registradas en FORMA.',
     t.bitacoras_sin_leer ? `${t.bitacoras_sin_leer} bitácoras esperan lectura.` : '',
-    cap.fichas_sin_instructor ? `${miles(cap.ya_en_practica_sin_instructor)} fichas ya en práctica y ${miles(cap.fichas_sin_instructor - cap.ya_en_practica_sin_instructor)} por entrar no tienen instructor.` : '',
+    cap.fichas_sin_instructor ? `${miles(cap.ya_en_practica_sin_instructor)} fichas ya en etapa productiva y ${miles(cap.fichas_sin_instructor - cap.ya_en_practica_sin_instructor)} por entrar no tienen instructor.` : '',
     cap.primer_mes_sin_cupo ? cap.primer_mes_sin_cupo.frase : '',
   ].filter(Boolean).join(' ')
 
-  const migas = (
-    <nav className="pan-migas" aria-label="Nivel">
-      {rol === 'SUPER_ADMIN' && (
-        <button type="button" disabled={!centro && !coord} onClick={() => { setCentro(null); setCoord(null) }}>Regional</button>
-      )}
-      {(centro || rol === 'SUBDIRECTOR') && rol !== 'COORD_ACADEMICO' && (
-        <button type="button" disabled={!coord} onClick={() => setCoord(null)}>{centro?.nombre ?? 'Mi centro'}</button>
-      )}
-      {coord && <button type="button" disabled>{coord.nombre}</button>}
-    </nav>
-  )
+  const filas = nivel === 'REGIONAL' ? d.centros : nivel === 'CENTRO' ? d.coordinaciones : []
+  const bajar = (g: Grupo) => {
+    if (nivel === 'REGIONAL') amb.setCentro(g.id)
+    else if (nivel === 'CENTRO') amb.setCoord(g.id)
+  }
 
   return (
     <Lienzo className="pan">
       <header className="pan-cab">
         <div>
-          {rol !== 'COORD_ACADEMICO' && migas}
           <div className="fx-eyebrow">{nivel === 'COORDINACION' ? 'Coordinación' : nivel === 'CENTRO' ? 'Centro de formación' : 'Dirección regional'} · {fdia(d.hoy)}</div>
           <h1 className="fx-titulo">{titulo}</h1>
         </div>
         <div className="pan-filtros">
           {rutaAlertas && <Link className="fx-boton" data-tipo="suave" to={rutaAlertas}>Alertas</Link>}
-          <Link className="fx-boton" to={rutaAsignacion}>Asignación de instructores</Link>
+          <Link className="fx-boton" data-tipo="principal" to={rutaAsignacion}>Asignar instructores</Link>
         </div>
       </header>
 
@@ -120,16 +122,19 @@ export function Panorama({ rutaEtapa, rutaAsignacion, rutaAlertas }: {
 
       <Cifras t={t} cap={cap}/>
 
-      {nivel === 'REGIONAL' && (
-        <Panel titulo="Los centros" sinCuerpo>
-          <Tarjetas grupos={d.centros} onAbrir={(g) => setCentro(g)} que="centro"/>
+      {fichas && fichasAmbito.length > 0 && (
+        <section className="pan-seccion">
+          <h2 className="fx-subtitulo">Las fichas</h2>
+          <ResumenFichas todas={fichasAmbito} filtradas={fichasAmbito} onOpenFicha={onOpenFicha}/>
+        </section>
+      )}
+
+      {filas.length > 0 && (
+        <Panel titulo={nivel === 'REGIONAL' ? 'Cómo va cada centro' : 'Cómo va cada coordinación'} accion={<span className="fx-texto-3">Clic en una fila para verla</span>}>
+          <Comparacion total={t} cap={cap} nombreTotal={titulo} grupos={filas} onElegir={bajar}/>
         </Panel>
       )}
-      {nivel === 'CENTRO' && (
-        <Panel titulo="Las coordinaciones" sinCuerpo>
-          <Tarjetas grupos={d.coordinaciones} onAbrir={(g) => setCoord(g)} que="coordinación"/>
-        </Panel>
-      )}
+
       {nivel === 'COORDINACION' && (
         <>
           <Panel titulo="Lo que viene, por instructor" accion={<span className="fx-texto-3">Lo atrasado primero</span>}>
@@ -162,6 +167,43 @@ export function Panorama({ rutaEtapa, rutaAsignacion, rutaAlertas }: {
   )
 }
 
+function Comparacion({ total, cap, nombreTotal, grupos, onElegir }: {
+  total: Ind; cap: Datos['capacidad']; nombreTotal: string; grupos: Grupo[]; onElegir: (g: Grupo) => void
+}) {
+  const orden = [...grupos].sort((a, b) => b.ind.atrasados - a.ind.atrasados || b.ind.aprendices - a.ind.aprendices || a.nombre.localeCompare(b.nombre))
+  const corto = (n: string) => n.replace(/^Coordinaci[oó]n Acad[eé]mica de /i, '')
+  const celdas = (ind: Ind, sinInstr: number, pronto: number, carga: number, cupos: number) => (
+    <>
+      <td className="fx-num">{miles(ind.aprendices)}</td>
+      <td className="fx-num">{ind.atrasados ? <Estado tono="atraso">{ind.atrasados}</Estado> : <span className="fx-texto-3">0</span>}</td>
+      <td><Fraccion a={ind.momentos_en_plazo} b={ind.momentos_hechos} bajo={80}/></td>
+      <td><Fraccion a={ind.bitacoras_al_dia} b={ind.bitacoras_esperadas} bajo={70}/></td>
+      <td className="fx-num" data-tono={ind.sin_leer_viejas ? 'atraso' : undefined}>{ind.bitacoras_sin_leer}</td>
+      <td className="fx-num" data-tono={pronto ? 'atraso' : undefined}>{miles(sinInstr)}</td>
+      <td><span className="pan-carga"><Medidor carga={carga} cupo={cupos}/><span className="fx-num fx-texto-2">{miles(carga)}/{miles(cupos)}</span></span></td>
+    </>
+  )
+  const cargaTotal = grupos.reduce((s, g) => s + g.carga, 0)
+  return (
+    <div className="fx-tabla-envoltura">
+      <table className="fx-tabla pan-tabla pan-comparacion">
+        <thead>
+          <tr><th></th><th>Aprendices</th><th>Atrasados</th><th>Momentos en plazo</th><th>Bitácoras al día</th><th>Sin leer</th><th>Fichas sin instructor</th><th>Carga / cupos</th></tr>
+        </thead>
+        <tbody>
+          <tr className="pan-fila-total"><td>{nombreTotal}</td>{celdas(total, cap.fichas_sin_instructor, cap.fichas_pronto, cargaTotal, cap.cupos)}</tr>
+          {orden.map((g) => (
+            <tr key={g.id} className="pan-fila-clic" tabIndex={0} onClick={() => onElegir(g)} onKeyDown={(e) => { if (e.key === 'Enter') onElegir(g) }}>
+              <td className="pan-prog">{corto(g.nombre)}</td>
+              {celdas(g.ind, g.fichas_sin_instructor, g.fichas_pronto, g.carga, g.cupos)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function Cifras({ t, cap }: { t: Ind; cap: Datos['capacidad'] }) {
   const items: { k: string; v: string; tono?: Tono; nota?: string }[] = [
     { k: 'Aprendices', v: miles(t.aprendices), nota: 'en etapa productiva' },
@@ -179,34 +221,6 @@ function Cifras({ t, cap }: { t: Ind; cap: Datos['capacidad'] }) {
           {i.nota && <span className="n">{i.nota}</span>}
         </div>
       ))}
-    </div>
-  )
-}
-
-function Tarjetas({ grupos, onAbrir, que }: { grupos: Grupo[]; onAbrir: (g: Grupo) => void; que: string }) {
-  if (!grupos.length) return <p className="fx-texto-3" style={{ padding: 16 }}>No hay {que} en este ámbito.</p>
-  const orden = [...grupos].sort((a, b) => b.ind.atrasados - a.ind.atrasados || b.fichas_pronto - a.fichas_pronto || b.ind.aprendices - a.ind.aprendices || a.nombre.localeCompare(b.nombre))
-  return (
-    <div className="pan-tarjetas">
-      {orden.map((g) => {
-        const leidas = pct(g.ind.bitacoras_leidas, g.ind.bitacoras_entregadas)
-        return (
-          <button key={g.id} type="button" className="pan-tarjeta" onClick={() => onAbrir(g)}>
-            <span className="pan-tarjeta-nombre">{g.nombre}</span>
-            <span className="fx-texto-2 pan-tarjeta-frase">{g.frase.replace(`${g.nombre}: `, '').replace(`${g.nombre} `, '')}</span>
-            <span className="pan-tarjeta-datos">
-              <span><b className="fx-num">{miles(g.ind.aprendices)}</b> aprendices</span>
-              <span><b className="fx-num" data-tono={g.ind.atrasados ? 'atraso' : undefined}>{g.ind.atrasados}</b> atrasados</span>
-              <span><b className="fx-num">{leidas == null ? '—' : `${leidas}%`}</b> bitácoras leídas</span>
-              <span><b className="fx-num" data-tono={g.fichas_pronto ? 'atraso' : undefined}>{g.fichas_sin_instructor}</b> fichas sin instructor</span>
-            </span>
-            <span className="pan-tarjeta-cap">
-              <Medidor carga={g.carga} cupo={g.cupos}/>
-              <span className="fx-texto-3 fx-num">{miles(g.carga)} de {miles(g.cupos)} cupos · {g.instructores} instructores</span>
-            </span>
-          </button>
-        )
-      })}
     </div>
   )
 }
