@@ -1,0 +1,36 @@
+/* Reportes del instructor. Solo variables de src/ui/tokens.css. */
+.rep { display: flex; flex-direction: column; gap: 16px; max-width: 1080px; margin: 0 auto; }
+.rep-mes {
+  font: inherit; font-size: 13.5px; padding: 6px 10px; border-radius: var(--fx-radio-chico);
+  border: 1px solid var(--fx-linea-2); background: var(--fx-superficie); color: var(--fx-tinta);
+}
+.rep-informe { display: flex; flex-direction: column; gap: 16px; }
+.rep-dia { display: flex; flex-direction: column; margin-bottom: 12px; }
+.rep-dia .fx-eyebrow { margin-bottom: 2px; }
+.rep-evento {
+  display: grid; grid-template-columns: 200px 1fr; gap: 12px; align-items: start; width: 100%;
+  padding: 7px 8px; margin: 0 -8px; width: calc(100% + 16px); background: none; border: 0;
+  border-radius: var(--fx-radio-chico); cursor: pointer; font: inherit; text-align: left; color: var(--fx-tinta);
+}
+.rep-evento:hover { background: var(--fx-morado-suave); }
+.rep-que { font-size: 13px; color: var(--fx-tinta-2); }
+.rep-firma { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.rep-firma img { max-height: 70px; max-width: 240px; }
+.rep-linea { font-size: 12.5px; color: var(--fx-tinta-2); border-top: 1px solid var(--fx-tinta-3); padding-top: 4px; min-width: 240px; }
+.rep-buscar { margin-bottom: 8px; }
+.rep-doc-acc { display: flex; gap: 8px; align-items: center; }
+.rep-solo-impresion { display: none; }
+@media (max-width: 560px) { .rep-evento { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Al imprimir sale solo el informe del mes, con la firma al pie. */
+@media print {
+  body * { visibility: hidden; }
+  .rep-informe, .rep-informe * { visibility: visible; }
+  .rep-informe { position: absolute; inset: 0 auto auto 0; width: 100%; padding: 24px; }
+  .rep-solo-impresion { display: block; }
+  .rep-solo-impresion h2 { margin: 6px 0; font-size: 20px; }
+  .rep-solo-impresion p { margin: 2px 0; font-size: 13px; }
+  .rep-sin-impresion { display: none; }
+  .rep-evento { break-inside: avoid; }
+  .rep-firma { margin-top: 40px; }
+}

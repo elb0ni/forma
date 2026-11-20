@@ -90,7 +90,7 @@ export interface ProyeccionInstructor {
 // Qué tipo de registro es (ver instructores.service.ts::historial). Los
 // campos del momento (tipo_momento, concepto, firma...) solo vienen llenos en
 // MOMENTO y MOMENTO_EDITADO.
-export type ClaseHistorial = 'MOMENTO' | 'MOMENTO_EDITADO' | 'ETAPA_REGISTRADA' | 'ETAPA_ACTUALIZADA' | 'VISITA'
+export type ClaseHistorial = 'MOMENTO' | 'MOMENTO_EDITADO' | 'ETAPA_REGISTRADA' | 'ETAPA_ACTUALIZADA' | 'VISITA' | 'BITACORA_LEIDA'
 
 export interface HistorialEvento {
   key:                   string   // único entre clases (el id se repite)
@@ -129,6 +129,7 @@ export function momentoLabel(e: HistorialEvento): string {
     case 'ETAPA_REGISTRADA':  return 'Registro de etapa productiva'
     case 'ETAPA_ACTUALIZADA': return 'Edición · Información general'
     case 'VISITA':            return 'Visita agendada'
+    case 'BITACORA_LEIDA':    return 'Bitácora leída'
   }
   const m = e.tipo_momento === 'PLANEACION' ? 'Planeación'
     : e.tipo_momento === 'EVALUACION' ? 'Evaluación final'
@@ -175,7 +176,20 @@ export interface PendientesInstructor {
   aprendices: EstadoAprendiz[]
   // Señales de bitácoras (por leer, aprendiz que no entrega). Rediseño.
   bitacoras?: SenalBitacora[]
+  // Aprendices asignados sin etapa: listos según SofiaPlus y los demás.
+  por_registrar?: AprendizPorRegistrar[]
+  sin_habilitar?: AprendizPorRegistrar[]
   fallos:     string[]
+}
+
+export interface AprendizPorRegistrar {
+  aprendiz_id:       number | null   // null: no está en la copia de SofiaPlus
+  nombre:            string
+  documento:         string
+  ficha_id:          number
+  numero_ficha:      string
+  programa_nombre:   string | null
+  estado_formacion?: string | null
 }
 
 export interface SenalBitacora {
@@ -197,6 +211,7 @@ export interface CasillaBitacora {
   fin:          string
   limite:       string
   entregada:    string | null
+  leida?:       string | null
   dificultades: number
 }
 
@@ -239,7 +254,8 @@ const MOMENTO_ICON: Record<'PLANEACION' | 'SEGUIMIENTO' | 'EVALUACION', IconoMet
   SEGUIMIENTO: { icon: 'briefcase',   color: 'var(--fx-info)', bg: 'var(--fx-info-suave)' },
   EVALUACION:  { icon: 'checkCircle', color: 'var(--fx-ok)', bg: 'var(--fx-ok-suave)' },
 }
-const CLASE_ICON: Record<'ETAPA_REGISTRADA' | 'ETAPA_ACTUALIZADA' | 'VISITA', IconoMeta> = {
+const CLASE_ICON: Record<'ETAPA_REGISTRADA' | 'ETAPA_ACTUALIZADA' | 'VISITA' | 'BITACORA_LEIDA', IconoMeta> = {
+  BITACORA_LEIDA:    { icon: 'fileText', color: 'var(--fx-info)', bg: 'var(--fx-info-suave)' },
   ETAPA_REGISTRADA:  { icon: 'user',     color: 'var(--fx-info)', bg: 'var(--fx-info-suave)' },
   ETAPA_ACTUALIZADA: { icon: 'refresh',  color: 'var(--fx-info)', bg: 'var(--fx-info-suave)' },
   VISITA:            { icon: 'calendar', color: 'var(--fx-morado)', bg: 'var(--fx-morado-suave)' },

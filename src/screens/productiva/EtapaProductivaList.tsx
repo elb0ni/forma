@@ -1,6 +1,6 @@
 import { useEffect, useState, Fragment } from 'react'
 import { Ic, Card, Btn, Bdg, Ava, Pager, Tag } from '../../components/ui'
-import { fd, CenterState, LoadingBlock, Spinner, Seg } from '../shared/parts'
+import { fd, CenterState, LoadingBlock, Seg } from '../shared/parts'
 import { useAuthStore } from '../../store/auth'
 import api from '../../lib/api'
 import { soloDigitos } from '../../lib/input'
@@ -8,7 +8,6 @@ import { FiltrosBar, FiltrosResumen, FiltroGrupo, SortCaret } from '../shared/fi
 import type { FiltroOpcion, SortDir } from '../shared/filtros'
 import { tonoEtapa, MODALIDAD_LABEL, MODALIDAD_TIENE_EMPRESA, CASO_TONO_META, CASO_TONO_ORDER, MODALIDAD_FORMACION_LABEL, TIPO_DOC_LABEL } from './types'
 import type { EtapaProductiva, Aprendiz, ModalidadEtapaProductiva, CasoTono, FichaVentana } from './types'
-import { Field, SectionIntro } from './parts'
 import { Bloque, Campo, Dato, Aviso } from './Gfpi023Campos'
 import { ProgresoPracticaTarjeta } from '../shared/ProgresoPractica'
 import { casoBadge } from '../shared/AprendicesPractica'
@@ -427,182 +426,6 @@ export function EtapaProductivaList({ onOpen, onNuevo, instructorId }: {
           />
         </>
       )}
-    </div>
-  )
-}
-
-// ─── Nuevo registro: ficha → (instructor de seguimiento, si falta) → aprendiz → datos ─
-
-type Paso =
-  | { kind: 'ficha' }
-  | { kind: 'instructor'; fichaId: number; numeroFicha: string; coordinacionId: number | null }
-  | { kind: 'aprendiz'; fichaId: number; numeroFicha: string }
-  | { kind: 'datos'; aprendiz: Aprendiz }
-
-export function NuevoRegistro({ onCancel, onCreated }: { onCancel: () => void; onCreated: (etapaId: number) => void }) {
-  "use no memo"
-  const [paso, setPaso] = useState<Paso>({ kind: 'ficha' })
-
-  return (
-    <div style={{ maxWidth: 720 }}>
-      <button onClick={onCancel} style={{ fontSize: 12.5, color: 'var(--fx-tinta-2)', display: 'flex', gap: 6, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16, alignItems: 'center', fontFamily: 'inherit' }}>
-        <Ic n="arrowLeft" s={14}/>Cancelar
-      </button>
-      {paso.kind === 'ficha' && (
-        <PasoFicha onSeleccion={(fichaId, numeroFicha, coordinacionId, tieneInstructor) =>
-          setPaso(tieneInstructor ? { kind: 'aprendiz', fichaId, numeroFicha } : { kind: 'instructor', fichaId, numeroFicha, coordinacionId })
-        }/>
-      )}
-      {paso.kind === 'instructor' && (
-        <PasoInstructorPractica fichaId={paso.fichaId} numeroFicha={paso.numeroFicha} coordinacionId={paso.coordinacionId}
-          onBack={() => setPaso({ kind: 'ficha' })}
-          onAsignado={() => setPaso({ kind: 'aprendiz', fichaId: paso.fichaId, numeroFicha: paso.numeroFicha })}/>
-      )}
-      {paso.kind === 'aprendiz' && (
-        <PasoAprendiz fichaId={paso.fichaId} numeroFicha={paso.numeroFicha}
-          onBack={() => setPaso({ kind: 'ficha' })}
-          onSeleccion={aprendiz => setPaso({ kind: 'datos', aprendiz })}/>
-      )}
-      {paso.kind === 'datos' && (
-        <CrearEtapaProductivaForm aprendiz={paso.aprendiz} onBack={() => setPaso({ kind: 'aprendiz', fichaId: paso.aprendiz.ficha_id, numeroFicha: '' })} onCreated={onCreated}/>
-      )}
-    </div>
-  )
-}
-
-interface FichaOpt { id: number; numero_ficha: string; programa_nombre?: string; coordinacion_academica_id: number | null }
-
-function PasoFicha({ onSeleccion }: {
-  onSeleccion: (fichaId: number, numeroFicha: string, coordinacionId: number | null, tieneInstructor: boolean) => void
-}) {
-  "use no memo"
-  const [q, setQ] = useState('')
-  const [fichas, setFichas] = useState<FichaOpt[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [verificando, setVerificando] = useState<number | null>(null)
-
-  useEffect(() => {
-    api.get<FichaOpt[]>('/fichas?estado=EN_EJECUCION').then(r => setFichas(r.data)).catch(() => setError('No se pudieron cargar las fichas.'))
-  }, [])
-
-  async function seleccionar(f: FichaOpt) {
-    setVerificando(f.id); setError(null)
-    try {
-      const r = await api.get(`/asignaciones-practica/activa?ficha_id=${f.id}`)
-      onSeleccion(f.id, f.numero_ficha, f.coordinacion_academica_id, !!r.data)
-    } catch {
-      setError('No se pudo verificar el instructor de seguimiento de esta ficha. Intenta de nuevo.')
-    } finally {
-      setVerificando(null)
-    }
-  }
-
-  const ql = q.trim().toLowerCase()
-  const view = (fichas ?? []).filter(f => !ql || f.numero_ficha.toLowerCase().includes(ql)).slice(0, 30)
-
-  return (
-    <div>
-      <SectionIntro title="Selecciona la ficha" sub="Busca por número de ficha del aprendiz que va a iniciar o ya está en etapa productiva."/>
-      <input className="nx-input" placeholder="Número de ficha…" value={q} onChange={e => setQ(e.target.value)} autoFocus/>
-      {error && <div style={{ fontSize: 12, color: 'var(--fx-atraso)', marginTop: 10 }}>{error}</div>}
-      {!fichas && !error && <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)', marginTop: 12 }}>Cargando fichas…</div>}
-      {fichas && (
-        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
-          {view.length === 0 && q && <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>Sin resultados para "{q}".</div>}
-          {view.map(f => (
-            <button key={f.id} onClick={() => seleccionar(f)} disabled={verificando != null} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left',
-              padding: '10px 14px', border: '1px solid var(--fx-linea)', borderRadius: 8, background: 'var(--fx-superficie)',
-              cursor: verificando != null ? 'default' : 'pointer', fontFamily: 'inherit', opacity: verificando != null && verificando !== f.id ? 0.5 : 1,
-            }}>
-              <span style={{ fontSize: 13, fontWeight: 600, fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta)' }}>{f.numero_ficha}</span>
-              {verificando === f.id ? <Spinner/> : f.programa_nombre && <span style={{ fontSize: 12, color: 'var(--fx-tinta-3)' }}>{f.programa_nombre}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Decisión v3 (Fase 15): el instructor ya no se asigna una ficha solo; la
-// pide y la coordinación aprueba desde Asignación.
-function PasoInstructorPractica({ fichaId, numeroFicha, coordinacionId, onBack }: {
-  fichaId: number; numeroFicha: string; coordinacionId: number | null; onBack: () => void; onAsignado: () => void
-}) {
-  "use no memo"
-  const [nota, setNota] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-  const [hecho, setHecho] = useState(false)
-
-  async function pedir() {
-    setBusy(true); setErr(null)
-    try {
-      await api.post('/asignar/solicitudes', { ficha_id: fichaId, nota: nota.trim() || undefined })
-      setHecho(true)
-    } catch (e: unknown) {
-      setErr((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'No se pudo enviar la solicitud.')
-    } finally { setBusy(false) }
-  }
-
-  return (
-    <div>
-      <SectionIntro title="Esta ficha no tiene instructor de seguimiento"
-        sub={`Para registrar aprendices de la ficha ${numeroFicha}, pídela: tu coordinación la aprueba desde Asignación y te queda asignada a ti.`}/>
-      <Card style={{ padding: 20 }}>
-        {coordinacionId == null ? (
-          <div style={{ fontSize: 12.5, color: 'var(--fx-atraso)' }}>Esta ficha no tiene coordinación académica; avisa a tu coordinación.</div>
-        ) : hecho ? (
-          <div style={{ fontSize: 13.5, color: 'var(--fx-ok)', fontWeight: 550 }}>Listo. Le llegó tu solicitud a la coordinación; cuando la apruebe, la ficha aparece en tus aprendices.</div>
-        ) : (
-          <Field label="Nota para la coordinación (opcional)">
-            <input className="nx-input" value={nota} maxLength={300} onChange={e => setNota(e.target.value)} placeholder="Por ejemplo: la acompañé en la lectiva"/>
-          </Field>
-        )}
-      </Card>
-      {err && <div style={{ fontSize: 12, color: 'var(--fx-atraso)', marginTop: 10 }}>{err}</div>}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-        <Btn variant="secondary" onClick={onBack} disabled={busy}>Cambiar ficha</Btn>
-        {!hecho && coordinacionId != null && <Btn variant="accent" icon="check" disabled={busy} onClick={pedir}>{busy ? 'Enviando…' : 'Pedir esta ficha'}</Btn>}
-      </div>
-    </div>
-  )
-}
-
-function PasoAprendiz({ fichaId, numeroFicha, onBack, onSeleccion }: {
-  fichaId: number; numeroFicha: string; onBack: () => void; onSeleccion: (a: Aprendiz) => void
-}) {
-  "use no memo"
-  const [aprendices, setAprendices] = useState<Aprendiz[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    api.get<Aprendiz[]>(`/aprendices?ficha_id=${fichaId}`).then(r => setAprendices(r.data)).catch(() => setError('No se pudieron cargar los aprendices de esta ficha.'))
-  }, [fichaId])
-
-  return (
-    <div>
-      <SectionIntro title="Selecciona el aprendiz" sub={`Aprendices registrados en la ficha ${numeroFicha || fichaId}.`}/>
-      {error && <div style={{ fontSize: 12, color: 'var(--fx-atraso)' }}>{error}</div>}
-      {!aprendices && !error && <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>Cargando…</div>}
-      {aprendices && aprendices.length === 0 && (
-        <div style={{ fontSize: 12.5, color: 'var(--fx-tinta-3)' }}>Esta ficha no tiene aprendices cargados todavía.</div>
-      )}
-      {aprendices && aprendices.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
-          {aprendices.map(a => (
-            <button key={a.id} onClick={() => onSeleccion(a)} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left',
-              padding: '10px 14px', border: '1px solid var(--fx-linea)', borderRadius: 8, background: 'var(--fx-superficie)', cursor: 'pointer', fontFamily: 'inherit',
-            }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fx-tinta)' }}>{a.nombre_completo}</span>
-              <span style={{ fontSize: 12, fontFamily: '"JetBrains Mono", monospace', color: 'var(--fx-tinta-3)' }}>{a.numero_documento}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <div style={{ marginTop: 14 }}><Btn variant="secondary" onClick={onBack}>Cambiar ficha</Btn></div>
     </div>
   )
 }

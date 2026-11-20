@@ -49,7 +49,7 @@ export function Buscador() {
     ...r.aprendices.map((a) => ({
       k: `a${a.id}`, titulo: a.nombre, sub: `Aprendiz · ${a.documento} · ficha ${a.numero_ficha}`,
       ir: rol === 'INSTRUCTOR'
-        ? (a.etapa_id ? `${base}/etapa-productiva/${a.etapa_id}` : `${base}/fichas/${a.ficha_id}`)
+        ? (a.etapa_id ? `${base}/etapa-productiva/${a.etapa_id}` : `${base}/etapa-productiva/nueva?aprendiz=${a.id}`)
         : (a.etapa_id ? `${base}/fichas/${a.ficha_id}/etapa/${a.etapa_id}` : `${base}/fichas/${a.ficha_id}`),
     })),
     ...r.fichas.map((f) => ({ k: `f${f.id}`, titulo: `Ficha ${f.numero_ficha}`, sub: f.programa ?? 'Ficha', ir: `${base}/fichas/${f.id}` })),

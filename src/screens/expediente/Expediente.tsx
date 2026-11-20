@@ -23,7 +23,7 @@ import { factoresPorMomento, fraseExpediente, historiaEtapa, momentosEnPlazo, re
 import type { Habilitacion } from './analisis'
 import './expediente.css'
 
-export type AbrirEn = 'cronograma' | 'planeacion' | 'seguimientos' | 'evaluacion' | 'bitacoras'
+export type AbrirEn = 'cronograma' | 'planeacion' | 'seguimientos' | 'evaluacion' | 'bitacoras' | 'documento'
 
 const TIPO_DE: Record<'planeacion' | 'seguimientos' | 'evaluacion', TipoMomentoCron> = {
   planeacion: 'PLANEACION', seguimientos: 'SEGUIMIENTO', evaluacion: 'EVALUACION',
@@ -48,7 +48,7 @@ export function Expediente({ etapaId, onBack, backLabel = 'Volver', soloLectura,
   const [hab, setHab] = useState<Habilitacion | null>(null)
   const [estadoCalc, setEstadoCalc] = useState<EstadoAprendiz | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [lateral, setLateral] = useState<Lateral>(abrir === 'cronograma' ? 'visitas' : null)
+  const [lateral, setLateral] = useState<Lateral>(abrir === 'cronograma' ? 'visitas' : abrir === 'documento' ? 'documento' : null)
   const [abiertos, setAbiertos] = useState<Set<TipoMomentoCron> | null>(
     abrir && abrir in TIPO_DE ? new Set([TIPO_DE[abrir as keyof typeof TIPO_DE]]) : null,
   )

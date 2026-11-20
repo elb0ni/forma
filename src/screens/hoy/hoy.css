@@ -49,3 +49,95 @@
 .apr-buscar:focus { outline: 2px solid var(--fx-morado); outline-offset: 0; }
 .apr-tabla { min-width: 820px; }
 .apr-nombre { font-weight: 600; }
+
+/* Por registrar (Aprendices) */
+.preg-intro { margin: 0 0 12px; font-size: 13px; }
+.preg-ficha { display: flex; flex-direction: column; margin-bottom: 14px; scroll-margin-top: 80px; }
+.preg-ficha .fx-eyebrow { margin-bottom: 4px; }
+.preg-fila {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--fx-linea);
+}
+.preg-fila:last-of-type { border-bottom: 0; }
+.preg-nombre { display: flex; flex-direction: column; gap: 1px; font-size: 13.5px; min-width: 0; }
+.preg-nombre strong { font-weight: 600; }
+.preg-mas { align-self: flex-start; margin-top: 6px; font-size: 13px; }
+.preg-otros { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.preg-otros > .hoy-enlace { align-self: flex-start; font-size: 13px; }
+@media (max-width: 560px) { .preg-fila { flex-direction: column; align-items: flex-start; } }
+
+/* Pedir una ficha (panel lateral) */
+.pedir { display: flex; flex-direction: column; gap: 20px; }
+.pedir section { display: flex; flex-direction: column; }
+.pedir .fx-eyebrow { margin-bottom: 6px; }
+.pedir-buscar { margin-bottom: 6px; }
+.pedir-error { margin: 0; font-size: 13px; color: var(--fx-atraso); }
+.pedir-nota { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 12px; }
+.pedir-acciones { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Calendario: visitas por agendar */
+.cal { display: flex; flex-direction: column; gap: 14px; }
+.cal-nada { margin: 0; font-size: 13px; }
+.cal-intro { margin: 0 0 10px; font-size: 13px; }
+.cal-empresa { display: flex; flex-direction: column; margin-bottom: 12px; }
+.cal-empresa .fx-eyebrow { margin-bottom: 2px; }
+.cal-fila {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--fx-linea);
+}
+.cal-fila:last-child { border-bottom: 0; }
+.cal-quien {
+  display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left;
+  background: none; border: 0; padding: 0; font: inherit; font-size: 13.5px; color: var(--fx-tinta); cursor: pointer;
+}
+.cal-quien:hover strong { color: var(--fx-morado-tinta); text-decoration: underline; }
+.cal-form { display: flex; gap: 6px; align-items: center; }
+.cal-form input, .cal-form select {
+  font: inherit; font-size: 13px; padding: 5px 8px; border-radius: var(--fx-radio-chico);
+  border: 1px solid var(--fx-linea-2); background: var(--fx-superficie); color: var(--fx-tinta);
+}
+.cal-error { grid-column: 1 / -1; margin: 0; font-size: 12.5px; color: var(--fx-atraso); }
+@media (max-width: 760px) {
+  .cal-fila { grid-template-columns: 1fr; gap: 6px; }
+  .cal-fila .fx-estado { justify-self: start; }
+  .cal-form { flex-wrap: wrap; }
+}
+
+/* Bitácoras: bandeja de lectura */
+.bit { display: flex; flex-direction: column; gap: 16px; max-width: 1280px; margin: 0 auto; }
+.bit-rejilla { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.bit-lista { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.bit-grupo { display: flex; flex-direction: column; gap: 2px; }
+.bit-grupo-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.bit-grupo-cab .hoy-enlace { font-size: 12.5px; }
+.bit-ayuda { margin: 0 0 4px; font-size: 12.5px; }
+.bit-fila {
+  display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; width: 100%;
+  padding: 8px; background: none; border: 0; border-radius: var(--fx-radio-chico);
+  cursor: pointer; font: inherit; text-align: left; color: var(--fx-tinta);
+}
+.bit-fila .fx-estado { justify-self: start; margin-top: 1px; }
+.bit-fila:hover, .bit-fila[data-activo] { background: var(--fx-morado-suave); }
+.bit-fila:focus-visible { outline: 2px solid var(--fx-morado); outline-offset: 0; }
+.bit-lectura { position: sticky; top: 12px; min-width: 0; }
+.bit-quien { font-size: 14px; }
+.bit-vacio { padding: 40px 0; text-align: center; }
+.bit-siguiente { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--fx-linea); }
+@media (max-width: 900px) {
+  .bit-rejilla { grid-template-columns: 1fr; }
+  .bit-lectura { position: static; }
+  .bit .bit-vacio { display: none; }
+  .bit--leyendo .bit-lista, .bit--leyendo > .fx-frase { display: none; }
+}
+
+/* Hoy: bitácoras compactas y cifras que llevan a Aprendices */
+.hoy-mas { display: flex; justify-content: flex-end; margin-top: 8px; }
+.hoy-cifras { display: flex; flex-direction: column; }
+.hoy-cifra {
+  display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 8px; margin: 0 -8px; width: calc(100% + 16px);
+  background: none; border: 0; border-radius: var(--fx-radio-chico); cursor: pointer; font: inherit; font-size: 13.5px;
+  color: var(--fx-tinta-2); text-align: left;
+}
+.hoy-cifra .fx-num { font-size: 20px; font-weight: 600; color: var(--fx-tinta); min-width: 34px; }
+.hoy-cifra[data-tono="atraso"] .fx-num { color: var(--fx-atraso); }
+.hoy-cifra:hover { background: var(--fx-morado-suave); }

@@ -64,6 +64,8 @@ const NAV: Record<UserRole, NavItem[]> = {
   INSTRUCTOR: [
     { id: 'inst-home', label: 'Hoy', icon: 'home' },
     { id: 'inst-etapa-productiva', label: 'Aprendices', icon: 'users' },
+    { id: 'inst-bitacoras', label: 'Bitácoras', icon: 'fileText' },
+    { id: 'inst-calendario', label: 'Calendario', icon: 'calendar' },
     { id: 'inst-reportes', label: 'Reportes', icon: 'trend' },
   ],
 }

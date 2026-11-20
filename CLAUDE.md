@@ -28,14 +28,14 @@ y, desde el 2026-10-01, sus datos son **reales**.
   y **ente co-formador** (firma en la app). "No todos entran a FORMA, pero todos quedan en FORMA".
 
 ## Modo pruebas (el único que Claude enciende)
-- `scripts/pruebas.sh encender | apagar | estado`. Enciende la base local en Docker (`forma-pruebas-db`, 127.0.0.1:3307, copia de la real del 2026-11-18), Mailpit (`forma-pruebas-mail`, web en http://localhost:8025), el back en :3100 (`npm run start:pruebas`, con `forma_server/.env.pruebas`), el extractor de IA en :8000 y el front en :5180 (`npm run dev:pruebas`).
+- `npm run pruebas` / `npm run pruebas:apagar` / `npm run pruebas:estado` (desde `forma/`; por debajo, `scripts/pruebas.sh`). Enciende la base local en Docker (`forma-pruebas-db`, 127.0.0.1:3307, copia de la real del 2026-11-18), Mailpit (`forma-pruebas-mail`, web en http://localhost:8025), el back en **:3000** (`npm run start:pruebas`, con `forma_server/.env.pruebas`), el extractor de IA en :8000 y el front en **:5173** (`npm run dev:pruebas`). Usa los mismos puertos que el modo real (decisión del usuario, 2026-11-20): no pueden estar encendidos a la vez, y `npm run pruebas` se niega si los puertos están ocupados.
 - En la copia, los correos están cambiados por `@prueba.forma.local` y el catálogo incompleto se llenó con reglas marcadas `[PRUEBA]` (`catalogo_coordinacion.coordinador_nombre`).
 - Usuarios de prueba, contraseña `Pruebas2026!`: `admin@`, `subdirector@` (Industrial), `coordinador@` e `instructor@` (Tecnología e Innovación de Industrial), todos `@prueba.forma.local`.
 - Pruebas contra el modo pruebas (desde `forma_server/`, correrlas después de tocar la API):
   - `node scripts/prueba-flujo.mjs` (flujo de punta a punta) y luego `node scripts/prueba-bitacoras.mjs` (ciclo de la bitácora; usa la etapa que crea la anterior);
   - `node scripts/prueba-alcance.mjs` (permisos por rol), `node scripts/prueba-capacidad.mjs` (cupos y asignación), `node scripts/prueba-asignar.mjs` (las formas de asignar y las solicitudes) y `node scripts/prueba-panorama.mjs` (panoramas y catálogo del centro);
   - `node scripts/prueba-ingesta.mjs` (robot de juicios contra la base de pruebas).
-  Todas dejan la base como estaba, salvo flujo/bitácoras, que agregan una etapa de prueba.
+  Todas dejan la base como estaba, salvo flujo/bitácoras, que agregan una etapa de prueba. Antes de escribir, cada una confirma que el back de :3000 es el de pruebas (`scripts/solo-pruebas.mjs`).
 - Permisos: todo pasa por `forma_server/src/common/alcance.ts` y `alcance.service.ts`. Un endpoint nuevo que reciba ids debe llamar a `AlcanceService`, y uno que liste debe usar `forzarFiltros`. Lo que el subdirector no debe tocar se marca con `@SoloRegional()`.
 - Para conectarse a la base local: `mariadb -h127.0.0.1 -P3307 -uroot -pforma_pruebas_root --skip-ssl forma_pruebas`.
 
@@ -57,7 +57,7 @@ y, desde el 2026-10-01, sus datos son **reales**.
 ## Pantallas del rediseño (rama `rediseno/flujo-instructor`)
 - Sistema visual en `src/ui/` (tokens, `Lienzo`, `Frase`, `Estado`, `Panel`, `PanelLateral`, `LineaEtapa`, `LineaMini`). Sin colores sueltos: lo impide el lint en `src/ui`, `screens/expediente`, `screens/hoy`, `screens/panorama` y `screens/publico`.
 - **Versión 3 (blanco + morado FORMA):** los tokens viven en `:root` (`src/ui/tokens.css`) para toda la app; modo oscuro real (sin invertir); ningún color escrito a mano en `src/` (lint) ni en los `.css` (`node scripts/sin-colores.mjs`), salvo el login.
-- Instructor: **Hoy** (con vista Calendario, `?vista=calendario`) y **Aprendices** (`screens/hoy`), **Expediente** (`screens/expediente`, reutiliza formularios de `EtapaProductivaDetalle`). Menú: Hoy, Aprendices, Reportes.
+- Instructor: **Hoy** (con vista Calendario, `?vista=calendario`) y **Aprendices** (`screens/hoy`), **Expediente** (`screens/expediente`, reutiliza formularios de `EtapaProductivaDetalle`). Menú (Fase 19): Hoy, Aprendices (con "Por registrar" y "Pedir una ficha"), Bitácoras (bandeja), Calendario (con "Por agendar") y Reportes.
 - Coordinación, subdirección y regional: **Inicio** (`panorama/Panorama.tsx`: une el Dashboard y el Panorama), **Asignación** (con `AsignarPanel`: ficha, aprendices sueltos, repartir; solicitudes; liberar), **Equipo** (`panorama/Equipo.tsx`) y **SofiaPlus y datos** (`Datos`). Ámbito "Viendo" arriba (`store/ambito.ts`, `components/Ambito.tsx`) y buscador (`components/Buscador.tsx`, `/buscar`).
 - Back: módulos `capacidad`, `panorama`, `asignar` (migración `src/asignar/migracion-asignar.sql`: `solicitud_ficha` y `asignacion_practica.asignada_por`) y `buscar`; `/catalogo-centro`; señales de bitácora en `instructores/pendientes.ts`. El instructor ya no usa `POST /asignaciones-practica`: pide la ficha.
 - Migraciones del rediseño (solo agregan; aplicadas en pruebas, la real con visto bueno): `forma_server/scripts/migraciones-piloto.sh`.

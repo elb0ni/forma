@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "dev:pruebas": "vite --mode pruebas --port 5180 --strictPort"
+    "dev:pruebas": "vite --mode pruebas --port 5173 --strictPort",
+    "pruebas": "bash scripts/pruebas.sh encender",
+    "pruebas:apagar": "bash scripts/pruebas.sh apagar",
+    "pruebas:estado": "bash scripts/pruebas.sh estado"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

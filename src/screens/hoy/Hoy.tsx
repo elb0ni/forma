@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import api from '../../lib/api'
 import { useAuthStore } from '../../store/auth'
-import { Lienzo, Frase, Estado, Panel, Indicadores, Boton } from '../../ui'
+import { Lienzo, Frase, Estado, Panel, Boton } from '../../ui'
 import { fdia } from '../../ui/estados'
 import type { Pendiente, PendientesInstructor, SenalBitacora, TabEtapa } from '../instructor/types'
 import { GRUPO, fechaLarga, plural } from './comun'
@@ -13,12 +13,13 @@ const CATEGORIA: Record<Pendiente['categoria'], string> = {
   MOMENTO: 'Momento', VISITA: 'Visita', FICHA: 'Ficha', ALERTA: 'Alerta',
 }
 
-export function Hoy({ onAbrir, onFicha, onNuevo, onCalendario, onAprendices }: {
+export function Hoy({ onAbrir, onFicha, onPorRegistrar, onBitacora, onBitacoras, onAprendices }: {
   onAbrir: (etapaId: number, tab?: TabEtapa | null) => void
   onFicha: (fichaId: number) => void
-  onNuevo: () => void
-  onCalendario: () => void
-  onAprendices: () => void
+  onPorRegistrar: (fichaId: number) => void
+  onBitacora: (etapaId: number, numero: number) => void
+  onBitacoras: () => void
+  onAprendices: (filtro?: 'ATRASADO' | 'AL_DIA') => void
 }) {
   const user = useAuthStore((s) => s.user)
   const [d, setD] = useState<PendientesInstructor | null>(null)
@@ -45,7 +46,7 @@ export function Hoy({ onAbrir, onFicha, onNuevo, onCalendario, onAprendices }: {
 
   const abrir = (p: Pendiente) => {
     if (p.etapa_id) onAbrir(p.etapa_id, p.tab)
-    else if (p.id.endsWith('-LISTOS')) onNuevo()
+    else if (p.id.endsWith('-LISTOS') && p.ficha_id) onPorRegistrar(p.ficha_id)
     else if (p.ficha_id) onFicha(p.ficha_id)
   }
 
@@ -65,13 +66,6 @@ export function Hoy({ onAbrir, onFicha, onNuevo, onCalendario, onAprendices }: {
         <div>
           <div className="fx-eyebrow">{fechaLarga(d.hoy)}</div>
           <h1 className="fx-titulo">Hoy</h1>
-        </div>
-        <div className="hoy-acciones">
-          <div className="fx-vistas" role="tablist" aria-label="Vista">
-            <button type="button" role="tab" aria-selected data-on>Esta semana</button>
-            <button type="button" role="tab" aria-selected={false} onClick={onCalendario}>Calendario</button>
-          </div>
-          <Boton onClick={onAprendices}>Todos mis aprendices</Boton>
         </div>
       </header>
 
@@ -106,14 +100,28 @@ export function Hoy({ onAbrir, onFicha, onNuevo, onCalendario, onAprendices }: {
           <Panel titulo="Bitácoras" accion={<span className="fx-texto-3 fx-num">{porLeer} por leer</span>}>
             {senales.length === 0
               ? <p className="fx-texto-3">Nada nuevo: no hay bitácoras por leer ni aprendices atrasados en sus entregas.</p>
-              : <Senales senales={senales} onAbrir={(id) => onAbrir(id, 'bitacoras')}/>}
+              : <>
+                  <Senales
+                    senales={urgentesPrimero(senales).slice(0, BITACORAS_EN_HOY)}
+                    onAbrir={(s) => (s.tipo === 'POR_LEER' && s.numeros.length ? onBitacora(s.etapa_id, s.numeros[0]) : onAbrir(s.etapa_id, 'bitacoras'))}
+                  />
+                  <div className="hoy-mas">
+                    <Boton tipo="suave" onClick={onBitacoras}>{porLeer ? `Leer ${porLeer === 1 ? 'la' : `las ${porLeer}`}` : 'Ver todas'} →</Boton>
+                  </div>
+                </>}
           </Panel>
           <Panel titulo="Tus aprendices">
-            <Indicadores items={[
-              { k: 'En etapa productiva', v: String(d.aprendices.length) },
-              { k: 'Atrasados', v: String(atrasados), tono: atrasados ? 'atraso' : undefined, nota: atrasados ? 'algún momento venció' : undefined },
-              { k: 'Al día', v: String(d.aprendices.filter((a) => a.situacion === 'AL_DIA' || a.situacion === 'COMPLETO').length) },
-            ]}/>
+            <div className="hoy-cifras">
+              <button type="button" className="hoy-cifra" onClick={() => onAprendices()}>
+                <span className="fx-num">{d.aprendices.length}</span>en etapa productiva
+              </button>
+              <button type="button" className="hoy-cifra" data-tono={atrasados ? 'atraso' : undefined} onClick={() => onAprendices('ATRASADO')}>
+                <span className="fx-num">{atrasados}</span>{atrasados === 1 ? 'atrasado' : 'atrasados'}
+              </button>
+              <button type="button" className="hoy-cifra" onClick={() => onAprendices('AL_DIA')}>
+                <span className="fx-num">{d.aprendices.filter((a) => a.situacion === 'AL_DIA' || a.situacion === 'COMPLETO').length}</span>al día
+              </button>
+            </div>
           </Panel>
         </aside>
       </div>
@@ -148,11 +156,19 @@ function ListaPorFicha({ items, onAbrir }: { items: Pendiente[]; onAbrir: (p: Pe
   )
 }
 
-function Senales({ senales, onAbrir }: { senales: SenalBitacora[]; onAbrir: (etapaId: number) => void }) {
+// En Hoy solo van las más urgentes: las que reportan dificultades, luego las
+// que llevan días sin leer; la bandeja completa vive en Bitácoras.
+const BITACORAS_EN_HOY = 3
+function urgentesPrimero(l: SenalBitacora[]) {
+  const peso = (s: SenalBitacora) => (s.dificultades ? 0 : 2) + (s.grupo === 'URGENTE' ? 0 : 1)
+  return [...l].sort((a, b) => peso(a) - peso(b))
+}
+
+function Senales({ senales, onAbrir }: { senales: SenalBitacora[]; onAbrir: (s: SenalBitacora) => void }) {
   return (
     <div className="hoy-senales">
       {senales.map((s) => (
-        <button key={s.id} type="button" className="hoy-item" onClick={() => onAbrir(s.etapa_id)}>
+        <button key={s.id} type="button" className="hoy-item" onClick={() => onAbrir(s)}>
           <Estado tono={s.tipo === 'POR_LEER' ? (s.grupo === 'URGENTE' ? 'atraso' : 'info') : 'aviso'}>
             {s.tipo === 'POR_LEER' ? 'Leer' : 'Escribirle'}
           </Estado>

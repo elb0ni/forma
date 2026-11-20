@@ -57,3 +57,15 @@ export function fechaLarga(iso: string) {
 }
 
 export const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`
+
+// Filtros de "Aprendices" (también llegan en la URL: ?filtro=).
+export type Filtro = 'TODOS' | 'ATRASADO' | 'LE_TOCA' | 'POR_LEER' | 'AL_DIA' | 'TERMINADOS'
+export const FILTROS: { id: Filtro; texto: string }[] = [
+  { id: 'TODOS', texto: 'En curso' },
+  { id: 'ATRASADO', texto: 'Atrasados' },
+  { id: 'LE_TOCA', texto: 'Les toca algo' },
+  { id: 'POR_LEER', texto: 'Bitácoras por leer' },
+  { id: 'AL_DIA', texto: 'Al día' },
+  { id: 'TERMINADOS', texto: 'Terminados' },
+]
+export const esFiltro = (v: string | null): v is Filtro => FILTROS.some((f) => f.id === v)

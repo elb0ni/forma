@@ -1002,6 +1002,8 @@ function EvaluacionForm({ etapa, etapaId, visitas, requiereJefe, evaluacion, fir
   const [retroInstructor, setRetroInstructor] = useState(evaluacion?.retro_instructor ?? '')
   const [retroAprendiz, setRetroAprendiz] = useState(evaluacion?.retro_aprendiz ?? '')
   const [juicio, setJuicio] = useState<ResultadoFinal | null>(null)
+  // Evaluación ya registrada pero sin resultado: falta cerrar la etapa.
+  const sinResultado = !!evaluacion && !etapa.resultado_final
   const [firmas, setFirmas] = useState<FirmasEstado>(firmasVacias())
   const [busy, setBusy] = useState(false)
   const [intentado, setIntentado] = useState(false)
@@ -1027,7 +1029,7 @@ function EvaluacionForm({ etapa, etapaId, visitas, requiereJefe, evaluacion, fir
       setErr(`Faltan ${sinValorar} variable${sinValorar === 1 ? '' : 's'} por valorar. El formato pide marcar las 13.`)
       return
     }
-    if (!evaluacion && !juicio) {
+    if ((!evaluacion || sinResultado) && !juicio) {
       setErr('Falta el juicio de evaluación: es lo que define si el aprendiz aprueba la etapa.')
       return
     }
@@ -1048,6 +1050,13 @@ function EvaluacionForm({ etapa, etapaId, visitas, requiereJefe, evaluacion, fir
           valoracion, retro_coformador: retroCoformador || undefined,
           retro_instructor: retroInstructor || undefined, retro_aprendiz: retroAprendiz || undefined,
         })
+        // Evaluación vieja sin resultado: el juicio cierra la etapa aquí.
+        if (sinResultado && juicio) {
+          await api.patch(`/etapas-productivas/${etapaId}`, {
+            resultado_final: juicio, estado: 'TERMINADA',
+            ...(etapa.fecha_fin_real ? {} : { fecha_fin_real: new Date().toISOString().slice(0, 10) }),
+          })
+        }
       } else {
         const res = await api.post<SeguimientoProductivo>('/seguimientos-productivos', {
           etapa_productiva_id: etapaId, tipo_momento: 'EVALUACION',
@@ -1092,7 +1101,7 @@ function EvaluacionForm({ etapa, etapaId, visitas, requiereJefe, evaluacion, fir
         <Campo label="Del aprendiz" ancho>{area(retroAprendiz, setRetroAprendiz)}</Campo>
       </Bloque>
 
-      {!evaluacion && (
+      {(!evaluacion || sinResultado) && (
         <Bloque n={5} titulo="Juicio de evaluación de la etapa productiva">
           <span className="g23-col2" style={{ fontSize: 11.5, color: 'var(--fx-tinta-3)', marginBottom: -2 }}>
             Define si el aprendiz aprueba la etapa. No se puede guardar sin elegir uno.

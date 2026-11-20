@@ -1,6 +1,6 @@
 # Plan de rediseño de FORMA
 
-Versión 3, del 19 de noviembre de 2026 (la 2 era del 18). Se marca cada casilla al terminar. Lo nuevo de la versión 3 está en "Versión 3 · Orden y claridad", antes de "Orden".
+Versión 3, del 19 de noviembre de 2026 (la 2 era del 18). Se marca cada casilla al terminar. Lo nuevo de la versión 3 está en "Versión 3 · Orden y claridad", antes de "Orden". La Fase 19 (20-nov) amplía el menú del instructor a 5 entradas.
 
 ## Decisiones tomadas
 - **Bitácora:** el instructor lee y comenta, sin aprobar. FORMA registra cuándo la leyó. El instructor puede pedir una corrección, y entonces la bitácora vuelve al aprendiz. Se permite entregar tarde, pero queda marcado.
@@ -47,7 +47,7 @@ Objetivo: que todo funcione perfecto acá, sin tocar datos reales.
   - todo queda marcado como dato de prueba.
 - [x] Modo pruebas:
   - back en el puerto 3100 con `.env.pruebas`;
-  - front con `vite --mode pruebas` en el puerto 5180 (el 5174 estaba ocupado);
+  - front con `vite --mode pruebas` en el puerto 5180 (el 5174 estaba ocupado); *Desde el 2026-11-20 el modo pruebas usa los puertos de siempre: back 3000 y front 5173, y se enciende con `npm run pruebas`.*
   - extractor de IA en el 8000;
   - un comando para encender todo y otro para apagarlo, documentados en CLAUDE.md.
 - [x] Migraciones: la base real ya tiene todas aplicadas. `migracion-roles.sql` NO se debe correr, porque borraría al subdirector.
@@ -382,7 +382,7 @@ En todos los casos se ve el efecto antes de confirmar, por ejemplo "Ana quedarí
 ### Fase 17 · Instructor, aprendiz y firma · esfuerzo **medium**
 - [x] Hoy con la vista Calendario; se retira la Agenda.
 - [x] *Aprendices ya tenía los filtros y "Etapas terminadas"; cada ficha se abre desde su grupo.* Aprendices con En curso, Por empezar y Terminados; Mis fichas e Historial salen del menú.
-- [ ] *Pendiente: sigue en tres pasos (ficha, aprendiz, datos); si la ficha no tiene instructor, ahora se pide.* Iniciar un seguimiento en dos pasos (aprendiz y luego datos), sin elegir ficha ni instructor cuando ya vienen asignados.
+- [x] *Hecho en la Fase 19.1: dos pasos desde "Por registrar".* Iniciar un seguimiento en dos pasos (aprendiz y luego datos), sin elegir ficha ni instructor cuando ya vienen asignados.
 - [ ] *Pendiente: el expediente sigue reutilizando los formularios de `EtapaProductivaDetalle`.* El expediente:
   - el cronograma, las bitácoras y la vista previa, hechos con las piezas nuevas;
   - lo guardado (la actividad) como una sección más;
@@ -407,13 +407,90 @@ En todos los casos se ve el efecto antes de confirmar, por ejemplo "Ana quedarí
 5. **Modo oscuro:** se mantiene, hecho con tokens.
 6. **Maqueta:** se salta. Con las decisiones tomadas, los cambios se revisan directo en la app (:5180).
 
+## Fase 19 · Más para el instructor · esfuerzo **medium** (la 19.4, **high**)
+
+Del 20 de noviembre de 2026. Al probar como instructor salieron dos problemas:
+- **Registrar una etapa confunde.** El aviso "23 aprendices ya pueden iniciar práctica" lleva a "Nuevo registro". Ahí se escoge una ficha entre **todas** las de la coordinación y luego un aprendiz entre **todos** los de la ficha, aunque ya tengan etapa o los siga otro instructor. Parece que el instructor escoge sus aprendices, cuando la coordinación ya se los asignó. Es la casilla que quedó pendiente en la Fase 17.
+- **Tres entradas se quedan cortas.** Con Hoy · Aprendices · Reportes no se ven dos tareas centrales del instructor: leer las bitácoras (con 40 aprendices son unas 40 por quincena) y planear sus visitas. Las dos ya existen, pero escondidas: las bitácoras en un costado de Hoy y el calendario detrás de un botón dentro de Hoy.
+
+### Menú nuevo: 5 entradas
+Cada entrada responde una sola pregunta, y ningún dato se repite entre ellas.
+
+| Entrada | Pregunta | Qué trae |
+|---|---|---|
+| Hoy | ¿Qué hago esta semana? | Atrasado, Esta semana y Para vigilar; al lado, las bitácoras más urgentes y las cifras de tus aprendices. |
+| Aprendices | ¿Cómo va cada uno? | La lista por ficha, los que faltan por registrar, los terminados y "Pedir una ficha". |
+| Bitácoras | ¿Qué me escribieron? | Una bandeja para leerlas una tras otra. |
+| Calendario | ¿Cuándo y a dónde voy? | El calendario que hoy está dentro de Hoy, más las visitas por agendar. |
+| Reportes | ¿Qué hice y qué entrego? | Lo hecho en el mes y las descargas. |
+
+Ajustes sigue abajo, en Cuenta. "Mis fichas" e "Historial" no vuelven como entradas: lo de las fichas queda en Aprendices y la actividad en Reportes.
+
+### 19.1 · Registrar una etapa sin escoger ficha · **medium**
+- [x] Back: `/instructores/mi/pendientes` devuelve `por_registrar`, los aprendices listos sin etapa, con `aprendiz_id`, documento, ficha y programa. La consulta de los "listos" ya existe, pero no trae el id. Respeta las asignaciones sueltas: si a un aprendiz de mi ficha lo sigue otro instructor, no aparece.
+- [x] Aprendices: arriba, "Por registrar" agrupado por ficha. Cada fila tiene "Registrar etapa", que abre directo el formulario de datos (empresa, modalidad y fechas). Quedan dos pasos: el aprendiz y sus datos.
+- [x] Si el aprendiz no está en la copia de SofiaPlus, la fila lo dice y no deja registrar: hay que avisar a la coordinación.
+- [x] "¿Falta alguien?" muestra los demás aprendices de mis fichas que no tienen etapa, con el aviso "SofiaPlus todavía no lo muestra habilitado". Sirve cuando los juicios llegan tarde.
+- [x] El aviso de Hoy lleva a Aprendices, a la ficha del aviso. Se retira el arreglo del 20-nov (`?ficha=` en "Nuevo registro").
+- [x] Sale el asistente de tres pasos (`NuevoRegistro`, `PasoFicha` y `PasoAprendiz` en `EtapaProductivaList.tsx`), que solo usa el instructor.
+
+### 19.2 · Pedir una ficha · **low**
+- [x] "Pedir una ficha", como botón secundario en Aprendices. Abre un panel con las fichas de mi coordinación sin instructor, ordenadas por la fecha de inicio de la etapa productiva, y una nota opcional. Usa `POST /asignar/solicitudes`, que ya existe.
+- [x] *El back solo devuelve las pendientes; las resueltas se ven porque la ficha aparece (o no) en Aprendices.* En el mismo panel, mis solicitudes: las pendientes, con "Retirar", y las ya resueltas.
+- [x] Cuando la coordinación aprueba, la ficha aparece en Aprendices y sus aprendices listos, en "Por registrar".
+
+### 19.3 · Menú de 5 y Calendario aparte · **low**
+- [x] `Shell.tsx`: Hoy · Aprendices · Bitácoras · Calendario · Reportes.
+- [x] Calendario con ruta propia (`/dashboard/instructor/calendario`). `?vista=calendario` y `/agenda` redirigen ahí. Sale de Hoy el selector "Esta semana | Calendario".
+- [x] Hoy: salen el selector "Esta semana | Calendario" y el botón "Todos mis aprendices", que ya son entradas del menú. Las bitácoras se quedan, compactas (decisión del 18-nov): las 3 más urgentes y "Leer las N", que abre Bitácoras. Cada cifra de "Tus aprendices" abre Aprendices con ese filtro.
+- [x] Vuelve lo que el Inicio viejo tenía y Hoy perdió: las etapas terminadas sin resultado ("Falta juicio", `resultado_final` vacío) salen como pendiente para cerrarlas.
+- [x] El buscador y las migas reconocen las entradas nuevas.
+
+### 19.4 · Bitácoras: bandeja de lectura · **high**
+- [x] Cuatro grupos, en este orden:
+  - Por leer, la más vieja primero;
+  - Atrasadas: el aprendiz no la ha entregado;
+  - Pediste corrección: está esperando al aprendiz;
+  - Leídas, solo las de las últimas dos semanas.
+- [x] Al abrir una, se lee ahí mismo con `LecturaBitacora` (leer, comentar y pedir corrección), y "Siguiente" pasa a la próxima por leer sin volver a la lista.
+- [x] En las atrasadas va la acción "Escribirle", la misma que hoy sale en Hoy.
+- [x] *Solo se agregó al back la fecha de lectura (`leida`) en cada casilla.* Sin back nuevo: los datos salen de `aprendices[].bitacoras` en `/instructores/mi/pendientes` y de los endpoints por etapa que ya existen.
+- [x] Pensada primero para el celular.
+
+Va en **high** porque es la pantalla que más va a usar el instructor y define cómo se lee en el celular.
+
+### 19.5 · Calendario: visitas por agendar · **medium**
+- [x] Arriba del calendario, "Por agendar": las visitas cuya ventana ya se abrió, o se abre en los próximos 15 días, y que todavía no tienen fecha. Se agendan desde ahí con `POST visitas`, que ya existe.
+- [x] Agrupadas por empresa, para armar recorridos: "3 aprendices en la misma empresa: agéndalos el mismo día".
+- [x] Sin back nuevo: las ventanas y las visitas ya vienen en `aprendices` de `/instructores/mi/pendientes`.
+
+### 19.6 · Reportes: lo que hice y lo que entrego · **medium**
+- [x] "Lo que hiciste" en el mes elegido: momentos registrados, visitas, ediciones y etapas abiertas o cerradas. Reutiliza `InstHistorial` y `GET /instructores/mi/historial`, que hoy no tienen entrada en el menú.
+- [x] Agregar al historial las bitácoras leídas (`leida_at` ya existe en el back).
+- [x] *El informe del mes es genérico (lo hecho en el mes con la firma) hasta saber qué formato pide Industrial.* Descargas: el GFPI-F-023 de cada aprendiz y un informe del mes con la firma del instructor. Hoy, "Descargar PDF" solo imprime la pantalla.
+- [x] *Ya estaba en Ajustes; se quitó de Reportes.* "Mi firma" pasa a Ajustes.
+
+### 19.7 · Cierre · **low**
+- [x] `tsc`, `eslint` y `build` en el front; `tsc`, `eslint` y `jest` en el back.
+- [x] `prueba-flujo.mjs` y `prueba-bitacoras.mjs`, con una verificación nueva de `por_registrar` en `prueba-flujo.mjs`.
+- [x] La guía del instructor (`docs/guias/instructor.md`) con el menú de 5.
+- [x] *Capturas con Playwright a 1440 y 390 px; falta probarlo en un celular real.* Revisar cada pantalla en el celular.
+
+**Listo cuando:** el instructor registra la etapa de un aprendiz asignado en dos pasos y sin ver fichas ajenas, lee sus bitácoras una tras otra y arma la semana de visitas desde Calendario.
+
+### Por decidir
+1. ~~¿Las cinco entradas?~~ Sí (20-nov).
+2. ~~¿Registrar sin habilitación de SofiaPlus?~~ Sí, con el aviso (20-nov).
+3. ¿Qué informe mensual les piden a los instructores en Industrial? Por ahora sale uno genérico.
+
 ## Orden
 1. Fases 0 y 1.
 2. Fase 2.
 3. Fase 3. La Fase 4 puede ir intercalada con la 3, porque es trabajo del back.
 4. Fases 5, 6, 7, 8 y 9, en ese orden.
 5. Versión 3: fases 11 a 18, en ese orden. La 13 puede ir intercalada con la 14, porque es mecánica.
-6. Fase 10: Industrial estrena la versión 3. Las dos semanas de uso empiezan cuando termine la 18.
+6. Fase 19: más para el instructor, en el orden de sus partes (19.1 a 19.7).
+7. Fase 10: Industrial estrena la versión 3 con la Fase 19. Las dos semanas de uso empiezan cuando termine la 19.
 
 El frente de Industrial corre en paralelo desde ya.
 
@@ -427,4 +504,5 @@ El frente de Industrial corre en paralelo desde ya.
 | 10 y frente de Industrial | low | Datos, checklist y soporte |
 | 11, 12, 14, 15 | high | Maqueta, sistema visual, Inicio y asignación: diseño y modelo |
 | 13, 16, 17, 18 | medium | Con el diseño ya aprobado; la 13 es casi toda mecánica |
+| 19 | medium | La 19.4 (bandeja de bitácoras) en high; la 19.2, la 19.3 y la 19.7 en low |
 | Preguntas y arreglos sueltos entre fases | low | |

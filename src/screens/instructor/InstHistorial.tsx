@@ -15,7 +15,7 @@ import './instructor.css'
 
 const PAGE_SIZE = 20
 
-type TipoFilt = 'TODOS' | 'ETAPAS' | 'PLANEACION' | 'SEGUIMIENTO' | 'EVALUACION' | 'VISITAS'
+type TipoFilt = 'TODOS' | 'ETAPAS' | 'PLANEACION' | 'SEGUIMIENTO' | 'EVALUACION' | 'VISITAS' | 'BITACORAS'
 
 const TIPO_CHIPS: { key: TipoFilt; label: string }[] = [
   { key: 'TODOS',       label: 'Todo' },
@@ -24,6 +24,7 @@ const TIPO_CHIPS: { key: TipoFilt; label: string }[] = [
   { key: 'SEGUIMIENTO', label: 'Seguimientos' },
   { key: 'EVALUACION',  label: 'Evaluación' },
   { key: 'VISITAS',     label: 'Visitas' },
+  { key: 'BITACORAS',   label: 'Bitácoras leídas' },
 ]
 
 function deTipo(e: HistorialEvento, f: TipoFilt): boolean {
@@ -31,6 +32,7 @@ function deTipo(e: HistorialEvento, f: TipoFilt): boolean {
     case 'TODOS':   return true
     case 'ETAPAS':  return e.clase === 'ETAPA_REGISTRADA' || e.clase === 'ETAPA_ACTUALIZADA'
     case 'VISITAS': return e.clase === 'VISITA'
+    case 'BITACORAS': return e.clase === 'BITACORA_LEIDA'
     default:        return esMomento(e) && e.tipo_momento === f
   }
 }
